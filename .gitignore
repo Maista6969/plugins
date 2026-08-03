@@ -1,0 +1,8 @@
+node_modules/
+dist/
+result
+
+# Assembled by build_site.sh (see root README) -- always rebuilt from each
+# plugin's own dist/, never committed.
+/plugins/
+_site/

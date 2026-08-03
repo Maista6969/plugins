@@ -1,0 +1,28 @@
+name: Librarian
+description: Organizes your video files on disk according to your specific rules
+version: 0.1.0
+url: https://github.com/example/librarian
+exec:
+  - librarian.js
+interface: js
+tasks:
+  - name: Rename (filtered)
+    description: This task is meant to be triggered elsewhere, clicking this button does nothing
+    defaultArgs:
+      mode: dummy
+  - name: Rename everything
+    description: Applies Librarian's rename rules to every scene in your Stash
+    defaultArgs:
+      mode: task
+hooks:
+  - name: Auto-rename on scene update
+    description: Re-evaluates rename rules whenever an organized scene is updated.
+    triggeredBy:
+      - Scene.Update.Post
+    defaultArgs:
+      mode: hook
+ui:
+  javascript:
+    - librarian-ui.js
+  css:
+    - librarian-ui.css

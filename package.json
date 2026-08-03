@@ -1,0 +1,13 @@
+{
+  "name": "stash-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Monorepo of Stash plugins, published as a single GitHub Pages plugin source.",
+  "packageManager": "pnpm@11.15.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test"
+  }
+}

@@ -1,0 +1,308 @@
+/* A little offset from the top since we're nesting modals */
+.librarian-nested-setting-modal .modal-dialog {
+  margin-top: 3rem;
+}
+
+.librarian-settings-page {
+  padding: 1rem;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.librarian-rule-list-wrapper {
+  margin-bottom: 1rem;
+}
+
+.librarian-rule-row {
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+  background-color: rgba(16, 22, 26, 0.3);
+}
+
+.librarian-rule-row.disabled {
+  background-color: rgba(219, 55, 55, 0.15);
+}
+
+.librarian-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  cursor: move;
+}
+
+.librarian-drag-handle:hover {
+  background: rgba(138, 155, 168, 0.15);
+}
+
+.librarian-rule-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+}
+
+.librarian-rule-row-name {
+  font-weight: 600;
+}
+
+.librarian-rule-row-pattern {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.librarian-rule-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+}
+
+.librarian-rule-preview-section {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #444;
+}
+
+.librarian-rule-preview-section h4 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Settings page is narrow but we full-bleed the preview */
+.librarian-config-preview {
+  margin-top: 0.5rem;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0 1rem;
+  overflow-x: auto;
+}
+
+.librarian-config-preview-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.librarian-config-preview-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.librarian-rule-preview-results {
+  margin-top: 0.5rem;
+  overflow-x: auto;
+}
+
+.librarian-rule-preview-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.librarian-rule-preview-controls-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.librarian-rule-preview-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.librarian-apply-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.librarian-condition-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.librarian-condition-row .librarian-entity-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.librarian-condition-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.librarian-inline-select {
+  width: auto;
+  padding-right: 1.5rem;
+  display: inline-block;
+}
+
+.librarian-rating-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.librarian-rating-range input[type="number"] {
+  width: 5rem;
+  flex: none;
+}
+
+.librarian-pattern-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.librarian-token-hint {
+  font-size: 0.8rem;
+}
+
+.librarian-token-chip {
+  margin: 0.1rem;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+/* Same look as .librarian-token-chip above (TokenizedText.tsx), minus
+   cursor: pointer: these aren't clickable, just a token mentioned in
+   read-only prose (a setting's own subHeading). */
+.librarian-token-chip-static {
+  margin: 0.1rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.librarian-token-group {
+  margin-top: 0.4rem;
+}
+
+.librarian-token-group-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table-list td.librarian-path-diff,
+.table-list td.librarian-message-cell {
+  white-space: normal;
+}
+
+.librarian-path-diff {
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.librarian-path-diff .old-path {
+  overflow-wrap: break-word;
+}
+
+.librarian-path-diff .librarian-path-diff-arrow {
+  line-height: 1.4;
+}
+
+.librarian-path-diff .new-path {
+  overflow-wrap: break-word;
+}
+
+.librarian-path-diff .correct-path {
+  color: #6ba86b;
+  overflow-wrap: break-word;
+}
+
+.librarian-status-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  border: none;
+}
+
+.librarian-status-badge.clickable {
+  cursor: pointer;
+}
+
+.librarian-status-badge.clickable:hover {
+  filter: brightness(1.2);
+}
+
+.librarian-organize-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.librarian-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.librarian-summary {
+  font-size: 0.85rem;
+}
+
+.librarian-preview-list {
+  margin: 0 0 1rem;
+  overflow-x: auto;
+}
+
+.librarian-scene-file-info-block {
+  margin-top: 1.5rem;
+}
+
+.librarian-scene-file-info-summary > * + * {
+  margin-top: 0.5rem;
+}
+
+.librarian-scene-file-info-summary .librarian-status-badge {
+  display: inline-block;
+}
+
+.librarian-scene-file-info-paths .correct-path {
+  color: #6ba86b;
+}
+
+.librarian-plugin-settings-summary {
+  margin-left: 2.5rem;
+  margin-right: 1.5rem;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.librarian-plugin-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.librarian-plugin-settings-header h5 {
+  margin: 0;
+}
+
+.librarian-plugin-settings-rules {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
