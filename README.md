@@ -2,14 +2,14 @@
 
 Currently hosts:
 
-- **[librarian](librarian/README.md)** - renames scene files based on your own rules and metadata
+- **[librarian](./librarian/README.md)** - renames scene files based on your own rules and metadata
 
 ## Installing a plugin from this repo
 
 In Stash, go to **Settings > Plugins > Available Plugins**, add this source:
 
 ```
-https://maista6969.github.io/stash-plugins/main/index.yml
+https://maista6969.github.io/plugins/main/index.yml
 ```
 
 then install whichever plugin(s) you want from the list. All of my plugins are configured through the Stash web UI, if at all.
