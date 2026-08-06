@@ -26,14 +26,7 @@ buildPlugin()
 
     echo "Processing $plugin_id"
 
-    # Upstream computes version/date from `git log` on $dir (the plugin's
-    # own directory under plugins/). That only works if plugins/ is
-    # committed -- this repo deliberately assembles plugins/<id>/ fresh from
-    # <id>/dist/ on every run and never commits it (see root README), so it
-    # has no real git history of its own. Read history from the actual
-    # SOURCE directory instead -- by this repo's convention, that's a
-    # top-level directory with the same name as the plugin id (e.g.
-    # librarian/ for plugin_id "librarian").
+    # We need to grab the git version from the actual source file instead of the distributed files
     srcdir="./$plugin_id"
     version=$(git log -n 1 --pretty=format:%h -- "$srcdir"/* 2>/dev/null)
     updated=$(TZ=UTC0 git log -n 1 --date="format-local:%F %T" --pretty=format:%ad -- "$srcdir"/* 2>/dev/null)
@@ -50,7 +43,9 @@ buildPlugin()
     description=$(grep "^description:" "$f" | head -n 1 | cut -d' ' -f2- | sed -e 's/\r//' -e 's/^"\(.*\)"$/\1/')
     ymlVersion=$(grep "^version:" "$f" | head -n 1 | cut -d' ' -f2- | sed -e 's/\r//' -e 's/^"\(.*\)"$/\1/')
     version="$ymlVersion-$version"
-    IFS=$'\n' dep=$(grep "^# requires:" "$f" | cut -c 12- | sed -e 's/\r//')
+
+    # the requires field is optional
+    IFS=$'\n' dep=$(grep "^# requires:" "$f" | cut -c 12- | sed -e 's/\r//' || true)
 
     # write to spec index
     echo "- id: $plugin_id
