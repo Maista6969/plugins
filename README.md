@@ -3,8 +3,6 @@
 Currently hosts:
 
 - **[librarian](librarian/README.md)** - renames scene files based on your own rules and metadata
-- **[regret](regret/README.md)** - adds a "Clear metadata" button to the scene page to easily clear misidentified scenes
-- **[doppelganger](doppelganger/README.md)** - finds duplicate scenes, performers, and studios based on StashIDs
 
 ## Installing a plugin from this repo
 
