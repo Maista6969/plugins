@@ -454,20 +454,32 @@ function renderParts(parts, tokens) {
   };
 }
 
+function renderBracketAlternatives(text, tokens) {
+  const alternatives = text.split("|");
+  for (let i = 0; i < alternatives.length; i++) {
+    const parts = parseParts(alternatives[i]);
+    const rendered = renderParts(parts, tokens);
+    const collapses =
+      rendered.optionalTokenCount > 0 && rendered.nonEmptyOptionalCount === 0;
+    if (!collapses) {
+      return rendered.output;
+    }
+  }
+  return null;
+}
+
 export function renderTemplate(pattern, tokens) {
   const segments = splitBracketSegments(pattern || "");
   let output = "";
   segments.forEach((segment) => {
-    const parts = parseParts(segment.text);
-    const rendered = renderParts(parts, tokens);
-    if (
-      segment.type === "bracket" &&
-      rendered.optionalTokenCount > 0 &&
-      rendered.nonEmptyOptionalCount === 0
-    ) {
-      return; // collapse: this segment contributes nothing
+    if (segment.type === "bracket") {
+      const result = renderBracketAlternatives(segment.text, tokens);
+      if (result !== null) {
+        output += result;
+      }
+      return;
     }
-    output += rendered.output;
+    output += renderParts(parseParts(segment.text), tokens).output;
   });
   return output;
 }

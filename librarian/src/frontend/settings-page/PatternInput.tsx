@@ -141,6 +141,16 @@ function PatternModalField({
             {"Studio Name - 2024-06-27 - Scene Title"}
           </samp>
         </p>
+        <p>
+          Split a <code>&lt;...&gt;</code> group with <code>|</code> to try
+          alternatives in order and use the first one with content, so{" "}
+          <code>{"<{date?}|missing-date>"}</code> uses the date if set, else the
+          literal text <samp className="text-success">missing-date</samp>. Each
+          alternative can carry its own literal text, so{" "}
+          <code>{"< ({code?})| [{date?}]>"}</code> only adds the parentheses
+          when the code alternative wins and the brackets when the date one
+          does.
+        </p>
       </div>
     </div>
   );

@@ -584,6 +584,66 @@ test("a <...> bracket with no tokens at all (pure literal text) is always kept",
   assert.equal(result, "LeafFIXED");
 });
 
+test("<a|b|c> renders the first alternative that has content, skipping earlier collapsed ones", () => {
+  const withCode = render(
+    "<{code?}|{date?}|xxx>",
+    sceneView({ code: "v1234", date: "2020-01-01" }),
+  );
+  assert.equal(withCode, "v1234");
+
+  const withDateOnly = render(
+    "<{code?}|{date?}|xxx>",
+    sceneView({ code: "", date: "2020-01-01" }),
+  );
+  assert.equal(withDateOnly, "2020-01-01");
+
+  const withNeither = render(
+    "<{code?}|{date?}|xxx>",
+    sceneView({ code: "", date: "" }),
+  );
+  assert.equal(withNeither, "xxx");
+});
+
+test("<a|b> collapses the whole group when every alternative is empty and there's no literal catch-all", () => {
+  const result = render(
+    "{title}< - {code?}| - {date?}>",
+    sceneView({ code: "", date: "" }),
+  );
+  assert.equal(result, "My Title");
+});
+
+test("a plain-literal alternative always wins, even as the very first alternative", () => {
+  const result = render("<xxx|{code?}>", sceneView({ code: "v1234" }));
+  assert.equal(result, "xxx");
+});
+
+test("a required-token alternative always wins over later alternatives, same as any other non-collapsing one", () => {
+  const result = render("<{title}|{code?}>", sceneView({ code: "v1234" }));
+  assert.equal(result, "My Title");
+});
+
+test("each alternative can mix literal text with its token, e.g. its own separator, and that text travels with it only when chosen", () => {
+  const withDate = render(
+    "{title}< ({code?})| [{date?}]>",
+    sceneView({ code: "", date: "2020-01-01" }),
+  );
+  assert.equal(withDate, "My Title [2020-01-01]");
+
+  const withCode = render(
+    "{title}< ({code?})| [{date?}]>",
+    sceneView({ code: "v1234", date: "2020-01-01" }),
+  );
+  assert.equal(withCode, "My Title (v1234)");
+});
+
+test("a bracket with no '|' behaves exactly as a single-alternative chain", () => {
+  const result = render(
+    "{studio}< - {performers_not_in_title?}>",
+    sceneView({ performerNames: [] }),
+  );
+  assert.equal(result, "Leaf");
+});
+
 test("{matched_performers}/{matched_tags} render only the ids a rule condition actually matched, not every performer/tag on the scene", () => {
   const view = sceneView({
     performerNames: ["Amy", "Zed"],

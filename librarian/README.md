@@ -88,6 +88,12 @@ that defines a subset, such as having a particular set of tags or performers, be
   For example `{studio}<, {date?}>< - {title?}>` renders `Studio, 2024 - Title` when both are present, or just `Studio` when both are missing,
   each bracket collapsing independently. A required token inside `<...>` never triggers a collapse (it's guaranteed to have data already);
   an unknown/misspelled token counts as real content and also never triggers one, so a typo stays visible rather than silently vanishing.
+- `<a|b|c>`: split a bracket on `|` to try alternatives in order, using each one's own collapse rule as the test. The first
+  alternative that doesn't collapse wins: any literal-only or required-token alternative always qualifies; an optional-token
+  alternative qualifies only once that token actually has data. For example `<{date?}|missing-date>` renders the date if it has one, or else the literal `missing-date`.
+  Each alternative can carry its own literal text, e.g. `< ({code?})| [{date?}]>` includes the parentheses
+  only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
+  alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
 
 **Available tokens**:
 
@@ -200,6 +206,29 @@ With a rating
 Without:
 
 `OnlyFans/Ava Kensington/2024-03-15 - [Ava Kensington, Marcus Chen].mp4`
+
+#### Prefer the studio code, fall back to the date, fall back to a fixed placeholder
+
+Filename:
+
+```
+<{code?}|{date?}|xxx> - {performers}
+```
+
+Each `|`-separated alternative is tried in order; the first one that actually has content is used, and the
+rest (including their own literal text, if any) are discarded:
+
+With a code set:
+
+`v1234 - Ava Kensington, Marcus Chen.mp4`
+
+With no code but a date:
+
+`2020-01-01 - Ava Kensington, Marcus Chen.mp4`
+
+With neither (`xxx` is plain literal text, so it always has content and never gets skipped):
+
+`xxx - Ava Kensington, Marcus Chen.mp4`
 
 **A more compact, dot-separated look**, along the lines of what release/rip naming conventions
 often use. This one leans on the Formatting section: set "Space replacement" to `.`, and
