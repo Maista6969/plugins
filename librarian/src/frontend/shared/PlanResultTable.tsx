@@ -1,7 +1,10 @@
 import React from "react";
 import { StatusBadge } from "./StatusBadge.js";
 import { OrganizeButton } from "./OrganizeButton.js";
-import { describePatternPair } from "../../core/path-template.js";
+import {
+  describePatternPair,
+  joinBasename,
+} from "../../core/path-template.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Table } = PluginApi.libraries.Bootstrap;
@@ -182,7 +185,7 @@ export function PlanResultTable({
                           <div className="correct-path">{f.currentPath}</div>
                         ) : (
                           (() => {
-                            const newPath = f.folder + "/" + f.basename;
+                            const newPath = joinBasename(f.folder, f.basename);
                             const shorterLength = Math.min(
                               f.currentPath.length,
                               newPath.length,

@@ -6,6 +6,8 @@ import {
   renderPath,
   sanitizeSegment,
   sanitizeTokenValue,
+  normalizePathForCompare,
+  joinBasename,
   findUnknownTokens,
   findMissingRequiredData,
   hasUnsafeOptionalOnlyBasename,
@@ -817,4 +819,28 @@ test("findMissingRequiredData flags every technical-detail token as missing (wit
     "resolution",
     "video_codec",
   ]);
+});
+
+test("normalizePathForCompare treats backslash and forward-slash paths as the same folder", () => {
+  // Stash reports native paths, so a Windows library and a pattern-built path
+  // can disagree on separators while naming the same folder
+  assert.equal(
+    normalizePathForCompare("C:\\Stash\\Library\\Acme"),
+    normalizePathForCompare("C:/Stash/Library/Acme"),
+  );
+  assert.equal(
+    normalizePathForCompare("C:\\Stash\\Library\\"),
+    normalizePathForCompare("C:\\Stash\\Library"),
+  );
+  assert.equal(normalizePathForCompare("/data/Acme/"), "/data/Acme");
+});
+
+test("joinBasename uses the separator the folder already uses", () => {
+  assert.equal(
+    joinBasename("C:\\Stash\\Library\\Acme", "f.mp4"),
+    "C:\\Stash\\Library\\Acme\\f.mp4",
+  );
+  assert.equal(joinBasename("/data/Acme", "f.mp4"), "/data/Acme/f.mp4");
+  assert.equal(joinBasename("C:\\Stash\\", "f.mp4"), "C:\\Stash\\f.mp4");
+  assert.equal(joinBasename("", "f.mp4"), "f.mp4");
 });

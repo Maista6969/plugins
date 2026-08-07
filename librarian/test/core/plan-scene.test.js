@@ -875,3 +875,75 @@ test("a scene falling through to a default pattern with NO libraryRoot errors as
   assert.equal(result.matchedRule, null);
   assert.ok(result.missingData[0].message.indexOf("default pattern") !== -1);
 });
+
+test("a Windows file already at its target reports unchanged, not 'will move'", () => {
+  // Regression: splitPath only split on "/", so on Windows the whole path became
+  // the basename, the current folder was empty, and every file looked like a move
+  const config = normalizeConfig({
+    onlyOrganized: false,
+    defaultPattern: {
+      folderPattern: "{studio}",
+      filenamePattern: "{studio} - {title}",
+      libraryRoot: "C:\\Stash\\Library",
+    },
+  });
+  const scene = {
+    id: "1",
+    title: "My Show",
+    organized: true,
+    studio: { id: "s1", name: "Acme" },
+    performers: [],
+    tags: [],
+    stash_ids: [],
+    files: [
+      {
+        id: "10",
+        path: "C:\\Stash\\Library\\Acme\\Acme - My Show.mp4",
+        width: 1920,
+        height: 1080,
+        video_codec: "h264",
+        audio_codec: "aac",
+        bit_rate: 8000000,
+        frame_rate: 30,
+        fingerprints: [],
+      },
+    ],
+  };
+  const file = planScene(scene, config).files[0];
+  assert.equal(file.currentBasename, "Acme - My Show.mp4");
+  assert.equal(file.unchanged, true);
+});
+
+test("a library root stored with forward slashes still matches a Windows file path", () => {
+  const config = normalizeConfig({
+    onlyOrganized: false,
+    defaultPattern: {
+      folderPattern: "{studio}",
+      filenamePattern: "{studio} - {title}",
+      libraryRoot: "C:/Stash/Library",
+    },
+  });
+  const scene = {
+    id: "1",
+    title: "My Show",
+    organized: true,
+    studio: { id: "s1", name: "Acme" },
+    performers: [],
+    tags: [],
+    stash_ids: [],
+    files: [
+      {
+        id: "10",
+        path: "C:\\Stash\\Library\\Acme\\Acme - My Show.mp4",
+        width: 1920,
+        height: 1080,
+        video_codec: "h264",
+        audio_codec: "aac",
+        bit_rate: 8000000,
+        frame_rate: 30,
+        fingerprints: [],
+      },
+    ],
+  };
+  assert.equal(planScene(scene, config).files[0].unchanged, true);
+});

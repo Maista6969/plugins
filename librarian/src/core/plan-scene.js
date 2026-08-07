@@ -22,7 +22,9 @@ function getExtension(basename) {
 
 function splitPath(path) {
   const p = path || "";
-  const idx = p.lastIndexOf("/");
+  // Stash reports native paths, so a Windows library yields backslashes only:
+  // splitting on "/" alone left the whole path as the basename
+  const idx = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
   return idx === -1
     ? { folder: "", basename: p }
     : { folder: p.slice(0, idx), basename: p.slice(idx + 1) };

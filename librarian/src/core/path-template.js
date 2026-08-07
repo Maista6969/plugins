@@ -570,8 +570,21 @@ export function joinPath(root, folder) {
   return cleanFolder ? cleanRoot + sep + cleanFolder : cleanRoot;
 }
 
+// Should only be used for comparisons and not to create paths for renaming
+// needed for Windows compatibility
 export function normalizePathForCompare(p) {
-  return (p || "").replace(/\/+$/, "");
+  return (p || "").replace(/\\/g, "/").replace(/\/+$/, "");
+}
+
+// Joins a folder to a basename using the separator the folder itself uses, so a
+// Windows path is not rendered with a stray forward slash before the filename
+export function joinBasename(folder, basename) {
+  const f = folder || "";
+  if (!f) {
+    return basename;
+  }
+  const sep = f.indexOf("\\") !== -1 ? "\\" : "/";
+  return f.replace(/[\\/]+$/, "") + sep + basename;
 }
 
 function filenameHasContentWithout(

@@ -6,7 +6,10 @@ import {
 } from "./gql.js";
 import { normalizeConfig } from "../core/config-schema.js";
 import { pruneDeadLibraryRoots } from "../core/prune-dead-library-roots.js";
-import { describePatternPair } from "../core/path-template.js";
+import {
+  describePatternPair,
+  joinBasename,
+} from "../core/path-template.js";
 import { renameScene } from "./core-runner.js";
 
 function logInfo(message) {
@@ -97,7 +100,7 @@ export function run(args) {
         return !f.unchanged;
       })
       .map((f) => {
-        return f.folder + "/" + f.basename;
+        return joinBasename(f.folder, f.basename);
       });
     return {
       Output:
