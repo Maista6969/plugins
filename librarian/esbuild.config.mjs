@@ -6,9 +6,33 @@ import fs from "node:fs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const r = (p) => path.join(__dirname, p);
 
+const VERSION_ANCHOR = /^# version: injected from package.json at build time$/m;
+
 function copyManifest() {
   fs.mkdirSync(r("dist"), { recursive: true });
-  fs.copyFileSync(r("librarian.yml"), r("dist/librarian.yml"));
+
+  // Canonical version is copied into manifest
+  const { version } = JSON.parse(fs.readFileSync(r("package.json"), "utf8"));
+  if (!version) {
+    throw new Error("package.json has no version to write into the manifest");
+  }
+
+  const manifest = fs.readFileSync(r("librarian.yml"), "utf8");
+  if (/^version:/m.test(manifest)) {
+    throw new Error(
+      "librarian.yml declares its own version: remove it, package.json is the source of truth",
+    );
+  }
+  if (!VERSION_ANCHOR.test(manifest)) {
+    throw new Error(
+      `librarian.yml is missing its version anchor comment (${VERSION_ANCHOR.source}), so the built manifest would ship without a version`,
+    );
+  }
+
+  fs.writeFileSync(
+    r("dist/librarian.yml"),
+    manifest.replace(VERSION_ANCHOR, `version: ${version}`),
+  );
 }
 
 const watch = process.argv.includes("--watch");

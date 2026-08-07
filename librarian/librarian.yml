@@ -1,6 +1,6 @@
 name: Librarian
 description: Organizes your video files on disk according to your specific rules
-version: 0.2.1
+# version: injected from package.json at build time
 url: https://github.com/example/librarian
 exec:
   - librarian.js
