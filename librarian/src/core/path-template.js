@@ -614,8 +614,11 @@ export function renderPath(
   const sanitizeOptions = config.sanitize || {};
 
   const renderedFolder = renderTemplate(folderPattern || "", tokens);
+  // Windows users write their folder patterns with backslashes, so both count as
+  // a nesting separator. Token values can never smuggle one in: sanitizeTokenValue
+  // strips both, and {studio_hierarchy}, the one exemption, emits "/" by design
   const folderSegments = renderedFolder
-    .split("/")
+    .split(/[\\/]/)
     .filter((s) => {
       return s.length > 0;
     })

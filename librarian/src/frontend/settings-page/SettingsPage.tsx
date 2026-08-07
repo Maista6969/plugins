@@ -359,7 +359,7 @@ function SettingsPageContent() {
 
           <PatternInput
             label="Folder pattern"
-            subHeading="Always active when no rule matches. May contain “/” for multiple nested folder levels. Leave blank to place files directly under the library root"
+            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Leave blank to place files directly under the library root"
             value={config.defaultPattern.folderPattern}
             onChange={(folderPattern: string) =>
               updateConfig({
@@ -371,7 +371,7 @@ function SettingsPageContent() {
 
           <PatternInput
             label="Filename pattern"
-            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/”"
+            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”"
             value={config.defaultPattern.filenamePattern}
             onChange={(filenamePattern: string) =>
               updateConfig({

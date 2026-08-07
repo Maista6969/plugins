@@ -84,7 +84,7 @@ export function RuleEditModal({
 
           <PatternInput
             label="Folder pattern"
-            subHeading="May contain “/” for multiple nested folder levels. Leave blank to place files directly under the library root"
+            subHeading="May contain “/” or “\\” for multiple nested folder levels. Leave blank to place files directly under the library root"
             value={rule.folderPattern}
             onChange={(folderPattern) => onChange({ ...rule, folderPattern })}
           />

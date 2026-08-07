@@ -844,3 +844,66 @@ test("joinBasename uses the separator the folder already uses", () => {
   assert.equal(joinBasename("C:\\Stash\\", "f.mp4"), "C:\\Stash\\f.mp4");
   assert.equal(joinBasename("", "f.mp4"), "f.mp4");
 });
+
+test("a folder pattern may use backslashes to nest, as Windows users write them", () => {
+  const view = {
+    title: "T",
+    date: "2024-01-05",
+    studioNames: ["Acme"],
+    performers: [],
+    tags: [],
+    stashIds: [],
+  };
+  const cfg = { delimiters: {}, sanitize: {} };
+  const ids = { performerIds: [], tagIds: [], stashBoxEndpoint: "" };
+
+  const back = renderPath("{studio}\\{date_year}", "{title}", view, cfg, ids);
+  const fwd = renderPath("{studio}/{date_year}", "{title}", view, cfg, ids);
+  assert.equal(back.folder, "Acme/2024");
+  assert.equal(back.folder, fwd.folder);
+
+  // mixed separators in one pattern still nest one level per separator
+  assert.equal(
+    renderPath("Photos\\{studio}/{date_year}", "{title}", view, cfg, ids)
+      .folder,
+    "Photos/Acme/2024",
+  );
+});
+
+test("a separator inside a token's value never nests, only the pattern's own separators do", () => {
+  const view = {
+    title: "A/B",
+    studioNames: ["Rock\\Pop"],
+    performers: [],
+    tags: [{ id: "t1", name: "Rock/Pop" }],
+    tagNames: ["Rock/Pop"],
+    tagIds: ["t1"],
+    stashIds: [],
+  };
+  const cfg = { delimiters: {}, sanitize: {} };
+  const ids = { performerIds: [], tagIds: [], stashBoxEndpoint: "" };
+
+  assert.equal(renderPath("{tags}", "{title}", view, cfg, ids).folder, "Rock Pop");
+  assert.equal(renderPath("{studio}", "{title}", view, cfg, ids).folder, "Rock Pop");
+  // the filename never splits into subfolders either
+  assert.equal(
+    renderPath("{tags}", "{title}", view, cfg, ids).basenameNoExt,
+    "A B",
+  );
+});
+
+test("{studio_hierarchy} still expands to one folder per studio", () => {
+  const view = {
+    title: "T",
+    studioNames: ["Parent", "Acme"],
+    performers: [],
+    tags: [],
+    stashIds: [],
+  };
+  const cfg = { delimiters: {}, sanitize: {} };
+  const ids = { performerIds: [], tagIds: [], stashBoxEndpoint: "" };
+  assert.equal(
+    renderPath("{studio_hierarchy}", "{title}", view, cfg, ids).folder,
+    "Parent/Acme",
+  );
+});

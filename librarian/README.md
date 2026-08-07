@@ -95,6 +95,17 @@ that defines a subset, such as having a particular set of tags or performers, be
   only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
 
+**Folder patterns and nesting**: a folder pattern may contain `/` or `\` to nest folders, so
+`{studio}/{date_year}` and `{studio}\{date_year}` are equivalent and both produce two levels.
+Whichever you write, the finished path uses your library's own separator, so a Windows library
+ends up with backslashes throughout regardless of how the pattern was typed.
+
+Only the separators you write in the pattern itself split folders. A token whose _value_ contains a
+slash never does: a tag literally named `Rock/Pop` renders as the single folder `Rock Pop` rather than
+nesting `Pop` inside `Rock`. The one deliberate exception is `{studio_hierarchy}`, whose whole purpose
+is to expand into one folder per studio in the chain. The filename pattern never splits into
+subfolders at all: a `/` or `\` there, whether literal or from a token, becomes a space.
+
 **Available tokens**:
 
 _Scene metadata_
