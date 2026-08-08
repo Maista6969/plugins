@@ -213,6 +213,7 @@ export function planEntity(rawScene, config, entityType) {
       [folderPattern, filenamePattern],
       fileView,
       matchedIds,
+      adapter.noun,
     );
     if (missingData.length > 0) {
       return dataError(

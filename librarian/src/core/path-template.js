@@ -255,23 +255,23 @@ export function buildTokens(sceneView, config, matchedIds) {
 const TOKEN_REQUIREMENTS = {
   studio: {
     isMissing: (view) => view.studioNames.length === 0,
-    message: "scene has no studio assigned",
+    message: "{noun} has no studio assigned",
   },
   studio_root: {
     isMissing: (view) => view.studioNames.length === 0,
-    message: "scene has no studio assigned",
+    message: "{noun} has no studio assigned",
   },
   studio_hierarchy: {
     isMissing: (view) => view.studioNames.length === 0,
-    message: "scene has no studio assigned",
+    message: "{noun} has no studio assigned",
   },
   performers: {
     isMissing: (view) => view.performerNames.length === 0,
-    message: "scene has no performers assigned",
+    message: "{noun} has no performers assigned",
   },
   performers_not_in_title: {
     isMissing: (view) => view.performerNames.length === 0,
-    message: "scene has no performers assigned",
+    message: "{noun} has no performers assigned",
   },
   matched_performers: {
     isMissing: (view, matchedIds) =>
@@ -281,7 +281,7 @@ const TOKEN_REQUIREMENTS = {
   },
   tags: {
     isMissing: (view) => view.tagNames.length === 0,
-    message: "scene has no tags assigned",
+    message: "{noun} has no tags assigned",
   },
   matched_tags: {
     isMissing: (view, matchedIds) =>
@@ -290,59 +290,59 @@ const TOKEN_REQUIREMENTS = {
   },
   title: {
     isMissing: (view) => !view.title,
-    message: "scene has no title",
+    message: "{noun} has no title",
   },
   code: {
     isMissing: (view) => !view.code,
-    message: "scene has no code assigned",
+    message: "{noun} has no code assigned",
   },
   date: {
     isMissing: (view) => !view.date,
-    message: "scene has no date",
+    message: "{noun} has no date",
   },
   date_year: {
     isMissing: (view) => !YEAR_RE.test(view.date || ""),
-    message: "scene has no date",
+    message: "{noun} has no date",
   },
   date_month: {
     isMissing: (view) => !MONTH_RE.test(view.date || ""),
-    message: "scene's date is year-only, with no month",
+    message: "{noun}'s date is year-only, with no month",
   },
   date_day: {
     isMissing: (view) => !DAY_RE.test(view.date || ""),
-    message: "scene's date isn't a full year-month-day date",
+    message: "{noun}'s date isn't a full year-month-day date",
   },
   resolution: {
     isMissing: (view) => !view.resolution,
-    message: "scene's primary file has no resolution info",
+    message: "{noun}'s primary file has no resolution info",
   },
   video_codec: {
     isMissing: (view) => !view.videoCodec,
-    message: "scene's primary file has no video codec info",
+    message: "{noun}'s primary file has no video codec info",
   },
   audio_codec: {
     isMissing: (view) => !view.audioCodec,
-    message: "scene's primary file has no audio codec info",
+    message: "{noun}'s primary file has no audio codec info",
   },
   bitrate: {
     isMissing: (view) => view.bitrateMbps == null,
-    message: "scene's primary file has no bitrate info",
+    message: "{noun}'s primary file has no bitrate info",
   },
   fps: {
     isMissing: (view) => view.fps == null,
-    message: "scene's primary file has no framerate info",
+    message: "{noun}'s primary file has no framerate info",
   },
   phash: {
     isMissing: (view) => !view.phash,
-    message: "scene's primary file has no phash fingerprint",
+    message: "{noun}'s primary file has no phash fingerprint",
   },
   oshash: {
     isMissing: (view) => !view.oshash,
-    message: "scene's primary file has no oshash fingerprint",
+    message: "{noun}'s primary file has no oshash fingerprint",
   },
   rating: {
     isMissing: (view) => view.rating100 == null,
-    message: "scene has no rating",
+    message: "{noun} has no rating",
   },
   stash_id: {
     isMissing: (view, matchedIds) => {
@@ -357,7 +357,7 @@ const TOKEN_REQUIREMENTS = {
     message: (view, matchedIds) => {
       const endpoint = (matchedIds && matchedIds.stashBoxEndpoint) || "";
       return endpoint
-        ? "scene has no StashID from " + endpoint
+        ? "{noun} has no StashID from " + endpoint
         : "no stash-box source is configured for this rule's {stash_id} token";
     },
     endpoint: (view, matchedIds) => {
@@ -534,7 +534,8 @@ export function hasUnsafeOptionalOnlyBasename(filenamePattern) {
   return tokenCount > 0 && allOptional;
 }
 
-export function findMissingRequiredData(patterns, sceneView, matchedIds) {
+export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
+  const subject = noun || "scene";
   const missing = [];
   const seen = {};
   const seenMessages = {};
@@ -554,10 +555,11 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds) {
         requirement.isMissing(sceneView, effectiveMatchedIds)
       ) {
         seen[tokenName] = true;
-        const message =
+        const message = (
           typeof requirement.message === "function"
             ? requirement.message(sceneView, effectiveMatchedIds)
-            : requirement.message;
+            : requirement.message
+        ).replace(/\{noun\}/g, subject);
         if (!seenMessages[message]) {
           const entry = { token: tokenName, message: message };
           // carried structurally so the UI can resolve a display name for it

@@ -1111,3 +1111,56 @@ test("a stray top-level scene gate cannot leak into galleries or images", () => 
   assert.equal(settings.delimiters.performers, " & ");
   assert.equal(settings.sanitize.spaceReplacement, ".");
 });
+
+test("missing-data messages name the entity type, not always 'scene'", () => {
+  const config = normalizeConfig({
+    images: {
+      onlyOrganized: false,
+      defaultPattern: {
+        folderPattern: "",
+        filenamePattern: "{title}",
+        libraryRoot: "",
+      },
+    },
+    galleries: {
+      onlyOrganized: false,
+      defaultPattern: {
+        folderPattern: "",
+        filenamePattern: "{title}",
+        libraryRoot: "",
+      },
+    },
+  });
+  const untitledImage = {
+    id: "1",
+    organized: true,
+    visual_files: [
+      {
+        id: "f",
+        path: "/data/a.jpg",
+        zip_file_id: null,
+        parent_folder: { id: "p" },
+      },
+    ],
+  };
+  const untitledGallery = {
+    id: "2",
+    organized: true,
+    files: [{ id: "g", path: "/data/a.zip", parent_folder: { id: "p" } }],
+    folder: null,
+  };
+
+  assert.equal(
+    planEntity(untitledImage, config, "images").missingData[0].message,
+    "image has no title",
+  );
+  assert.equal(
+    planEntity(untitledGallery, config, "galleries").missingData[0].message,
+    "gallery has no title",
+  );
+  // scenes are unchanged
+  assert.equal(
+    planScene(noStudioScene, baseConfig()).missingData[0].message,
+    "scene has no studio assigned",
+  );
+});
