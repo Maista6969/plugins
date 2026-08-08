@@ -6,7 +6,10 @@ import { SortBySelect } from "./SortBySelect.js";
 import { StashBoxSelect } from "./StashBoxSelect.js";
 import { RulePreviewPanel } from "./RulePreviewPanel.js";
 import { TextSettingModal } from "./TextSettingModal.js";
-import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
+import {
+  ruleToPreviewFilter,
+  stashIdGateIsApproximate,
+} from "../../core/rule-to-filter.js";
 import { useEntityCount } from "./useEntityCount.js";
 import { adapterFor } from "../../core/entity-adapter.js";
 import {
@@ -70,6 +73,10 @@ export function RuleEditModal({
   const adapter = adapterFor(type);
   // same reasoning as the default pattern: a keep-in-place rule ignores its root
   const keepsInPlace = folderPatternMode(rule.folderPattern) === "keep";
+  // With several StashID sources accepted, Stash cannot filter on all of them
+  // at once, so the query over-selects and the count is only an upper bound
+  const gateApproximate = stashIdGateIsApproximate(config[type]);
+  const countIsUpperBound = hasEarlierActiveRule || gateApproximate;
   const ruleFilter = ruleToPreviewFilter(rule, config[type]);
   const matchCount = useEntityCount(
     type,
@@ -100,10 +107,10 @@ export function RuleEditModal({
 
           {keepsInPlace ? (
             <p className="librarian-token-hint text-muted">
-              This rule's folder pattern is blank, so matching{" "}
-              {adapter.plural} keep the folder they are already in and no library
-              root is needed. Give the folder pattern a value (or “/” for the
-              library root itself) to move them into a library.
+              This rule's folder pattern is blank, so matching {adapter.plural}{" "}
+              keep the folder they are already in and no library root is needed.
+              Give the folder pattern a value (or “/” for the library root
+              itself) to move them into a library.
             </p>
           ) : (
             <LibraryRootPicker
@@ -162,36 +169,43 @@ export function RuleEditModal({
           {type === "scenes" &&
             (patternUsesAnyToken(rule.folderPattern, ["stash_id"]) ||
               patternUsesAnyToken(rule.filenamePattern, ["stash_id"])) && (
-            <div>
-              StashID source{" "}
-              <StashBoxSelect
-                value={rule.stashBoxEndpoint}
-                inheritedEndpoint={
-                  config[type].defaultPattern &&
-                  config[type].defaultPattern.stashBoxEndpoint
-                }
-                onChange={(stashBoxEndpoint) =>
-                  onChange({ ...rule, stashBoxEndpoint })
-                }
-              />
-            </div>
-          )}
+              <div>
+                StashID source{" "}
+                <StashBoxSelect
+                  value={rule.stashBoxEndpoint}
+                  inheritedEndpoint={
+                    config[type].defaultPattern &&
+                    config[type].defaultPattern.stashBoxEndpoint
+                  }
+                  onChange={(stashBoxEndpoint) =>
+                    onChange({ ...rule, stashBoxEndpoint })
+                  }
+                />
+              </div>
+            )}
         </div>
 
         <div className="librarian-rule-preview-section">
           <h4 className="filter-container text-muted paginationIndex center-text">
             {matchCountHeading(
               matchCount,
-              hasEarlierActiveRule,
+              countIsUpperBound,
               adapter.noun,
               adapter.plural,
             )}
           </h4>
-          {hasEarlierActiveRule && (
+          {countIsUpperBound && (
             <p className="librarian-token-hint text-muted">
-              An earlier rule may claim some of these first; the preview below
-              reflects what would actually happen to each scene, but this count
-              doesn't account for rule order
+              The preview below reflects what would actually happen to each{" "}
+              {adapter.noun}, but the count above is only an upper bound:{" "}
+              {[
+                hasEarlierActiveRule &&
+                  "an earlier rule may claim some of these first",
+                gateApproximate &&
+                  "more than one StashID source is accepted, which Stash cannot filter on all at once",
+              ]
+                .filter(Boolean)
+                .join(", and ")}
             </p>
           )}
           <RulePreviewPanel rule={rule} config={config} entityType={type} />

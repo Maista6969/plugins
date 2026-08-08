@@ -77,8 +77,11 @@ export const GALLERY_FIELDS = `
 
 // visual_files rather than the deprecated files, which silently drops
 // video-backed (animated) images. zip_file_id marks images Stash refuses to move
+// galleries is fetched so an image in a folder-based gallery can be told
+// apart from one in a zip: a folder gallery has no files of its own
 export const IMAGE_FIELDS = `
   ${COMMON_METADATA_FIELDS}
+  galleries { id folder { id } files { id } }
   visual_files {
     __typename
     ... on ImageFile {

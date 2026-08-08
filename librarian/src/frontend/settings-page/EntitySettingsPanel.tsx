@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { RuleList } from "./RuleList.js";
 import { PatternInput } from "./PatternInput.js";
 import { LibraryRootPicker } from "./LibraryRootPicker.js";
@@ -7,10 +7,15 @@ import { SortBySelect } from "./SortBySelect.js";
 import { StashBoxSelect } from "./StashBoxSelect.js";
 import { StashBoxMultiSelect } from "./StashBoxMultiSelect.js";
 import { SettingsSection } from "./SettingsSection.js";
+import { ConfirmModal } from "../shared/ConfirmModal.js";
 import { useEntityCount } from "./useEntityCount.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
-import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
+import {
+  ruleToPreviewFilter,
+  stashIdGateIsApproximate,
+} from "../../core/rule-to-filter.js";
 import { adapterFor } from "../../core/entity-adapter.js";
+import { resetSection } from "../../core/config-schema.js";
 import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
@@ -19,8 +24,14 @@ import {
 } from "../../core/path-template.js";
 
 const PluginApi = (window as any).PluginApi;
+const { Button } = PluginApi.libraries.Bootstrap;
+const { faExclamationTriangle } = PluginApi.libraries.FontAwesomeSolid;
 
-function countText(count: number | null, plural: string): string | null {
+function countText(
+  count: number | null,
+  plural: string,
+  upperBound: boolean,
+): string | null {
   if (count == null) {
     return null;
   }
@@ -29,6 +40,7 @@ function countText(count: number | null, plural: string): string | null {
       ? plural.replace(/(ie)?s$/, (m) => (m === "ies" ? "y" : ""))
       : plural;
   return (
+    (upperBound ? "Up to " : "") +
     count +
     " " +
     noun +
@@ -41,13 +53,17 @@ interface EntitySettingsPanelProps {
   entityType: string;
   config: any;
   onChange: (entityType: string, patch: any) => void;
+  // a reset replaces the whole section rather than patching fields within it
+  onReplaceConfig: (next: any) => void;
 }
 
 export function EntitySettingsPanel({
   entityType,
   config,
   onChange,
+  onReplaceConfig,
 }: EntitySettingsPanelProps) {
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const { BooleanSetting } = PluginApi.components;
   const adapter = adapterFor(entityType);
   const { stashBoxes } = useStashBoxes();
@@ -64,6 +80,9 @@ export function EntitySettingsPanel({
     update({ defaultPattern: { ...defaultPattern, ...patch } });
   }
 
+  // several accepted StashID sources make the gate over-select, so this count
+  // is an upper bound rather than exact
+  const excludeCountIsUpperBound = stashIdGateIsApproximate(section);
   const excludeFilter = ruleToPreviewFilter(section.excludeConditions, section);
   const excludeCount = useEntityCount(
     entityType,
@@ -138,7 +157,52 @@ export function EntitySettingsPanel({
             )}
           </div>
         )}
+        <div className="setting">
+          <div>
+            <h3>Reset {plural} settings</h3>
+            <div className="sub-heading">
+              Reset this tab to its default settings
+            </div>
+          </div>
+          <div>
+            <Button variant="danger" onClick={() => setConfirmingReset(true)}>
+              Reset
+            </Button>
+          </div>
+        </div>
       </SettingsSection>
+
+      {confirmingReset && (
+        <ConfirmModal
+          show
+          icon={faExclamationTriangle}
+          header={"Reset " + plural + " settings?"}
+          cancel={{ text: "Cancel", onClick: () => setConfirmingReset(false) }}
+          accept={{
+            text: "Reset " + plural,
+            variant: "danger",
+            onClick: () => {
+              setConfirmingReset(false);
+              onReplaceConfig(resetSection(config, entityType));
+            },
+          }}
+        >
+          <p>
+            The options, exclusions and default pattern on the{" "}
+            <strong>{adapter.label}</strong> tab go back to their defaults. This
+            takes effect immediately and cannot be undone.
+          </p>
+          <p>
+            {section.rules && section.rules.length > 0
+              ? "Your " +
+                section.rules.length +
+                (section.rules.length === 1 ? " rule is" : " rules are") +
+                " kept, but switched off, so nothing you wrote is lost. Turn any of them back on when you want it again."
+              : null}
+          </p>
+          <p>Settings on the other tabs are not affected.</p>
+        </ConfirmModal>
+      )}
 
       <SettingsSection heading="Exclusions">
         <div className="content">
@@ -155,7 +219,7 @@ export function EntitySettingsPanel({
           {/* rendered even while the debounced count is in flight, so its
               arrival cannot push the rest of the form down */}
           <p className="librarian-token-hint text-muted librarian-count-line">
-            {countText(excludeCount, plural) || " "}
+            {countText(excludeCount, plural, excludeCountIsUpperBound) || " "}
           </p>
         </div>
       </SettingsSection>
@@ -188,7 +252,9 @@ export function EntitySettingsPanel({
             <LibraryRootPicker
               value={defaultPattern.libraryRoot}
               entityType={entityType}
-              subHeading={"The library that " + plural + " end up in by default"}
+              subHeading={
+                "The library that " + plural + " end up in by default"
+              }
               onChange={(libraryRoot: string) =>
                 updateDefaultPattern({ libraryRoot })
               }
@@ -244,12 +310,7 @@ export function EntitySettingsPanel({
       {entityType === "galleries" && (
         <div className="librarian-entity-notice">
           <p className="librarian-token-hint text-warning">
-            Only <strong>zip galleries</strong> can be renamed. Stash has no way
-            to move or rename a gallery folder, and moving a folder gallery's
-            images one by one would leave the gallery, along with its title,
-            date, rating and tags, behind on the old folder while a new empty
-            gallery appeared at the new one. Folder-based galleries are
-            therefore always skipped.
+            Only <strong>zip galleries</strong> can be renamed
           </p>
           {folderGalleryCount != null && folderGalleryCount > 0 && (
             <p className="librarian-token-hint text-muted">
@@ -265,9 +326,7 @@ export function EntitySettingsPanel({
       {entityType === "images" && (
         <div className="librarian-entity-notice">
           <p className="librarian-token-hint text-warning">
-            Images inside a zip gallery are always skipped: Stash refuses to
-            move or rename anything contained in a zip, even to change only the
-            filename. Rename the gallery itself instead.
+            Images inside a zip gallery are always skipped
           </p>
         </div>
       )}

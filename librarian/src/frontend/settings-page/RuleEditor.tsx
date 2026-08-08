@@ -1,4 +1,4 @@
-import React, {useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { adapterFor } from "../../core/entity-adapter.js";
 import { Condition } from "./ConditionRow.js";
 import { RuleEditModal } from "./RuleEditModal.js";
@@ -148,8 +148,8 @@ export function RuleEditor({
         >
           <p>
             “{rule.name || "Unnamed rule"}” will be permanently removed. The{" "}
-            {adapterFor(entityType).plural} it currently matches will fall through
-            to the next rule (or the default pattern) instead
+            {adapterFor(entityType).plural} it currently matches will fall
+            through to the next rule (or the default pattern) instead
           </p>
         </ConfirmModal>
       )}

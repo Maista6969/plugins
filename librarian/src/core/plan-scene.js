@@ -16,6 +16,10 @@ import {
 import { assignSuffixes } from "./file-ordering.js";
 import { deriveFileTech } from "./file-tech.js";
 import { adapterFor } from "./entity-adapter.js";
+// Only these apply to every type; everything else belongs to a section. Sharing
+// the list stops a stray top-level key, such as one left behind by an older
+// config shape, leaking a scene-only gate into galleries or images.
+import { GLOBAL_SETTING_KEYS } from "./config-schema.js";
 
 function getExtension(basename) {
   const dotIndex = (basename || "").lastIndexOf(".");
@@ -71,7 +75,13 @@ export function planScene(rawScene, config) {
 
 export function entitySettings(config, entityType) {
   const cfg = config || {};
-  return Object.assign({}, cfg, cfg[entityType] || {});
+  const globals = {};
+  GLOBAL_SETTING_KEYS.forEach((key) => {
+    if (cfg[key] !== undefined) {
+      globals[key] = cfg[key];
+    }
+  });
+  return Object.assign(globals, cfg[entityType] || {});
 }
 
 export function planEntity(rawScene, config, entityType) {
@@ -276,6 +286,30 @@ export function planEntity(rawScene, config, entityType) {
       );
     }
 
+    const targetFolder =
+      folderMode === "keep"
+        ? current.folder
+        : joinPath(libraryRoot, rendered.folder);
+
+    // Some entities may be renamed but not relocated. Only worth checking once
+    // the target is known, since staying put is always allowed.
+    if (
+      adapter.relocationBlocked &&
+      normalizePathForCompare(targetFolder) !==
+        normalizePathForCompare(current.folder)
+    ) {
+      const blocked = adapter.relocationBlocked(rawScene);
+      if (blocked) {
+        return {
+          status: "skipped",
+          reason: blocked.reason,
+          message: blocked.message,
+          sceneId: sceneView.id,
+          files: [],
+        };
+      }
+    }
+
     perFile.push({
       file: file,
       current: current,
@@ -285,10 +319,7 @@ export function planEntity(rawScene, config, entityType) {
         folderMode === "keep" && file.parent_folder
           ? file.parent_folder.id
           : null,
-      folder:
-        folderMode === "keep"
-          ? current.folder
-          : joinPath(libraryRoot, rendered.folder),
+      folder: targetFolder,
       basenameNoExt: rendered.basenameNoExt,
     });
   }

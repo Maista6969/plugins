@@ -1,13 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeConfig, DEFAULT_CONFIG } from "../../src/core/config-schema.js";
+import {
+  normalizeConfig,
+  DEFAULT_CONFIG,
+  resetSection,
+  resetFormatting,
+} from "../../src/core/config-schema.js";
 
 test("a fresh config (no raw at all) returns DEFAULT_CONFIG's own shape", () => {
   assert.deepEqual(normalizeConfig(undefined), DEFAULT_CONFIG);
 });
 
 test("raw values override the matching default, field by field", () => {
-  const config = normalizeConfig({ onlyOrganized: false, rules: [{ id: "r1" }] });
+  const config = normalizeConfig({
+    onlyOrganized: false,
+    rules: [{ id: "r1" }],
+  });
   assert.equal(config.scenes.onlyOrganized, false);
   assert.deepEqual(config.scenes.rules, [{ id: "r1" }]);
   // Untouched fields still fall back to their own default.
@@ -16,7 +24,9 @@ test("raw values override the matching default, field by field", () => {
 });
 
 test("a partially-specified nested object (defaultPattern) is merged field by field, not replaced wholesale", () => {
-  const config = normalizeConfig({ defaultPattern: { libraryRoot: "/data/main" } });
+  const config = normalizeConfig({
+    defaultPattern: { libraryRoot: "/data/main" },
+  });
   assert.equal(config.scenes.defaultPattern.libraryRoot, "/data/main");
   assert.equal(
     config.scenes.defaultPattern.folderPattern,
@@ -43,7 +53,10 @@ test("a pre-sections config has its scene-only top-level keys migrated under con
     onlyOrganized: false,
     onlyWithStashId: true,
     rules: [{ id: "r1" }],
-    excludeConditions: { conditionLogic: "AND", conditions: [{ field: "tag" }] },
+    excludeConditions: {
+      conditionLogic: "AND",
+      conditions: [{ field: "tag" }],
+    },
     defaultPattern: { folderPattern: "{studio}", libraryRoot: "/data" },
   };
   const config = normalizeConfig(legacy);
@@ -122,4 +135,130 @@ test("a pre-sections config migrates its chosen StashID sources too, not just th
     "https://fansdb.cc/graphql",
   ]);
   assert.equal(config.stashIdEndpoints, undefined);
+});
+
+test("a hybrid config, sections plus leftover flat keys, drops the stale ones", () => {
+  // produced by moving between plugin versions: the flat keys would otherwise
+  // shadow the sections through entitySettings
+  const config = normalizeConfig({
+    scenes: { rules: [{ id: "kept" }] },
+    images: { rules: [{ id: "img" }] },
+    onlyWithStashId: true,
+    stashIdEndpoints: ["https://fansdb.cc/graphql"],
+    rules: [{ id: "stale" }],
+    delimiters: { performers: " & ", tags: ", " },
+  });
+  assert.deepEqual(config.scenes.rules, [{ id: "kept" }]);
+  assert.equal(config.onlyWithStashId, undefined);
+  assert.equal(config.stashIdEndpoints, undefined);
+  assert.equal(config.rules, undefined);
+  // genuinely global settings are untouched
+  assert.equal(config.delimiters.performers, " & ");
+});
+
+test("resetting a section restores its defaults but keeps rules, switched off", () => {
+  const config = normalizeConfig({
+    scenes: {
+      autoRename: false,
+      onlyOrganized: false,
+      rules: [
+        { id: "a", name: "Keep me", enabled: true },
+        { id: "b", name: "Already off", enabled: false },
+      ],
+      defaultPattern: { folderPattern: "custom", libraryRoot: "/x" },
+    },
+  });
+  const out = resetSection(config, "scenes");
+
+  assert.equal(out.scenes.autoRename, DEFAULT_CONFIG.scenes.autoRename);
+  assert.equal(out.scenes.onlyOrganized, DEFAULT_CONFIG.scenes.onlyOrganized);
+  assert.equal(
+    out.scenes.defaultPattern.folderPattern,
+    DEFAULT_CONFIG.scenes.defaultPattern.folderPattern,
+  );
+  assert.equal(out.scenes.defaultPattern.libraryRoot, "");
+
+  // the rules themselves survive, only disabled
+  assert.equal(out.scenes.rules.length, 2);
+  assert.equal(out.scenes.rules[0].name, "Keep me");
+  assert.deepEqual(
+    out.scenes.rules.map((r) => r.enabled),
+    [false, false],
+  );
+});
+
+test("resetting one section leaves the others and the global settings alone", () => {
+  const config = normalizeConfig({
+    scenes: { autoRename: false },
+    images: { autoRename: true, rules: [{ id: "i", enabled: true }] },
+    delimiters: { performers: " & ", tags: ", " },
+  });
+  const out = resetSection(config, "scenes");
+  assert.deepEqual(out.images.rules, [{ id: "i", enabled: true }]);
+  assert.equal(out.images.autoRename, true);
+  assert.equal(out.delimiters.performers, " & ");
+});
+
+test("resetting does not mutate DEFAULT_CONFIG, so a later reset still works", () => {
+  const config = normalizeConfig({ scenes: { rules: [{ id: "a" }] } });
+  const out = resetSection(config, "scenes");
+  out.scenes.defaultPattern.folderPattern = "clobbered";
+  out.scenes.rules.push({ id: "extra" });
+
+  assert.notEqual(
+    DEFAULT_CONFIG.scenes.defaultPattern.folderPattern,
+    "clobbered",
+  );
+  assert.equal(DEFAULT_CONFIG.scenes.rules.length, 0);
+  assert.equal(resetSection(config, "scenes").scenes.rules.length, 1);
+});
+
+test("resetting an unknown entity type is a no-op rather than a crash", () => {
+  const config = normalizeConfig({ scenes: { autoRename: false } });
+  assert.equal(resetSection(config, "nonsense"), config);
+});
+
+test("resetting formatting restores the shared settings and nothing else", () => {
+  const config = normalizeConfig({
+    scenes: {
+      autoRename: false,
+      rules: [{ id: "a", name: "Keep me", enabled: true }],
+      defaultPattern: { folderPattern: "custom" },
+    },
+    images: { rules: [{ id: "i", enabled: true }] },
+    delimiters: { performers: " & ", tags: " | " },
+    sanitize: { maxSegmentLength: 80, spaceReplacement: "." },
+  });
+  const out = resetFormatting(config);
+
+  assert.deepEqual(out.delimiters, DEFAULT_CONFIG.delimiters);
+  assert.deepEqual(out.sanitize, DEFAULT_CONFIG.sanitize);
+
+  // the entity sections, including rules, are untouched
+  assert.equal(out.scenes.autoRename, false);
+  assert.equal(out.scenes.defaultPattern.folderPattern, "custom");
+  assert.deepEqual(out.scenes.rules, [
+    { id: "a", name: "Keep me", enabled: true },
+  ]);
+  assert.deepEqual(out.images.rules, [{ id: "i", enabled: true }]);
+});
+
+test("resetting formatting does not mutate DEFAULT_CONFIG", () => {
+  const config = normalizeConfig({ sanitize: { spaceReplacement: "." } });
+  const out = resetFormatting(config);
+  out.delimiters.performers = "clobbered";
+  out.sanitize.maxSegmentLength = 1;
+  assert.notEqual(DEFAULT_CONFIG.delimiters.performers, "clobbered");
+  assert.notEqual(DEFAULT_CONFIG.sanitize.maxSegmentLength, 1);
+});
+
+test("the two resets are complementary: neither touches the other's settings", () => {
+  const config = normalizeConfig({
+    scenes: { autoRename: false, rules: [{ id: "a", enabled: true }] },
+    delimiters: { performers: " & ", tags: " | " },
+  });
+  // resetting a section leaves formatting alone
+  assert.equal(resetSection(config, "scenes").delimiters.performers, " & ");
+  // resetting formatting leaves the section alone
+  assert.equal(resetFormatting(config).scenes.autoRename, false);
 });

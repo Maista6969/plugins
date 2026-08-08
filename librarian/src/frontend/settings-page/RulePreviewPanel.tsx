@@ -28,10 +28,8 @@ export function RulePreviewPanel({
 }: RulePreviewPanelProps) {
   const type = entityType || "scenes";
   const sceneFilter = ruleToPreviewFilter(rule, config[type]);
-  const { rows, loading, run, replan, handleEntityOrganized } = useManualEntityPreview(
-    config,
-    type,
-  );
+  const { rows, loading, run, replan, handleEntityOrganized } =
+    useManualEntityPreview(config, type);
   const [closed, setClosed] = useState(false);
   const [sort, setSort] = useState(DEFAULT_PREVIEW_SORT);
 

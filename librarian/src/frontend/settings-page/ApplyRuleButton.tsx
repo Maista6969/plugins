@@ -81,10 +81,9 @@ export function ApplyRuleButton({
           }}
         >
           <p>
-            Every {eligibleEntityNoun(config, false, type)} currently matching this
-            rule will
-            be renamed/moved on disk immediately: this is a real run, not a
-            preview, and it CANNOT be undone
+            Every {eligibleEntityNoun(config, false, type)} currently matching
+            this rule will be renamed/moved on disk immediately: this is a real
+            run, not a preview, and it CANNOT be undone
           </p>
         </ConfirmModal>
       )}

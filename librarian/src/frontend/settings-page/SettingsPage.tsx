@@ -6,7 +6,7 @@ import {
   findDeadEntityIds,
   fetchLibraryPaths,
 } from "../shared/stash-api.js";
-import { normalizeConfig } from "../../core/config-schema.js";
+import { normalizeConfig, resetFormatting } from "../../core/config-schema.js";
 import {
   collectEntityIdsAll,
   pruneDeadEntitiesAll,
@@ -28,7 +28,7 @@ import { ENTITY_TYPES } from "../../core/config-schema.js";
 import { adapterFor } from "../../core/entity-adapter.js";
 
 const PluginApi = (window as any).PluginApi;
-const { Spinner, Nav } = PluginApi.libraries.Bootstrap;
+const { Spinner, Nav, Button } = PluginApi.libraries.Bootstrap;
 const { faCheckCircle, faTimesCircle } = PluginApi.libraries.FontAwesomeSolid;
 const Icon = PluginApi.components.Icon;
 
@@ -237,12 +237,13 @@ function SettingsPageContent() {
             entityType={entityType}
             config={config}
             onChange={updateSection}
+            onReplaceConfig={updateConfig}
           />
         </div>
       </div>
 
       <div className="librarian-global-settings">
-        <SettingsSection heading="Formatting (all types)">
+        <SettingsSection heading="Formatting">
           <div className="content">
             <p className="librarian-token-hint text-muted">
               Changes apply to how all folder and file names are formatted
@@ -287,6 +288,24 @@ function SettingsPageContent() {
               }
               placeholder=", "
             />
+
+            <div className="setting">
+              <div>
+                <h3>Reset formatting</h3>
+                <div className="sub-heading">
+                  Puts the formatting settings back to their defaults. Rules and
+                  patterns are not affected
+                </div>
+              </div>
+              <div>
+                <Button
+                  variant="danger"
+                  onClick={() => updateConfig(resetFormatting(config))}
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
           </div>
         </SettingsSection>
       </div>

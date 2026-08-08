@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planScene } from "../../src/core/plan-scene.js";
+import {
+  planScene,
+  planEntity,
+  entitySettings,
+} from "../../src/core/plan-scene.js";
 import { normalizeConfig } from "../../src/core/config-schema.js";
 import {
   normalOrganizedScene,
@@ -1087,4 +1091,23 @@ test("planning does not mutate the raw scene it was given, so a row can be re-pl
   planScene(raw, baseConfig());
   planScene(raw, baseConfig({ defaultPattern: { folderPattern: "{studio}" } }));
   assert.equal(JSON.stringify(raw), snapshot);
+});
+
+test("a stray top-level scene gate cannot leak into galleries or images", () => {
+  // only delimiters and sanitize are global; anything else belongs to a section
+  const settings = entitySettings(
+    {
+      onlyWithStashId: true,
+      stashIdEndpoints: ["https://a/graphql"],
+      delimiters: { performers: " & " },
+      sanitize: { spaceReplacement: "." },
+      images: { onlyOrganized: true },
+    },
+    "images",
+  );
+  assert.equal(settings.onlyWithStashId, undefined);
+  assert.equal(settings.stashIdEndpoints, undefined);
+  assert.equal(settings.onlyOrganized, true);
+  assert.equal(settings.delimiters.performers, " & ");
+  assert.equal(settings.sanitize.spaceReplacement, ".");
 });

@@ -143,7 +143,10 @@ export async function fetchScopedPreviewRows(
   while (collected.length < SAMPLE_SIZE && page <= MAX_SCOPED_PAGES) {
     const { data }: any = await client.query({
       query: SAMPLE_QUERIES[entityType] || SAMPLE_QUERIES.scenes,
-      variables: { entity_filter: entityFilter, filter: sortFilter(sort, page) },
+      variables: {
+        entity_filter: entityFilter,
+        filter: sortFilter(sort, page),
+      },
       fetchPolicy: "network-only",
     });
     const items = (data && data.result && data.result.items) || [];

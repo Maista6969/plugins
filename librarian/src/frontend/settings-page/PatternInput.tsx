@@ -138,7 +138,12 @@ function PatternModalField({
         adapter.noun,
       )}
       {fileTechTokens.length > 0 &&
-        renderTokenGroup("File metadata", fileTechTokens, insertToken, adapter.noun)}
+        renderTokenGroup(
+          "File metadata",
+          fileTechTokens,
+          insertToken,
+          adapter.noun,
+        )}
       <div className="librarian-token-hint text-muted">
         <p>
           Add <code>?</code> to make a token optional, or <code>:N</code> on a

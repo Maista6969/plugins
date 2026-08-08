@@ -88,6 +88,22 @@ const IMAGES = {
         "this image lives inside a zip gallery, and Stash cannot move or rename files contained in a zip. Rename the gallery itself instead",
     };
   },
+  // A folder gallery is defined by its folder, so an image that leaves it ends
+  // up in two galleries: the original keeps claiming it while a rescan creates
+  // another at the destination and adds it there too. Renaming in place is fine.
+  relocationBlocked: (raw) => {
+    const inFolderGallery = (raw.galleries || []).some((g) => {
+      return g && g.folder && (g.files || []).length === 0;
+    });
+    if (!inFolderGallery) {
+      return null;
+    }
+    return {
+      reason: "in_folder_gallery",
+      message:
+        "this image belongs to a folder-based gallery, which Stash defines by its folder. Moving it elsewhere would leave that gallery behind on the old folder and add the image to a second one created at the destination. Leave the folder pattern blank to rename these in place",
+    };
+  },
 };
 
 export const ENTITY_ADAPTERS = {

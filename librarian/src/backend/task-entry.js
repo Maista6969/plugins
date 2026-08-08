@@ -170,7 +170,10 @@ function runSweep(args) {
         return;
       }
       if (!scene) {
-        summary.errors.push({ sceneId: id, error: adapter.noun + " not found" });
+        summary.errors.push({
+          sceneId: id,
+          error: adapter.noun + " not found",
+        });
         logError(adapter.noun, id, adapter.noun + " not found");
         return;
       }
@@ -209,7 +212,12 @@ function runSweep(args) {
       result = gqlFindEntities(entityType, sceneFilter, findFilter);
     } catch (e) {
       const message =
-        "failed to fetch page " + page + " of " + adapter.plural + ": " + String(e);
+        "failed to fetch page " +
+        page +
+        " of " +
+        adapter.plural +
+        ": " +
+        String(e);
       summary.errors.push({ sceneId: null, error: message });
       logError(adapter.noun, null, message);
       break;

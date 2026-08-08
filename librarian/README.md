@@ -1,6 +1,7 @@
 # Librarian
 
-A [Stash](https://github.com/stashapp/stash) plugin that renames scene files based on your own rules and metadata.
+A [Stash](https://github.com/stashapp/stash) plugin that renames scene, gallery and image files based on your own
+rules and metadata.
 
 ## Motivation
 
@@ -32,10 +33,11 @@ I recommend making frequent backups of your database and your config where the p
 
 ## Usage
 
-- **Settings page**: Decide whether or not you want to only rename scenes that are marked Organized or have a StashID,
-  configure any exclusions for the files you know you'll never want to rename, and optionally [configure your own rules](#rule)
-  for subsets of your collection that need their own naming scheme. Everything that does not have its own rule will be renamed
-  according to the default pattern.
+- **Settings page**: Pick a tab for scenes, galleries or images, then decide whether to only rename items that are
+  marked Organized (or, for scenes, that have a StashID), configure any exclusions for the files you know you'll
+  never want to rename, and optionally [configure your own rules](#rule) for subsets of your collection that need
+  their own naming scheme. Everything that does not have its own rule will be renamed according to that tab's
+  default pattern. Formatting settings are shared across all three.
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-settings.png">
@@ -43,7 +45,7 @@ I recommend making frequent backups of your database and your config where the p
   </a>
 </p>
 
-- **Filtered views**: Librarian plugs into the existing Scenes page and offers its own view for whatever filters you're already using.
+- **Filtered views** (scenes only): Librarian plugs into the existing Scenes page and offers its own view for whatever filters you're already using.
   This makes it easy to apply renames to subsets of your collection while you're figuring things out. Note that applying a rename from this
   view will apply to every scene that matches the filter and not just the current page!
 
@@ -53,18 +55,50 @@ I recommend making frequent backups of your database and your config where the p
   </a>
 </p>
 
-- **Automatically rename files as you update**: Librarian will rename the files for any scene as soon as it's updated with
-  new metadata as long as it meets the criteria you've configured in the settings. Turn off "Automatic renaming" at the
-  top of the settings page's Options section to disable this and only ever rename via a manual task or the Scenes-page
-  filtered view.
+- **Automatically rename files as you update**: Librarian will rename the files for a scene, gallery or image as soon
+  as it's updated with new metadata, as long as it meets the criteria you've configured for that type. Each tab has its
+  own "Automatic renaming" switch at the top of its Options section; it starts **on for scenes and off for galleries and
+  images**, so those only ever rename via their manual task until you turn it on.
 
-- **Scene page, File Info tab**: See exactly which rule would apply to any scene in the File Info tab.
+- **Scene page, File Info tab** (scenes only): See exactly which rule would apply to any scene in the File Info tab.
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-fileinfo-tab-integration.png">
     <img src="images/stash-librarian-fileinfo-tab-integration.png" width="800" alt="Scene File Info tab: Librarian's own block appended below Stash's native file details">
   </a>
 </p>
+
+- **Per-type tasks**: each type also gets its own "Rename all …" task, so you can sweep scenes, galleries or images
+  independently. See [What can be renamed](#what-can-be-renamed) for the limits Stash imposes on galleries and images.
+
+## What can be renamed
+
+Scenes, galleries and images each get their own tab in the settings, and each is renamed through Stash's
+`moveFiles` mutation just like scenes always were. Two things Stash itself cannot do set the limits, so
+Librarian skips those cases explicitly rather than half-doing them:
+
+|                         | Renamed    | Why not                                                                                                                                                                                                                                                                                                                  |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scenes                  | ✅         |                                                                                                                                                                                                                                                                                                                          |
+| **Zip** galleries       | ✅         | The images inside follow the zip automatically                                                                                                                                                                                                                                                                           |
+| **Folder** galleries    | ❌ skipped | A folder gallery has no file to move, only a folder. Stash has no mutation for moving one, and no way to repoint a gallery at a different folder. Moving the images out individually would strand the gallery, and its title, date, rating and tags, on the old folder while a new empty gallery appeared at the new one |
+| Loose images            | ✅         |                                                                                                                                                                                                                                                                                                                          |
+| Images **inside a zip** | ❌ skipped | Stash refuses to move or rename anything contained in a zip, even to change only the filename. Rename the gallery instead                                                                                                                                                                                                |
+
+Both skips are reported per item in the preview and in the logs, with the reason, so nothing fails silently.
+
+Galleries and images ship with **automatic renaming off** and a **blank folder pattern**, meaning files keep the
+folder they are already in. Nothing moves until you opt in.
+
+**Tokens differ by type**, because the underlying data does. All three share the metadata tokens (`{title}`,
+`{studio}`, `{performers}`, `{tags}`, `{date}`, `{rating}` and so on). Only scenes have `{stash_id}`, since Stash
+records StashIDs for scenes alone. Only scenes have the file-metadata tokens (`{resolution}`, `{video_codec}`,
+`{bitrate}` …): a zip gallery's file reports no dimensions at all, and an image's several files can only ever be
+byte-identical duplicates, so no file token could tell them apart. The pattern editor offers each type only the
+tokens it can actually fill.
+
+**Library roots are per type too.** A Stash library path can exclude video or images independently, so a
+video-only library is never offered as a destination for galleries or images.
 
 ## Rule
 
@@ -112,7 +146,7 @@ particular scene (here, one with no studio). Rather than quietly dropping such a
 root, Librarian reports it so you can decide: write `/` if the root really is what you want, or leave the
 pattern blank to keep those files where they are.
 
-> ⚠️ **Behaviour change in version 1.0**: a blank folder pattern used to mean "put files in the library root",
+> ⚠️ **Behaviour change in version 0.4**: a blank folder pattern used to mean "put files in the library root",
 > which flattened manually-organised folder hierarchies. It now means "leave files where they are".
 > If you were relying on the old behaviour, change your folder pattern to `/`.
 

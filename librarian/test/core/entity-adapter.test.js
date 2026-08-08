@@ -145,3 +145,88 @@ test("an unknown entity type falls back to the scene adapter rather than throwin
     { id: "1" },
   ]);
 });
+
+const folderGalleryImage = {
+  id: "9",
+  title: "Golden Hour",
+  organized: true,
+  galleries: [{ id: "1", folder: { id: "f9" }, files: [] }],
+  visual_files: [
+    {
+      id: "21",
+      path: "/data/LooseSets/Morning/img.jpg",
+      zip_file_id: null,
+      parent_folder: { id: "pf1" },
+    },
+  ],
+};
+
+const zipGalleryMemberImage = {
+  id: "10",
+  title: "In A Zip Gallery",
+  organized: true,
+  // a zip gallery has files of its own, so it is not folder-defined
+  galleries: [{ id: "2", folder: null, files: [{ id: "16" }] }],
+  visual_files: [
+    {
+      id: "22",
+      path: "/data/Photos/loose.jpg",
+      zip_file_id: null,
+      parent_folder: { id: "pf2" },
+    },
+  ],
+};
+
+test("an image in a folder gallery can still be renamed in place", () => {
+  const cfg = normalizeConfig({
+    images: {
+      onlyOrganized: false,
+      defaultPattern: { folderPattern: "", filenamePattern: "{title}" },
+    },
+  });
+  const result = planEntity(folderGalleryImage, cfg, "images");
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].basename, "Golden Hour.jpg");
+  assert.equal(result.files[0].folder, "/data/LooseSets/Morning");
+});
+
+test("an image in a folder gallery is skipped when the pattern would move it elsewhere", () => {
+  // leaving the folder would strand the gallery and create a second one holding
+  // the same image at the destination
+  const cfg = normalizeConfig({
+    images: {
+      onlyOrganized: false,
+      defaultPattern: {
+        folderPattern: "Best",
+        filenamePattern: "{title}",
+        libraryRoot: "/data",
+      },
+    },
+  });
+  const result = planEntity(folderGalleryImage, cfg, "images");
+  assert.equal(result.status, "skipped");
+  assert.equal(result.reason, "in_folder_gallery");
+  assert.match(result.message, /folder-based gallery/);
+  assert.deepEqual(result.files, []);
+});
+
+test("an image whose galleries are all zip-based may be moved freely", () => {
+  const cfg = normalizeConfig({
+    images: {
+      onlyOrganized: false,
+      defaultPattern: {
+        folderPattern: "Best",
+        filenamePattern: "{title}",
+        libraryRoot: "/data",
+      },
+    },
+  });
+  const result = planEntity(zipGalleryMemberImage, cfg, "images");
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data/Best");
+});
+
+test("scenes and galleries have no relocation restriction", () => {
+  assert.equal(adapterFor("scenes").relocationBlocked, undefined);
+  assert.equal(adapterFor("galleries").relocationBlocked, undefined);
+});
