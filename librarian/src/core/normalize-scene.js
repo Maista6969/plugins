@@ -1,5 +1,6 @@
 import { walkStudioChain } from "./studio-hierarchy.js";
 import { adapterFor } from "./entity-adapter.js";
+import { normalizeGender } from "./gender.js";
 
 function byKey(getKey) {
   return (a, b) => {
@@ -49,6 +50,7 @@ export function normalizeScene(rawScene, entityType) {
         name: p.name,
         favorite: !!p.favorite,
         rating100: p.rating100 != null ? p.rating100 : null,
+        gender: normalizeGender(p.gender),
       };
     }),
     tags: tags.map((t) => {

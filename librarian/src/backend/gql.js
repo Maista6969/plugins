@@ -1,25 +1,9 @@
 import { PLUGIN_ID } from "../core/config-schema.js";
-
-export const STUDIO_FIELDS = `
-  id
-  name
-  parent_studio {
-    id
-    name
-    parent_studio {
-      id
-      name
-      parent_studio {
-        id
-        name
-        parent_studio {
-          id
-          name
-        }
-      }
-    }
-  }
-`;
+import {
+  STUDIO_FIELDS,
+  PERFORMER_FIELDS,
+  TAG_FIELDS,
+} from "../core/gql-fields.js";
 
 export const SCENE_FIELDS = `
   id
@@ -32,8 +16,8 @@ export const SCENE_FIELDS = `
   studio {
     ${STUDIO_FIELDS}
   }
-  performers { id name favorite rating100 }
-  tags { id name sort_name }
+  performers { ${PERFORMER_FIELDS} }
+  tags { ${TAG_FIELDS} }
   files {
     id
     path
@@ -58,8 +42,8 @@ const COMMON_METADATA_FIELDS = `
   studio {
     ${STUDIO_FIELDS}
   }
-  performers { id name favorite rating100 }
-  tags { id name sort_name }
+  performers { ${PERFORMER_FIELDS} }
+  tags { ${TAG_FIELDS} }
 `;
 
 // folder is fetched so folder-based galleries can be told apart from zip ones

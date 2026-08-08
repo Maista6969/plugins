@@ -1,23 +1,11 @@
-export const STUDIO_FIELDS = `
-  id
-  name
-  parent_studio {
-    id
-    name
-    parent_studio {
-      id
-      name
-      parent_studio {
-        id
-        name
-        parent_studio {
-          id
-          name
-        }
-      }
-    }
-  }
-`;
+import {
+  STUDIO_FIELDS,
+  PERFORMER_FIELDS,
+  TAG_FIELDS,
+} from "../../core/gql-fields.js";
+
+// re-exported because several preview components query studios on their own
+export { STUDIO_FIELDS };
 
 // We fetch all paths even if we don't use them just
 // so we don't trample the Apollo cache
@@ -32,8 +20,8 @@ export const SCENE_FIELDS = `
   studio {
     ${STUDIO_FIELDS}
   }
-  performers { id name favorite rating100 }
-  tags { id name sort_name }
+  performers { ${PERFORMER_FIELDS} }
+  tags { ${TAG_FIELDS} }
   paths {
     screenshot
     preview
@@ -69,8 +57,8 @@ const COMMON_METADATA_FIELDS = `
   studio {
     ${STUDIO_FIELDS}
   }
-  performers { id name favorite rating100 }
-  tags { id name sort_name }
+  performers { ${PERFORMER_FIELDS} }
+  tags { ${TAG_FIELDS} }
 `;
 
 // folder is fetched so folder-based galleries can be told apart from zip ones

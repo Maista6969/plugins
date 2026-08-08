@@ -132,19 +132,27 @@ test("organized coerces to a real boolean", () => {
   assert.equal(normalizeScene({ organized: true }).organized, true);
 });
 
-test("performers expose favorite and rating100 alongside id/name", () => {
+test("performers expose favorite, rating100 and gender alongside id/name", () => {
   const raw = {
-    performers: [{ id: "p1", name: "Amy", favorite: true, rating100: 90 }],
+    performers: [
+      {
+        id: "p1",
+        name: "Amy",
+        favorite: true,
+        rating100: 90,
+        gender: "FEMALE",
+      },
+    ],
     tags: [{ id: "t1", name: "Rock", favorite: true }],
   };
   const view = normalizeScene(raw);
   assert.deepEqual(view.performers, [
-    { id: "p1", name: "Amy", favorite: true, rating100: 90 },
+    { id: "p1", name: "Amy", favorite: true, rating100: 90, gender: "female" },
   ]);
   assert.deepEqual(view.tags, [{ id: "t1", name: "Rock" }]);
 });
 
-test("performers default favorite to false and rating100 to null when absent", () => {
+test("performers default favorite to false and rating100/gender to null when absent", () => {
   const raw = {
     performers: [{ id: "p1", name: "Amy" }],
     tags: [{ id: "t1", name: "Rock" }],
@@ -152,4 +160,20 @@ test("performers default favorite to false and rating100 to null when absent", (
   const view = normalizeScene(raw);
   assert.equal(view.performers[0].favorite, false);
   assert.equal(view.performers[0].rating100, null);
+  assert.equal(view.performers[0].gender, null);
+});
+
+test("canonicalises every GenderEnum value to its pattern spelling", () => {
+  const genderOf = (raw) =>
+    normalizeScene({ performers: [{ id: "p1", name: "A", gender: raw }] })
+      .performers[0].gender;
+  assert.equal(genderOf("FEMALE"), "female");
+  assert.equal(genderOf("MALE"), "male");
+  assert.equal(genderOf("TRANSGENDER_FEMALE"), "trans_female");
+  assert.equal(genderOf("TRANSGENDER_MALE"), "trans_male");
+  assert.equal(genderOf("INTERSEX"), "intersex");
+  assert.equal(genderOf("NON_BINARY"), "non_binary");
+  assert.equal(genderOf(null), null);
+  assert.equal(genderOf(""), null);
+  assert.equal(genderOf("AGENDER"), null);
 });
