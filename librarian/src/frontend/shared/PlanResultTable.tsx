@@ -3,10 +3,9 @@ import { StatusBadge } from "./StatusBadge.js";
 import { OrganizeButton } from "./OrganizeButton.js";
 import { describeMissingData } from "./describe-missing.js";
 import { useStashBoxes } from "./StashBoxesContext.js";
-import {
-  describePatternPair,
-  joinBasename,
-} from "../../core/path-template.js";
+import { describePatternPair, joinBasename } from "../../core/path-template.js";
+import { adapterFor } from "../../core/entity-adapter.js";
+import { entityUI } from "./entity-ui.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Table } = PluginApi.libraries.Bootstrap;
@@ -20,8 +19,9 @@ interface PlanResultTableProps {
   rows: PlanRow[];
   onMoveOne?: (sceneId: string) => void;
   pendingSceneIds?: Set<string>;
-  onSceneOrganized?: (sceneId: string, patchedScene: any) => void;
+  onEntityOrganized?: (sceneId: string, patchedScene: any) => void;
   rules?: any[];
+  entityType?: string;
 }
 
 function resolveMatchedRule(
@@ -39,7 +39,7 @@ function resolveMatchedRule(
       : plan.matchedRule;
 
   if (!ruleId) {
-    return { label: "This scene uses the default pattern" };
+    return { label: "Uses the default pattern" };
   }
   const index = (rules || []).findIndex((r) => r.id === ruleId);
   if (index === -1) {
@@ -65,15 +65,25 @@ export function matchedRuleLabel(plan: any, rules: any[]): string | undefined {
   return resolveMatchedRule(plan, rules)?.label;
 }
 
-export function skippedText(reason: string, excludedBy?: string[]): string {
+export function skippedText(
+  reason: string,
+  excludedBy?: string[],
+  entityType?: string,
+  message?: string,
+): string {
+  const noun = adapterFor(entityType).noun;
+  // folder_gallery and in_zip_gallery carry their own explanation from the adapter
+  if (message) {
+    return "Skipped: " + message;
+  }
   if (reason === "not_organized") {
-    return "Skipped: scene is not organized";
+    return "Skipped: " + noun + " is not organized";
   }
   if (reason === "no_stash_id") {
-    return "Skipped: scene has no StashID";
+    return "Skipped: " + noun + " has no StashID";
   }
   if (reason === "no_files") {
-    return "Skipped: scene has no video files";
+    return "Skipped: " + noun + " has no " + entityUI(entityType).fileNoun;
   }
   if (reason === "excluded") {
     return excludedBy && excludedBy.length > 0
@@ -83,39 +93,45 @@ export function skippedText(reason: string, excludedBy?: string[]): string {
   return `Skipped: ${reason}`;
 }
 
-function sceneDisplayName(scene: any): string {
+function entityDisplayName(scene: any, entityType?: string): string {
   if (scene.title) {
     return scene.title;
   }
-  const firstPath = scene.files && scene.files[0] && scene.files[0].path;
+  const ui = entityUI(entityType);
+  const firstPath = (ui.files(scene)[0] || {}).path;
   if (firstPath) {
     return firstPath.replace(/^.*[\\/]/, "");
+  }
+  // a folder gallery has no file at all, only a folder
+  if (scene.folder && scene.folder.path) {
+    return scene.folder.path.replace(/^.*[\\/]/, "");
   }
   return scene.id;
 }
 
-function coverImageLink(scene: any) {
-  const screenshot = scene.paths && scene.paths.screenshot;
-  if (!screenshot) {
+function coverImageLink(scene: any, entityType?: string) {
+  const ui = entityUI(entityType);
+  const thumbnail = ui.thumbnail(scene);
+  if (!thumbnail) {
     return null;
   }
   return (
-    <a href={"/scenes/" + scene.id} target="_blank" rel="noopener noreferrer">
+    <a href={ui.route + scene.id} target="_blank" rel="noopener noreferrer">
       <img
         loading="lazy"
         className="image-thumbnail"
-        alt={sceneDisplayName(scene)}
-        src={screenshot}
+        alt={entityDisplayName(scene, entityType)}
+        src={thumbnail}
       />
     </a>
   );
 }
 
-function sceneLink(scene: any) {
-  const name = sceneDisplayName(scene);
+function entityLink(scene: any, entityType?: string) {
+  const name = entityDisplayName(scene, entityType);
   return (
     <a
-      href={"/scenes/" + scene.id}
+      href={entityUI(entityType).route + scene.id}
       target="_blank"
       rel="noopener noreferrer"
       title={name}
@@ -129,8 +145,9 @@ export function PlanResultTable({
   rows,
   onMoveOne,
   pendingSceneIds,
-  onSceneOrganized,
+  onEntityOrganized,
   rules,
+  entityType,
 }: PlanResultTableProps) {
   // empty outside the settings page, where the message keeps the endpoint URL
   const { stashBoxes } = useStashBoxes();
@@ -140,7 +157,9 @@ export function PlanResultTable({
       <Table striped bordered>
         <thead>
           <tr>
-            <th className="cover_image-head">Cover Image</th>
+            <th className="cover_image-head">
+              {entityType === "images" ? "Thumbnail" : "Cover Image"}
+            </th>
             <th>Title</th>
             <th>Path</th>
             <th>Status</th>
@@ -155,23 +174,29 @@ export function PlanResultTable({
                 {plan.status !== "ok" ? (
                   <tr>
                     <td className="cover_image-data">
-                      {coverImageLink(scene)}
+                      {coverImageLink(scene, entityType)}
                     </td>
-                    <td>{sceneLink(scene)}</td>
+                    <td>{entityLink(scene, entityType)}</td>
                     <td className="librarian-message-cell">
                       {plan.status === "error" ? (
                         "Error: " +
                         describeMissingData(plan.missingData, stashBoxes)
                       ) : plan.reason === "not_organized" ? (
                         <span className="librarian-organize-hint">
-                          {skippedText(plan.reason)}{" "}
+                          {skippedText(plan.reason, undefined, entityType)}{" "}
                           <OrganizeButton
                             scene={scene}
-                            onOrganized={onSceneOrganized}
+                            onOrganized={onEntityOrganized}
+                            entityType={entityType}
                           />
                         </span>
                       ) : (
-                        skippedText(plan.reason, plan.excludedBy)
+                        skippedText(
+                          plan.reason,
+                          plan.excludedBy,
+                          entityType,
+                          plan.message,
+                        )
                       )}
                     </td>
                     <td>
@@ -182,9 +207,9 @@ export function PlanResultTable({
                   plan.files.map((f: any) => (
                     <tr key={f.fileId}>
                       <td className="cover_image-data">
-                        {coverImageLink(scene)}
+                        {coverImageLink(scene, entityType)}
                       </td>
-                      <td>{sceneLink(scene)}</td>
+                      <td>{entityLink(scene, entityType)}</td>
                       <td className="librarian-path-diff">
                         {f.unchanged ? (
                           <div className="correct-path">{f.currentPath}</div>

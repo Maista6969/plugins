@@ -10,6 +10,7 @@ export interface ConditionsValue {
 }
 
 interface ConditionsEditorProps {
+  entityType?: string;
   value: ConditionsValue;
   onChange: (next: ConditionsValue) => void;
 }
@@ -18,7 +19,11 @@ function newCondition(): Condition {
   return { field: "tag", op: "any_of", value: [] };
 }
 
-export function ConditionsEditor({ value, onChange }: ConditionsEditorProps) {
+export function ConditionsEditor({
+  value,
+  onChange,
+  entityType,
+}: ConditionsEditorProps) {
   const conditionLogic = value.conditionLogic === "OR" ? "OR" : "AND";
   const conditions = value.conditions || [];
 
@@ -45,6 +50,7 @@ export function ConditionsEditor({ value, onChange }: ConditionsEditorProps) {
 
       {conditions.map((condition, index) => (
         <ConditionRow
+          entityType={entityType}
           key={index}
           condition={condition}
           onChange={(next) => {

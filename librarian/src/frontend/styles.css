@@ -311,3 +311,43 @@
   min-width: 18rem;
   text-align: left;
 }
+
+/* Stash strips Bootstrap's boxed tabs in styles/_theme.scss (.nav-tabs has
+   border: none, and the active .nav-link gets a 2px underline in $link-color),
+   so we inherit that rather than re-introducing a bordered panel that fights
+   the theme. Each SettingsSection already renders a Bootstrap Card at
+   $card-bg over the $body-bg page, so the tab content reads as a group
+   without any extra container of its own. */
+.librarian-entity-tabs {
+  margin-bottom: 1rem;
+}
+
+.librarian-entity-tab-panel {
+  padding-top: 0.5rem;
+}
+
+/* Settings outside the tabs need to be clearly not part of the active tab.
+   #414c53 is the divider colour Stash uses for its own table borders. */
+.librarian-global-settings {
+  border-top: 1px solid #414c53;
+  margin-top: 3rem;
+  padding-top: 0.5rem;
+}
+
+/* Kept at the bottom of the panel: the folder-gallery count arrives from a
+   debounced query, so rendering it above the settings shifted the layout */
+.librarian-entity-notice {
+  margin-top: 2rem;
+}
+
+.librarian-entity-notice p {
+  margin-bottom: 0.25rem;
+}
+
+/* The exclusion count arrives from a debounced query. Its line is always
+   rendered (with a non-breaking space when empty) and given a fixed height so
+   the result appearing cannot shift the settings below it. */
+.librarian-count-line {
+  margin-bottom: 0;
+  min-height: 1.5em;
+}

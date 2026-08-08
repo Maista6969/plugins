@@ -1,26 +1,40 @@
 import { gql } from "@apollo/client";
-import { planScene } from "../../core/plan-scene.js";
-import { SCENE_FIELDS } from "../shared/scene-query-fields.js";
+import { planEntity } from "../../core/plan-scene.js";
+import {
+  SCENE_FIELDS,
+  GALLERY_FIELDS,
+  IMAGE_FIELDS,
+} from "../shared/scene-query-fields.js";
 
-export const SAMPLE_SCENES_QUERY = gql(`
-  query LibrarianSamplePreview($scene_filter: SceneFilterType, $filter: FindFilterType) {
-    findScenes(scene_filter: $scene_filter, filter: $filter) {
-      count
-      scenes { ${SCENE_FIELDS} }
+// items alias keeps the response shape identical across the three types
+export const SAMPLE_QUERIES: Record<string, any> = {
+  scenes: gql(`
+    query LibrarianSampleScenes($entity_filter: SceneFilterType, $filter: FindFilterType) {
+      result: findScenes(scene_filter: $entity_filter, filter: $filter) {
+        count
+        items: scenes { ${SCENE_FIELDS} }
+      }
     }
-  }
-`);
+  `),
+  galleries: gql(`
+    query LibrarianSampleGalleries($entity_filter: GalleryFilterType, $filter: FindFilterType) {
+      result: findGalleries(gallery_filter: $entity_filter, filter: $filter) {
+        count
+        items: galleries { ${GALLERY_FIELDS} }
+      }
+    }
+  `),
+  images: gql(`
+    query LibrarianSampleImages($entity_filter: ImageFilterType, $filter: FindFilterType) {
+      result: findImages(image_filter: $entity_filter, filter: $filter) {
+        count
+        items: images { ${IMAGE_FIELDS} }
+      }
+    }
+  `),
+};
 
 export const SAMPLE_SIZE = 10;
-
-// Cheaper query just for the count, single aggregate in sqlite database
-export const SCENE_COUNT_QUERY = gql(`
-  query LibrarianSceneCount($scene_filter: SceneFilterType) {
-    findScenes(scene_filter: $scene_filter) {
-      count
-    }
-  }
-`);
 
 export type SortDirection = "ASC" | "DESC";
 
@@ -88,58 +102,60 @@ function sortFilter(sort: PreviewSort | undefined, page: number): any {
 
 export function fetchPreviewRows(
   client: any,
-  sceneFilter: any,
+  entityFilter: any,
   config: any,
   sort?: PreviewSort,
+  entityType: string = "scenes",
 ) {
   return client
     .query({
-      query: SAMPLE_SCENES_QUERY,
-      variables: { scene_filter: sceneFilter, filter: sortFilter(sort, 1) },
+      query: SAMPLE_QUERIES[entityType] || SAMPLE_QUERIES.scenes,
+      variables: { entity_filter: entityFilter, filter: sortFilter(sort, 1) },
       fetchPolicy: "network-only",
     })
     .then(({ data }: any) => {
-      const scenes = (data && data.findScenes && data.findScenes.scenes) || [];
-      return scenes.map((scene: any) => ({
-        scene,
-        plan: planScene(scene, config),
+      const items = (data && data.result && data.result.items) || [];
+      return items.map((entity: any) => ({
+        scene: entity,
+        plan: planEntity(entity, config, entityType),
       }));
     });
 }
 
 // We can't keep going forever, try at most 5 pages of results to
-// find SAMPLE_SIZE scenes to show in the preview
+// find SAMPLE_SIZE entities to show in the preview
 const MAX_SCOPED_PAGES = 5;
 
 export async function fetchScopedPreviewRows(
   client: any,
-  sceneFilter: any,
+  entityFilter: any,
   config: any,
   sort: PreviewSort | undefined,
   isStolen: (plan: any) => boolean,
+  entityType: string = "scenes",
 ) {
   const collected: { scene: any; plan: any }[] = [];
   let page = 1;
   while (collected.length < SAMPLE_SIZE && page <= MAX_SCOPED_PAGES) {
     const { data }: any = await client.query({
-      query: SAMPLE_SCENES_QUERY,
-      variables: { scene_filter: sceneFilter, filter: sortFilter(sort, page) },
+      query: SAMPLE_QUERIES[entityType] || SAMPLE_QUERIES.scenes,
+      variables: { entity_filter: entityFilter, filter: sortFilter(sort, page) },
       fetchPolicy: "network-only",
     });
-    const scenes = (data && data.findScenes && data.findScenes.scenes) || [];
-    if (scenes.length === 0) {
+    const items = (data && data.result && data.result.items) || [];
+    if (items.length === 0) {
       break;
     }
-    for (const scene of scenes) {
-      const plan = planScene(scene, config);
+    for (const entity of items) {
+      const plan = planEntity(entity, config, entityType);
       if (!isStolen(plan)) {
-        collected.push({ scene, plan });
+        collected.push({ scene: entity, plan });
         if (collected.length >= SAMPLE_SIZE) {
           break;
         }
       }
     }
-    if (scenes.length < SAMPLE_SIZE) {
+    if (items.length < SAMPLE_SIZE) {
       // Reached the last page of matches; no point requesting another.
       break;
     }

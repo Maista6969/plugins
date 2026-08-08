@@ -15,6 +15,7 @@ import {
 } from "./path-template.js";
 import { assignSuffixes } from "./file-ordering.js";
 import { deriveFileTech } from "./file-tech.js";
+import { adapterFor } from "./entity-adapter.js";
 
 function getExtension(basename) {
   const dotIndex = (basename || "").lastIndexOf(".");
@@ -75,7 +76,8 @@ export function entitySettings(config, entityType) {
 
 export function planEntity(rawScene, config, entityType) {
   const settings = entitySettings(config, entityType);
-  const sceneView = normalizeScene(rawScene);
+  const adapter = adapterFor(entityType);
+  const sceneView = normalizeScene(rawScene, entityType);
 
   if (settings.onlyOrganized && !sceneView.organized) {
     return {
@@ -116,6 +118,19 @@ export function planEntity(rawScene, config, entityType) {
         files: [],
       };
     }
+  }
+
+  // Structural limits (folder galleries, images inside a zip) are reported before
+  // the generic no_files skip, which would otherwise hide the real reason
+  const ineligible = adapter.ineligible(rawScene);
+  if (ineligible) {
+    return {
+      status: "skipped",
+      reason: ineligible.reason,
+      message: ineligible.message,
+      sceneId: sceneView.id,
+      files: [],
+    };
   }
 
   if (sceneView.files.length === 0) {

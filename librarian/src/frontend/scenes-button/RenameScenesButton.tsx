@@ -3,7 +3,7 @@ import { useApolloClient, gql } from "@apollo/client";
 import { usePreviewMode } from "./preview-context.js";
 import { isTerminalStatus } from "../shared/job-poll.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
-import { eligibleSceneNoun } from "../shared/eligible-scenes.js";
+import { eligibleEntityNoun } from "../shared/eligible-entities.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button, ButtonGroup, OverlayTrigger, Tooltip } =
@@ -136,7 +136,7 @@ export function RenameScenesButton() {
 
   const filterActive = hasActiveFilter(liveFilter);
   const summaryText = !filterActive
-    ? `This will rename all ${eligibleSceneNoun(config, true)}`
+    ? `This will rename all ${eligibleEntityNoun(config, true)}`
     : matchCount != null
       ? `This will rename up to ${matchCount} scene${matchCount === 1 ? "" : "s"} matching the current filter`
       : "This will rename scenes matching the current filter";
@@ -161,7 +161,7 @@ export function RenameScenesButton() {
           }}
         >
           <p>
-            Every {eligibleSceneNoun(config)}{" "}
+            Every {eligibleEntityNoun(config)}{" "}
             {filterActive ? "currently matching the filter" : "in your library"}{" "}
             will be renamed/moved on disk immediately: this is a real run, not a
             preview, and it is NOT reversable by this plugin

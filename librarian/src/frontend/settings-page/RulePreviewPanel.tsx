@@ -1,27 +1,36 @@
 import React, { useEffect, useState } from "react";
 import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
-import { useManualScenePreview } from "./useManualScenePreview.js";
+import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
 import { ApplyRuleButton } from "./ApplyRuleButton.js";
+import { adapterFor } from "../../core/entity-adapter.js";
 import {
   DEFAULT_PREVIEW_SORT,
   changeSortField,
   toggleSortDirection,
-} from "./scene-preview-query.js";
+} from "./entity-preview-query.js";
 
 interface RulePreviewPanelProps {
   rule: any;
   config: any;
+  entityType?: string;
 }
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
 
-export function RulePreviewPanel({ rule, config }: RulePreviewPanelProps) {
-  const sceneFilter = ruleToPreviewFilter(rule, config.scenes);
-  const { rows, loading, run, handleSceneOrganized } =
-    useManualScenePreview(config);
+export function RulePreviewPanel({
+  rule,
+  config,
+  entityType,
+}: RulePreviewPanelProps) {
+  const type = entityType || "scenes";
+  const sceneFilter = ruleToPreviewFilter(rule, config[type]);
+  const { rows, loading, run, handleEntityOrganized } = useManualEntityPreview(
+    config,
+    type,
+  );
   const [closed, setClosed] = useState(false);
   const [sort, setSort] = useState(DEFAULT_PREVIEW_SORT);
 
@@ -83,7 +92,9 @@ export function RulePreviewPanel({ rule, config }: RulePreviewPanelProps) {
               disabled={notReady || loading}
               onClick={handlePreviewClick}
             >
-              {loading ? "Previewing..." : "Preview matching scenes"}
+              {loading
+                ? "Previewing..."
+                : "Preview matching " + adapterFor(type).plural}
             </Button>
           )}
           {visible && (
@@ -102,7 +113,7 @@ export function RulePreviewPanel({ rule, config }: RulePreviewPanelProps) {
           )}
         </div>
         <div className="librarian-rule-preview-controls-right">
-          <ApplyRuleButton rule={rule} config={config} />
+          <ApplyRuleButton rule={rule} config={config} entityType={type} />
         </div>
       </div>
 
@@ -110,13 +121,15 @@ export function RulePreviewPanel({ rule, config }: RulePreviewPanelProps) {
         <div className="librarian-rule-preview-results">
           {rows.length === 0 ? (
             <div className="librarian-token-hint text-muted">
-              No scenes currently match this rule's conditions
+              No {adapterFor(type).plural} currently match this rule's
+              conditions
             </div>
           ) : (
             <PlanResultTable
               rows={rows}
-              onSceneOrganized={handleSceneOrganized}
-              rules={(config.scenes || {}).rules}
+              onEntityOrganized={handleEntityOrganized}
+              rules={(config[type] || {}).rules}
+              entityType={type}
             />
           )}
         </div>

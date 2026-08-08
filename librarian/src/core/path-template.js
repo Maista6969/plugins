@@ -498,20 +498,27 @@ export function patternUsesAnyToken(pattern, tokenNames) {
   return false;
 }
 
-export function findUnknownTokens(pattern) {
+export function findUnknownTokens(pattern, allowedTokens) {
+  const allowed = allowedTokens || KNOWN_TOKENS;
   const unknown = [];
   let match;
   const regex = new RegExp(TOKEN_REGEX.source, "g");
   while ((match = regex.exec(pattern)) !== null) {
-    if (
-      KNOWN_TOKENS.indexOf(match[1]) === -1 &&
-      unknown.indexOf(match[1]) === -1
-    ) {
+    if (allowed.indexOf(match[1]) === -1 && unknown.indexOf(match[1]) === -1) {
       unknown.push(match[1]);
     }
   }
   return unknown;
 }
+
+// Tokens that exist for every entity type. stash_id is excluded because only
+// scenes have stash_ids, and the file-tech tokens because what a file can
+// report differs per type
+export const METADATA_TOKENS = KNOWN_TOKENS.filter((t) => {
+  return (
+    FILE_TECH_TOKENS.indexOf(t) === -1 && t !== "phash" && t !== "stash_id"
+  );
+});
 
 export function hasUnsafeOptionalOnlyBasename(filenamePattern) {
   const regex = new RegExp(TOKEN_REGEX.source, "g");

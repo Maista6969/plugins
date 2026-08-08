@@ -48,12 +48,112 @@ export const SCENE_FIELDS = `
   }
 `;
 
+const COMMON_METADATA_FIELDS = `
+  id
+  title
+  code
+  date
+  organized
+  rating100
+  studio {
+    ${STUDIO_FIELDS}
+  }
+  performers { id name favorite rating100 }
+  tags { id name sort_name }
+`;
+
+// folder is fetched so folder-based galleries can be told apart from zip ones
+// and skipped explicitly rather than looking like they simply have no files
+export const GALLERY_FIELDS = `
+  ${COMMON_METADATA_FIELDS}
+  files {
+    id
+    path
+    parent_folder { id }
+    fingerprints { type value }
+  }
+  folder { id path }
+`;
+
+// visual_files rather than the deprecated files, which silently drops
+// video-backed (animated) images. zip_file_id marks images Stash refuses to move
+export const IMAGE_FIELDS = `
+  ${COMMON_METADATA_FIELDS}
+  visual_files {
+    __typename
+    ... on ImageFile {
+      id
+      path
+      parent_folder { id }
+      zip_file_id
+      width
+      height
+      fingerprints { type value }
+    }
+    ... on VideoFile {
+      id
+      path
+      parent_folder { id }
+      zip_file_id
+      width
+      height
+      video_codec
+      audio_codec
+      bit_rate
+      frame_rate
+      fingerprints { type value }
+    }
+  }
+`;
+
 const FIND_SCENES_QUERY = `
   query FindScenes($scene_filter: SceneFilterType, $filter: FindFilterType) {
     findScenes(scene_filter: $scene_filter, filter: $filter) {
       count
       scenes { ${SCENE_FIELDS} }
     }
+  }
+`;
+
+const FIND_GALLERIES_QUERY = `
+  query FindGalleries($entity_filter: GalleryFilterType, $filter: FindFilterType) {
+    findGalleries(gallery_filter: $entity_filter, filter: $filter) {
+      count
+      items: galleries { ${GALLERY_FIELDS} }
+    }
+  }
+`;
+
+const FIND_GALLERY_QUERY = `
+  query FindGallery($id: ID!) {
+    findGallery(id: $id) { ${GALLERY_FIELDS} }
+  }
+`;
+
+const FIND_IMAGES_QUERY = `
+  query FindImages($entity_filter: ImageFilterType, $filter: FindFilterType) {
+    findImages(image_filter: $entity_filter, filter: $filter) {
+      count
+      items: images { ${IMAGE_FIELDS} }
+    }
+  }
+`;
+
+const FIND_IMAGE_QUERY = `
+  query FindImage($id: ID!) {
+    findImage(id: $id) { ${IMAGE_FIELDS} }
+  }
+`;
+
+const GALLERY_COUNT_QUERY = `
+  query CountGalleries($entity_filter: GalleryFilterType) {
+    findGalleries(gallery_filter: $entity_filter) { count }
+  }
+`;
+
+const IMAGE_COUNT_QUERY = `
+  query CountImages($entity_filter: ImageFilterType) {
+    findImages(image_filter: $entity_filter) { count }
   }
 `;
 
@@ -113,6 +213,62 @@ const FIND_QUERY_FIELD = {
 
 function doQuery(query, variables) {
   return gql.Do(query, variables);
+}
+
+const ENTITY_QUERIES = {
+  scenes: {
+    findMany: FIND_SCENES_QUERY,
+    findOne: FIND_SCENE_QUERY,
+    count: SCENE_COUNT_QUERY,
+    // scenes predate the generic aliases and keep their original field names
+    filterVar: "scene_filter",
+    listField: "findScenes",
+    itemsField: "scenes",
+    oneField: "findScene",
+  },
+  galleries: {
+    findMany: FIND_GALLERIES_QUERY,
+    findOne: FIND_GALLERY_QUERY,
+    count: GALLERY_COUNT_QUERY,
+    filterVar: "entity_filter",
+    listField: "findGalleries",
+    itemsField: "items",
+    oneField: "findGallery",
+  },
+  images: {
+    findMany: FIND_IMAGES_QUERY,
+    findOne: FIND_IMAGE_QUERY,
+    count: IMAGE_COUNT_QUERY,
+    filterVar: "entity_filter",
+    listField: "findImages",
+    itemsField: "items",
+    oneField: "findImage",
+  },
+};
+
+export function gqlFindEntities(entityType, entityFilter, findFilter) {
+  const q = ENTITY_QUERIES[entityType];
+  const variables = {};
+  if (entityFilter) {
+    variables[q.filterVar] = entityFilter;
+  }
+  if (findFilter) {
+    variables.filter = findFilter;
+  }
+  const result = doQuery(q.findMany, variables)[q.listField];
+  return { count: result.count, items: result[q.itemsField] };
+}
+
+export function gqlFindEntity(entityType, id) {
+  const q = ENTITY_QUERIES[entityType];
+  return doQuery(q.findOne, { id: id })[q.oneField];
+}
+
+export function gqlCountEntities(entityType, entityFilter) {
+  const q = ENTITY_QUERIES[entityType];
+  const variables = {};
+  variables[q.filterVar] = entityFilter;
+  return doQuery(q.count, variables)[q.listField].count || 0;
 }
 
 export function gqlFindScenes(sceneFilter, findFilter) {

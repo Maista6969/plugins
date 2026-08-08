@@ -1,43 +1,56 @@
 import React, { useEffect, useState } from "react";
 import { configGateFilter } from "../../core/rule-to-filter.js";
 import { useApolloClient } from "@apollo/client";
-import { useManualScenePreview } from "./useManualScenePreview.js";
+import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
-import { eligibleSceneNoun } from "../shared/eligible-scenes.js";
+import { eligibleEntityNoun } from "../shared/eligible-entities.js";
+import { adapterFor } from "../../core/entity-adapter.js";
 import { runRenameTask } from "../shared/stash-api.js";
 import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
 import {
   DEFAULT_PREVIEW_SORT,
   changeSortField,
   toggleSortDirection,
-} from "./scene-preview-query.js";
+} from "./entity-preview-query.js";
 
 interface ConfigPreviewPanelProps {
   config: any;
+  entityType?: string;
 }
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
 const { faFolderTree } = PluginApi.libraries.FontAwesomeSolid;
 
-export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
+export function ConfigPreviewPanel({
+  config,
+  entityType,
+}: ConfigPreviewPanelProps) {
+  const type = entityType || "scenes";
   const client = useApolloClient();
   const [sort, setSort] = useState(DEFAULT_PREVIEW_SORT);
   const [closed, setClosed] = useState(true);
-  const { rows, loading, run, handleSceneOrganized } =
-    useManualScenePreview(config);
+  const { rows, loading, run, handleEntityOrganized } = useManualEntityPreview(
+    config,
+    type,
+  );
   const [confirming, setConfirming] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobInfo | null>(null);
   const running = !!jobId && (!job || !isTerminalStatus(job.status));
 
-  const scenes: any = config.scenes || {};
-  const scenesDefaultPattern: any = scenes.defaultPattern || {};
+  const section: any = config[type] || {};
+  const sectionDefaultPattern: any = section.defaultPattern || {};
+  const plural = adapterFor(type).plural;
 
-  // shared with the rule preview so the two cannot drift apart
-  const effectiveFilter = configGateFilter(scenes);
+  // Shared with the rule preview so the two cannot drift apart. The StashID
+  // gate is scene-only, since stash_id_count is not a field on the gallery or
+  // image filter types and would make the query fail outright.
+  const effectiveFilter = configGateFilter(
+    type === "scenes" ? section : { onlyOrganized: section.onlyOrganized },
+  );
 
   const visible = rows !== null && !closed;
 
@@ -53,7 +66,7 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
   async function handleConfirmedRenameAll() {
     setConfirming(false);
     setJob(null);
-    const id = await runRenameTask(client, {});
+    const id = await runRenameTask(client, { entity: type });
     setJobId(id);
     pollJob(client, id, setJob);
   }
@@ -74,10 +87,10 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
   }
 
   const contentKey = JSON.stringify({
-    sceneFilter: effectiveFilter,
-    folderPattern: scenesDefaultPattern.folderPattern,
-    filenamePattern: scenesDefaultPattern.filenamePattern,
-    sortBy: scenesDefaultPattern.sortBy,
+    entityFilter: effectiveFilter,
+    folderPattern: sectionDefaultPattern.folderPattern,
+    filenamePattern: sectionDefaultPattern.filenamePattern,
+    sortBy: sectionDefaultPattern.sortBy,
     spaceReplacement: config.sanitize && config.sanitize.spaceReplacement,
   });
   useEffect(() => {
@@ -101,17 +114,17 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
         <ConfirmModal
           show
           icon={faFolderTree}
-          header="Rename all scenes now?"
+          header={"Rename all " + plural + " now?"}
           cancel={{ text: "Cancel", onClick: () => setConfirming(false) }}
           accept={{
-            text: "Rename all scenes",
+            text: "Rename all " + plural,
             variant: "danger",
             onClick: handleConfirmedRenameAll,
           }}
         >
           <p>
-            Every {eligibleSceneNoun(config)} in your library will be
-            renamed/moved on disk immediately: this is a real run, not a
+            Every {eligibleEntityNoun(config, false, type)} in your library will
+            be renamed/moved on disk immediately: this is a real run, not a
             preview, and it is NOT reversable by this plugin
           </p>
         </ConfirmModal>
@@ -132,7 +145,7 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
               disabled={loading}
               onClick={handlePreviewClick}
             >
-              {loading ? "Previewing..." : "Preview matching scenes"}
+              {loading ? "Previewing..." : "Preview matching " + plural}
             </Button>
           )}{" "}
           {visible && (
@@ -156,7 +169,7 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
             disabled={running}
             onClick={() => setConfirming(true)}
           >
-            Rename all scenes
+            Rename all {plural}
           </Button>
         </div>
       </div>
@@ -164,13 +177,14 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
         <div className="librarian-config-preview">
           {rows.length === 0 ? (
             <div className="librarian-token-hint text-muted">
-              No scenes available to preview yet
+              No {plural} available to preview yet
             </div>
           ) : (
             <PlanResultTable
               rows={rows}
-              onSceneOrganized={handleSceneOrganized}
-              rules={scenes.rules}
+              onEntityOrganized={handleEntityOrganized}
+              rules={section.rules}
+              entityType={type}
             />
           )}
         </div>

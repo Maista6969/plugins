@@ -4,7 +4,8 @@ import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
 import { runRenameTask } from "../shared/stash-api.js";
 import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
-import { eligibleSceneNoun } from "../shared/eligible-scenes.js";
+import { eligibleEntityNoun } from "../shared/eligible-entities.js";
+import { adapterFor } from "../../core/entity-adapter.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -13,15 +14,21 @@ const { faFolderTree } = PluginApi.libraries.FontAwesomeSolid;
 interface ApplyRuleButtonProps {
   rule: any;
   config: any;
+  entityType?: string;
 }
 
-export function ApplyRuleButton({ rule, config }: ApplyRuleButtonProps) {
+export function ApplyRuleButton({
+  rule,
+  config,
+  entityType,
+}: ApplyRuleButtonProps) {
+  const type = entityType || "scenes";
   const client = useApolloClient();
   const [confirming, setConfirming] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobInfo | null>(null);
 
-  const sceneFilter = ruleToPreviewFilter(rule, config.scenes);
+  const sceneFilter = ruleToPreviewFilter(rule, config[type]);
   const notReady = sceneFilter === null;
   const disabledRule = rule.enabled === false;
   const running = !!jobId && (!job || !isTerminalStatus(job.status));
@@ -30,7 +37,8 @@ export function ApplyRuleButton({ rule, config }: ApplyRuleButtonProps) {
     setConfirming(false);
     setJob(null);
     const id = await runRenameTask(client, {
-      scene_filter: sceneFilter,
+      entity: type,
+      entity_filter: sceneFilter,
     });
     setJobId(id);
     pollJob(client, id, setJob);
@@ -73,7 +81,8 @@ export function ApplyRuleButton({ rule, config }: ApplyRuleButtonProps) {
           }}
         >
           <p>
-            Every {eligibleSceneNoun(config)} currently matching this rule will
+            Every {eligibleEntityNoun(config, false, type)} currently matching this
+            rule will
             be renamed/moved on disk immediately: this is a real run, not a
             preview, and it CANNOT be undone
           </p>
@@ -88,7 +97,7 @@ export function ApplyRuleButton({ rule, config }: ApplyRuleButtonProps) {
         onClick={() => setConfirming(true)}
         title={hint}
       >
-        Apply to all matching scenes
+        Apply to all matching {adapterFor(type).plural}
       </Button>
     </div>
   );

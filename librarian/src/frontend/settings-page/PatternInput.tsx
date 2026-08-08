@@ -1,57 +1,50 @@
 import React, { useRef } from "react";
-import {
-  KNOWN_TOKENS,
-  FILE_TECH_TOKENS,
-  findUnknownTokens,
-} from "../../core/path-template.js";
+import { findUnknownTokens } from "../../core/path-template.js";
+import { adapterFor } from "../../core/entity-adapter.js";
 import { TextSettingModal } from "./TextSettingModal.js";
-
-const METADATA_TOKENS = KNOWN_TOKENS.filter(
-  (t) => FILE_TECH_TOKENS.indexOf(t) === -1,
-);
 
 const PluginApi = (window as any).PluginApi;
 const { Form } = PluginApi.libraries.Bootstrap;
 
 const TOKEN_DESCRIPTIONS: Record<string, string> = {
-  studio: "The scene's own studio",
+  studio: "The {noun}'s own studio",
   studio_root:
-    "The TOP of the studio hierarchy (often the network), not the scene's own; for a BangBros scene under Public Bang, this is “BangBros”, not “Public Bang”",
+    "The TOP of the studio hierarchy (often the network), not the {noun}'s own; for a BangBros {noun} under Public Bang, this is “BangBros”, not “Public Bang”",
   studio_hierarchy:
     "The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)",
   performers:
-    "All performers on the scene, sorted per this rule's “Sort performers by” setting, joined with a comma. Add :N to limit the count, e.g. {performers:3}",
+    "All performers on the {noun}, sorted per this rule's “Sort performers by” setting, joined with a comma. Add :N to limit the count, e.g. {performers:3}",
   performers_not_in_title:
-    "Performers not already named in the scene's title. It would not include “Joy” if the title is “A Day in the Park with Joy”",
+    "Performers not already named in the {noun}'s title. It would not include “Joy” if the title is “A Day in the Park with Joy”",
   matched_performers:
-    "Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the scene",
-  tags: "All tags on the scene, joined with a comma",
+    "Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the {noun}",
+  tags: "All tags on the {noun}, joined with a comma",
   matched_tags:
-    "Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene",
-  title: "The scene's title",
-  code: "The scene's own “Studio Code”, not that very few studios actually have these",
-  date: "The scene's date, can be partial",
+    "Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the {noun}",
+  title: "The {noun}'s title",
+  code: "The {noun}'s own “Studio Code”, not that very few studios actually have these",
+  date: "The {noun}'s date, can be partial",
   date_year: "Just the year of the date, e.g. “2024”",
   date_month:
-    "Just the month of the date, e.g. “05”, can be missing if the scene has a partial date",
+    "Just the month of the date, e.g. “05”, can be missing if the {noun} has a partial date",
   date_day:
-    "Just the day of the date, e.g. “10”, can be missing if the scene has a partial date",
+    "Just the day of the date, e.g. “10”, can be missing if the {noun} has a partial date",
   resolution:
-    "The file's resolution, e.g. “1080p” or “4K”. Can differ per file on a multi-file scene",
+    "The file's resolution, e.g. “1080p” or “4K”. Can differ per file on a multi-file {noun}",
   video_codec:
-    "The file's video codec, e.g. “h264”, “hevc”. Can differ per file on a multi-file scene",
+    "The file's video codec, e.g. “h264”, “hevc”. Can differ per file on a multi-file {noun}",
   audio_codec:
-    "The file's audio codec, e.g. “aac”. Can differ per file on a multi-file scene",
+    "The file's audio codec, e.g. “aac”. Can differ per file on a multi-file {noun}",
   bitrate:
-    "The file's bitrate, e.g. “8.42Mbps”. Can differ per file on a multi-file scene",
-  fps: "The file's framerate, e.g. “30fps” or “23.98fps”. Can differ per file on a multi-file scene",
+    "The file's bitrate, e.g. “8.42Mbps”. Can differ per file on a multi-file {noun}",
+  fps: "The file's framerate, e.g. “30fps” or “23.98fps”. Can differ per file on a multi-file {noun}",
   phash:
-    "The file's perceptual hash fingerprint. Can differ per file on a multi-file scene",
+    "The file's perceptual hash fingerprint. Can differ per file on a multi-file {noun}",
   oshash:
-    "The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file scene",
-  rating: "The scene's rating on a 0-10 scale (one decimal place)",
+    "The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file {noun}",
+  rating: "The {noun}'s rating on a 0-10 scale (one decimal place)",
   stash_id:
-    "The scene's StashID from this rule's own configured stash-box source (set via the “StashID source” picker below once this token is used)",
+    "The {noun}'s StashID from this rule's own configured stash-box source (set via the “StashID source” picker below once this token is used)",
 };
 
 interface PatternModalFieldProps {
@@ -59,6 +52,7 @@ interface PatternModalFieldProps {
   setValue: (v?: string) => void;
   validate?: (value: string) => boolean;
   isFolder?: boolean;
+  entityType?: string;
 }
 
 function PatternModalField({
@@ -66,10 +60,18 @@ function PatternModalField({
   setValue,
   validate,
   isFolder,
+  entityType,
 }: PatternModalFieldProps) {
+  // Each type supports a different token set: only scenes have stash_ids, a zip
+  // gallery file reports no dimensions at all, and an image reports only its own
+  const adapter = adapterFor(entityType || "scenes");
+  const fileTechTokens: string[] = adapter.fileTechTokens;
+  const metadataTokens: string[] = adapter.tokens.filter(
+    (t: string) => fileTechTokens.indexOf(t) === -1,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const pattern = value || "";
-  const unknownTokens = findUnknownTokens(pattern);
+  const unknownTokens = findUnknownTokens(pattern, adapter.tokens);
   const unsafeBasename = !!validate && !validate(pattern);
 
   function insertToken(token: string) {
@@ -129,8 +131,14 @@ function PatternModalField({
         </div>
       )}
       <div className="librarian-token-hint text-muted"></div>
-      {renderTokenGroup("Scene metadata", METADATA_TOKENS, insertToken)}
-      {renderTokenGroup("File metadata", FILE_TECH_TOKENS, insertToken)}
+      {renderTokenGroup(
+        adapter.label + " metadata",
+        metadataTokens,
+        insertToken,
+        adapter.noun,
+      )}
+      {fileTechTokens.length > 0 &&
+        renderTokenGroup("File metadata", fileTechTokens, insertToken, adapter.noun)}
       <div className="librarian-token-hint text-muted">
         <p>
           Add <code>?</code> to make a token optional, or <code>:N</code> on a
@@ -172,6 +180,7 @@ function renderTokenGroup(
   label: string,
   tokens: string[],
   insertToken: (token: string) => void,
+  noun: string,
   hint?: string,
 ) {
   return (
@@ -184,8 +193,9 @@ function renderTokenGroup(
           className="librarian-token-chip badge badge-secondary"
           onClick={() => insertToken(token)}
           title={
-            (TOKEN_DESCRIPTIONS[token] ? TOKEN_DESCRIPTIONS[token] + " " : "") +
-            "(click to insert)"
+            (TOKEN_DESCRIPTIONS[token]
+              ? TOKEN_DESCRIPTIONS[token].replace(/{noun}/g, noun) + " "
+              : "") + "(click to insert)"
           }
         >
           {"{" + token + "}"}
@@ -202,6 +212,7 @@ interface PatternInputProps {
   subHeading?: React.ReactNode;
   validate?: (value: string) => boolean;
   isFolder?: boolean;
+  entityType?: string;
 }
 
 export function PatternInput({
@@ -211,6 +222,7 @@ export function PatternInput({
   subHeading,
   validate,
   isFolder,
+  entityType,
 }: PatternInputProps) {
   return (
     <TextSettingModal
@@ -224,6 +236,7 @@ export function PatternInput({
           setValue={setValue}
           validate={validate}
           isFolder={isFolder}
+          entityType={entityType}
         />
       )}
       validate={validate}

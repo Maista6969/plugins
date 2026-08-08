@@ -1,4 +1,5 @@
 import React from "react";
+import { adapterFor } from "../../core/entity-adapter.js";
 import { useLoadSelectComponents } from "../shared/useLoadSelectComponents.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -16,17 +17,17 @@ const ANY_ONLY_MODIFIERS = [
   {
     value: "any_of",
     label: "is any of",
-    title: "Matches if the scene has at least one of the selected entries",
+    title: "Matches if the {noun} has at least one of the selected entries",
   },
   {
     value: "is_null",
     label: "is not set",
-    title: "Matches if the scene has none set at all",
+    title: "Matches if the {noun} has none set at all",
   },
   {
     value: "not_null",
     label: "has any value",
-    title: "Matches if the scene has at least one set, regardless of which",
+    title: "Matches if the {noun} has at least one set, regardless of which",
   },
 ];
 
@@ -35,7 +36,7 @@ const ANY_OR_ALL_MODIFIERS = [
   {
     value: "all_of",
     label: "is all of",
-    title: "Matches only if the scene has every one of the selected entries",
+    title: "Matches only if the {noun} has every one of the selected entries",
   },
   ANY_ONLY_MODIFIERS[1],
   ANY_ONLY_MODIFIERS[2],
@@ -47,7 +48,7 @@ const STUDIO_MODIFIERS = [
     value: "any_of_or_descendant",
     label: "is any of (including subsidiaries)",
     title:
-      "Matches if the scene's studio is one of the selected entries, or a subsidiary of one",
+      "Matches if the {noun}'s studio is one of the selected entries, or a subsidiary of one",
   },
   ANY_ONLY_MODIFIERS[1],
   ANY_ONLY_MODIFIERS[2],
@@ -203,21 +204,29 @@ function PathValueEditor({
         className="input-control"
         type="text"
         value={value || ""}
-        placeholder="/data/old-scenes"
+        placeholder="/data/old-files"
         onChange={(e: any) => onChangeValue(e.target.value)}
       />
     </>
   );
 }
 
+// Modifier tooltips are written with a {noun} placeholder so the same copy
+// reads correctly on the scenes, galleries and images tabs
+function withNoun(text: string | undefined, noun: string): string {
+  return (text || "").replace(/{noun}/g, noun);
+}
+
 function ListModifierSelect({
   field,
   op,
   onChange,
+  noun,
 }: {
   field: string;
   op: string;
   onChange: (op: string) => void;
+  noun: string;
 }) {
   const options = LIST_MODIFIERS_BY_FIELD[field] || ANY_ONLY_MODIFIERS;
   const current = options.find((o) => o.value === op) || options[0];
@@ -225,12 +234,12 @@ function ListModifierSelect({
     <Form.Control
       as="select"
       className="librarian-inline-select input-control"
-      title={current.title}
+      title={withNoun(current.title, noun)}
       value={op}
       onChange={(e: any) => onChange(e.target.value)}
     >
       {options.map((o) => (
-        <option key={o.value} value={o.value} title={o.title}>
+        <option key={o.value} value={o.value} title={withNoun(o.title, noun)}>
           {o.label}
         </option>
       ))}
@@ -265,13 +274,16 @@ interface ConditionRowProps {
   condition: Condition;
   onChange: (next: Condition) => void;
   onRemove: () => void;
+  entityType?: string;
 }
 
 export function ConditionRow({
   condition,
   onChange,
   onRemove,
+  entityType,
 }: ConditionRowProps) {
+  const noun = adapterFor(entityType).noun;
   const loadingSelectComponents = useLoadSelectComponents([
     "studio",
     "performer",
@@ -306,6 +318,7 @@ export function ConditionRow({
           field={condition.field}
           op={condition.op}
           onChange={(nextOp) => onChange({ ...condition, op: nextOp })}
+          noun={noun}
         />
       )}
       {isRating ? (

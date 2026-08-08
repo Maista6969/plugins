@@ -29,10 +29,16 @@ interface RuleListProps {
   rules: Rule[];
   onChange: (rules: Rule[]) => void;
   config: any;
+  entityType?: string;
 }
 
 // Visually modelled after the source list in Stash's Identify modal dialog
-export function RuleList({ rules, onChange, config }: RuleListProps) {
+export function RuleList({
+  rules,
+  onChange,
+  config,
+  entityType,
+}: RuleListProps) {
   const [tempRules, setTempRules] = useState(rules);
   const [dragIndex, setDragIndex] = useState<number | undefined>();
   const [mouseOverIndex, setMouseOverIndex] = useState<number | undefined>();
@@ -112,7 +118,9 @@ export function RuleList({ rules, onChange, config }: RuleListProps) {
             onHandleMouseEnter={() => setMouseOverIndex(index)}
             onHandleMouseLeave={() => setMouseOverIndex(undefined)}
             config={config}
+            entityType={entityType}
             autoOpen={rule.id === justAddedId}
+            onAutoOpened={() => setJustAddedId(null)}
             hasEarlierActiveRule={tempRules
               .slice(0, index)
               .some((r) => r.enabled !== false && r.conditions.length > 0)}

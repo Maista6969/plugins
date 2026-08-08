@@ -1,4 +1,5 @@
 import { walkStudioChain } from "./studio-hierarchy.js";
+import { adapterFor } from "./entity-adapter.js";
 
 function byKey(getKey) {
   return (a, b) => {
@@ -17,7 +18,8 @@ function tagKey(t) {
   return t.sort_name || t.name || "";
 }
 
-export function normalizeScene(rawScene) {
+export function normalizeScene(rawScene, entityType) {
+  const adapter = adapterFor(entityType);
   const studioChain = walkStudioChain(rawScene.studio);
   const performers = (rawScene.performers || [])
     .slice()
@@ -64,6 +66,6 @@ export function normalizeScene(rawScene) {
     tagIds: tags.map((t) => {
       return String(t.id);
     }),
-    files: rawScene.files || [],
+    files: adapter.files(rawScene),
   };
 }

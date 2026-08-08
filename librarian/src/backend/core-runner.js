@@ -1,9 +1,9 @@
-import { planScene } from "../core/plan-scene.js";
+import { planEntity } from "../core/plan-scene.js";
 import { gqlMoveFile } from "./gql.js";
 import { filesNeedingMove } from "./hook-guard.js";
 
-export function renameScene(rawScene, config) {
-  const plan = planScene(rawScene, config);
+export function renameEntity(rawEntity, config, entityType) {
+  const plan = planEntity(rawEntity, config, entityType);
 
   if (plan.status !== "ok") {
     return plan;
@@ -34,4 +34,8 @@ export function renameScene(rawScene, config) {
     moved: toMove.length - moveErrors.length,
     moveErrors: moveErrors,
   });
+}
+
+export function renameScene(rawScene, config) {
+  return renameEntity(rawScene, config, "scenes");
 }

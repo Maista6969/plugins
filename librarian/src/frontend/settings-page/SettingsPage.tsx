@@ -12,15 +12,9 @@ import {
   pruneDeadEntitiesAll,
 } from "../../core/prune-dead-entities.js";
 import { pruneDeadLibraryRootsAll } from "../../core/prune-dead-library-roots.js";
-import { RuleList } from "./RuleList.js";
-import { PatternInput } from "./PatternInput.js";
 import { TextSettingModal } from "./TextSettingModal.js";
-import { LibraryRootPicker } from "./LibraryRootPicker.js";
+import { EntitySettingsPanel } from "./EntitySettingsPanel.js";
 import { ConfigPreviewPanel } from "./ConfigPreviewPanel.js";
-import { ConditionsEditor } from "./ConditionsEditor.js";
-import { SortBySelect } from "./SortBySelect.js";
-import { StashBoxSelect } from "./StashBoxSelect.js";
-import { StashBoxMultiSelect } from "./StashBoxMultiSelect.js";
 import { SettingsSection } from "./SettingsSection.js";
 import { LibraryPathsProvider } from "../shared/LibraryPathsContext.js";
 import {
@@ -30,16 +24,11 @@ import {
 import { TokenizedText } from "../shared/TokenizedText.js";
 import { useLoadSettingsComponents } from "../shared/useLoadSettingsComponents.js";
 import { usePluginPageTitle } from "./usePluginPageTitle.js";
-import { useSceneCount } from "./useSceneCount.js";
-import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
-import {
-  patternUsesAnyToken,
-  hasUnsafeOptionalOnlyBasename,
-  PERFORMER_SORT_TOKENS,
-} from "../../core/path-template.js";
+import { ENTITY_TYPES } from "../../core/config-schema.js";
+import { adapterFor } from "../../core/entity-adapter.js";
 
 const PluginApi = (window as any).PluginApi;
-const { Spinner } = PluginApi.libraries.Bootstrap;
+const { Spinner, Nav } = PluginApi.libraries.Bootstrap;
 const { faCheckCircle, faTimesCircle } = PluginApi.libraries.FontAwesomeSolid;
 const Icon = PluginApi.components.Icon;
 
@@ -82,16 +71,6 @@ function prunedLibraryRootsText(
   );
 }
 
-function excludeCountText(count: number | null): string | null {
-  if (count == null) {
-    return null;
-  }
-  if (count === 1) {
-    return "1 scene currently matches these exclusion conditions";
-  }
-  return count + " scenes currently match these exclusion conditions";
-}
-
 export function SettingsPage() {
   return (
     <LibraryPathsProvider>
@@ -106,6 +85,7 @@ function SettingsPageContent() {
   const client = useApolloClient();
   const [config, setConfig] = useState<any | null>(null);
   const [pendingConfig, setPendingConfig] = useState<any>(undefined);
+  const [entityType, setEntityType] = useState<string>("scenes");
   const [updateSuccess, setUpdateSuccess] = useState<boolean | undefined>(
     undefined,
   );
@@ -114,15 +94,6 @@ function SettingsPageContent() {
   const pluginName = usePluginPageTitle();
 
   const loadingSettingsComponents = useLoadSettingsComponents();
-  const { stashBoxes } = useStashBoxes();
-  const { BooleanSetting } = PluginApi.components;
-
-  const excludeFilter = config
-    ? ruleToPreviewFilter(config.scenes.excludeConditions, config.scenes)
-    : null;
-  const excludeCount = useSceneCount(
-    excludeFilter === null ? undefined : excludeFilter,
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -210,14 +181,8 @@ function SettingsPageContent() {
     setPendingConfig(next);
   }
 
-  function updateScenes(patch: any) {
-    updateConfig({ ...config, scenes: { ...config.scenes, ...patch } });
-  }
-
-  function updateSceneDefaultPattern(patch: any) {
-    updateScenes({
-      defaultPattern: { ...config.scenes.defaultPattern, ...patch },
-    });
+  function updateSection(type: string, patch: any) {
+    updateConfig({ ...config, [type]: { ...config[type], ...patch } });
   }
 
   function renderLoadingIndicator() {
@@ -252,207 +217,87 @@ function SettingsPageContent() {
       {renderLoadingIndicator()}
       <h2>{pluginName || "Settings"}</h2>
 
-      <SettingsSection heading="Options">
-        <BooleanSetting
-          id="librarian-auto-rename"
-          heading="Automatic renaming"
-          subHeading="Run the plugin on every scene update"
-          checked={!!config.scenes.autoRename}
-          onChange={(v: boolean) => updateScenes({ autoRename: v })}
-        />
-        <BooleanSetting
-          id="librarian-only-organized"
-          heading="Only rename scenes marked Organized"
-          subHeading="Avoids modifying scenes you haven't reviewed yet"
-          checked={!!config.scenes.onlyOrganized}
-          onChange={(v: boolean) => updateScenes({ onlyOrganized: v })}
-        />
-        <div className="setting-group">
-          <BooleanSetting
-            id="librarian-only-with-stash-id"
-            heading="Only rename scenes with at least one StashID"
-            subHeading="Avoids modifying scenes have not been matched against a stash-box"
-            checked={!!config.scenes.onlyWithStashId}
-            onChange={(v: boolean) => updateScenes({ onlyWithStashId: v })}
-          />
-          {/* Only worth choosing between sources when more than one is configured */}
-          {config.scenes.onlyWithStashId && stashBoxes.length > 1 && (
-            <div className="setting">
-              <div>
-                <h3>Accepted sources</h3>
-                <div className="sub-heading">
-                  Leave empty to accept a StashID from any stash-box
-                </div>
-              </div>
-              <div>
-                <StashBoxMultiSelect
-                  value={config.scenes.stashIdEndpoints}
-                  onChange={(stashIdEndpoints: string[]) =>
-                    updateScenes({ stashIdEndpoints })
-                  }
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection heading="Exclusions">
-        <div className="content">
-          <p className="librarian-token-hint text-muted">
-            Scenes that match these conditions will always be skipped regardless
-            of what other rules they would match
-          </p>
-          <ConditionsEditor
-            value={config.scenes.excludeConditions}
-            onChange={(excludeConditions) =>
-              updateScenes({ excludeConditions })
-            }
-          />
-          {excludeCountText(excludeCount) && (
-            <p className="librarian-token-hint text-muted">
-              {excludeCountText(excludeCount)}
-            </p>
-          )}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection heading="Rules">
-        <div className="content">
-          <RuleList
-            rules={config.scenes.rules}
-            onChange={(rules) => updateScenes({ rules })}
+      <div className="librarian-entity-tabs">
+        <Nav
+          variant="tabs"
+          activeKey={entityType}
+          onSelect={(k: string | null) => k && setEntityType(k)}
+        >
+          {ENTITY_TYPES.map((type) => (
+            <Nav.Item key={type}>
+              <Nav.Link eventKey={type}>{adapterFor(type).label}</Nav.Link>
+            </Nav.Item>
+          ))}
+        </Nav>
+        <div className="librarian-entity-tab-panel">
+          {/* keyed so switching tabs remounts the panel: no per-tab component
+              state (open modals, drag state, preview toggles) can leak across */}
+          <EntitySettingsPanel
+            key={entityType}
+            entityType={entityType}
             config={config}
+            onChange={updateSection}
           />
         </div>
-      </SettingsSection>
+      </div>
 
-      <SettingsSection heading="Formatting">
-        <div className="content">
-          <p className="librarian-token-hint text-muted">
-            Changes apply to how all folder and file names are formatted
-          </p>
-          <TextSettingModal
-            heading="Space replacement"
-            subHeading="Replaces spaces in every folder and filename with this text (like “.” or “_”). Leave blank to keep spaces as they are"
-            value={config.sanitize && config.sanitize.spaceReplacement}
-            onChange={(spaceReplacement: string) =>
-              updateConfig({
-                ...config,
-                sanitize: { ...config.sanitize, spaceReplacement },
-              })
-            }
-            placeholder="(do not change spaces)"
-          />
-          <TextSettingModal
-            heading="Performers delimiter"
-            subHeading={
-              <TokenizedText text="Joins {performers}/{performers_not_in_title}/{matched_performers} with this text" />
-            }
-            value={config.delimiters && config.delimiters.performers}
-            onChange={(performers: string) =>
-              updateConfig({
-                ...config,
-                delimiters: { ...config.delimiters, performers },
-              })
-            }
-            placeholder=", "
-          />
-          <TextSettingModal
-            heading="Tags delimiter"
-            subHeading={
-              <TokenizedText text="Joins {tags}/{matched_tags} with this text" />
-            }
-            value={config.delimiters && config.delimiters.tags}
-            onChange={(tags: string) =>
-              updateConfig({
-                ...config,
-                delimiters: { ...config.delimiters, tags },
-              })
-            }
-            placeholder=", "
-          />
-        </div>
-      </SettingsSection>
-
-      <SettingsSection heading="Default pattern">
-        <div className="content">
-          <p className="librarian-token-hint text-muted">
-            Will be used for every scene unless they have a more specific rule
-            above
-          </p>
-          <LibraryRootPicker
-            value={config.scenes.defaultPattern.libraryRoot}
-            subHeading="The library that files end up in by default"
-            onChange={(libraryRoot: string) =>
-              updateSceneDefaultPattern({ libraryRoot })
-            }
-          />
-
-          <PatternInput
-            label="Folder pattern"
-            isFolder
-            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Leave blank to keep files in their current folder, or use “/” to place them directly under the library root"
-            value={config.scenes.defaultPattern.folderPattern}
-            onChange={(folderPattern: string) =>
-              updateSceneDefaultPattern({ folderPattern })
-            }
-          />
-
-          <PatternInput
-            label="Filename pattern"
-            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”"
-            value={config.scenes.defaultPattern.filenamePattern}
-            onChange={(filenamePattern: string) =>
-              updateSceneDefaultPattern({ filenamePattern })
-            }
-            validate={(v) => !hasUnsafeOptionalOnlyBasename(v)}
-          />
-
-          {(patternUsesAnyToken(
-            config.scenes.defaultPattern.folderPattern,
-            PERFORMER_SORT_TOKENS,
-          ) ||
-            patternUsesAnyToken(
-              config.scenes.defaultPattern.filenamePattern,
-              PERFORMER_SORT_TOKENS,
-            )) && (
-            <div>
-              Sort performers{" "}
-              <SortBySelect
-                value={config.scenes.defaultPattern.sortBy}
-                onChange={(sortBy: string) =>
-                  updateSceneDefaultPattern({ sortBy })
-                }
-              />
-            </div>
-          )}
-
-          {(patternUsesAnyToken(config.scenes.defaultPattern.folderPattern, [
-            "stash_id",
-          ]) ||
-            patternUsesAnyToken(config.scenes.defaultPattern.filenamePattern, [
-              "stash_id",
-            ])) && (
-            <div>
-              StashID source{" "}
-              <StashBoxSelect
-                value={config.scenes.defaultPattern.stashBoxEndpoint}
-                onChange={(stashBoxEndpoint: string) =>
-                  updateSceneDefaultPattern({ stashBoxEndpoint })
-                }
-              />
-            </div>
-          )}
-        </div>
-      </SettingsSection>
+      <div className="librarian-global-settings">
+        <SettingsSection heading="Formatting (all types)">
+          <div className="content">
+            <p className="librarian-token-hint text-muted">
+              Changes apply to how all folder and file names are formatted
+            </p>
+            <TextSettingModal
+              heading="Space replacement"
+              subHeading="Replaces spaces in every folder and filename with this text (like “.” or “_”). Leave blank to keep spaces as they are"
+              value={config.sanitize && config.sanitize.spaceReplacement}
+              onChange={(spaceReplacement: string) =>
+                updateConfig({
+                  ...config,
+                  sanitize: { ...config.sanitize, spaceReplacement },
+                })
+              }
+              placeholder="(do not change spaces)"
+            />
+            <TextSettingModal
+              heading="Performers delimiter"
+              subHeading={
+                <TokenizedText text="Joins {performers}/{performers_not_in_title}/{matched_performers} with this text" />
+              }
+              value={config.delimiters && config.delimiters.performers}
+              onChange={(performers: string) =>
+                updateConfig({
+                  ...config,
+                  delimiters: { ...config.delimiters, performers },
+                })
+              }
+              placeholder=", "
+            />
+            <TextSettingModal
+              heading="Tags delimiter"
+              subHeading={
+                <TokenizedText text="Joins {tags}/{matched_tags} with this text" />
+              }
+              value={config.delimiters && config.delimiters.tags}
+              onChange={(tags: string) =>
+                updateConfig({
+                  ...config,
+                  delimiters: { ...config.delimiters, tags },
+                })
+              }
+              placeholder=", "
+            />
+          </div>
+        </SettingsSection>
+      </div>
 
       <div className="setting-section librarian-config-preview-section">
-        <h1>Preview</h1>
+        <h1>Preview {adapterFor(entityType).label.toLowerCase()}</h1>
         <p className="librarian-token-hint text-muted">
-          Shows what the current rules would do to a sample of recent scenes
+          Shows what the current rules would do to a sample of recent{" "}
+          {adapterFor(entityType).plural}
         </p>
-        <ConfigPreviewPanel config={config} />
+        <ConfigPreviewPanel config={config} entityType={entityType} />
       </div>
     </div>
   );

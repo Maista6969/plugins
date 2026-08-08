@@ -1,10 +1,10 @@
 import {
-  gqlFindScenes,
-  gqlFindScene,
+  gqlFindEntities,
+  gqlFindEntity,
   gqlGetConfig,
   gqlGetLibraryPaths,
   gqlConfigurePlugin,
-  gqlCountScenes,
+  gqlCountEntities,
   gqlFindDeadEntityIds,
 } from "./gql.js";
 import { normalizeConfig } from "../core/config-schema.js";
@@ -15,7 +15,8 @@ import {
 } from "../core/prune-dead-entities.js";
 import { ruleToPreviewFilter } from "../core/rule-to-filter.js";
 import { describePatternPair } from "../core/path-template.js";
-import { renameScene } from "./core-runner.js";
+import { renameEntity } from "./core-runner.js";
+import { adapterFor } from "../core/entity-adapter.js";
 
 const PAGE_SIZE = 1000;
 
@@ -25,20 +26,21 @@ function logProgress(fraction) {
   }
 }
 
-function logError(sceneId, message) {
+function logError(noun, sceneId, message) {
   if (typeof log !== "undefined" && log.Error) {
-    log.Error("scene " + (sceneId == null ? "?" : sceneId) + ": " + message);
+    log.Error(noun + " " + (sceneId == null ? "?" : sceneId) + ": " + message);
   }
 }
 
-function processScene(scene, config, summary) {
+function processScene(scene, config, summary, entityType) {
+  const noun = adapterFor(entityType).noun;
   summary.processed++;
   let outcome;
   try {
-    outcome = renameScene(scene, config);
+    outcome = renameEntity(scene, config, entityType);
   } catch (e) {
     summary.errors.push({ sceneId: scene.id, error: String(e) });
-    logError(scene.id, String(e));
+    logError(noun, scene.id, String(e));
     return;
   }
   if (outcome.status === "skipped") {
@@ -55,7 +57,7 @@ function processScene(scene, config, summary) {
       '" cannot be satisfied: ' +
       messages;
     summary.errors.push({ sceneId: outcome.sceneId, error: message });
-    logError(outcome.sceneId, message);
+    logError(noun, outcome.sceneId, message);
   } else {
     const moveErrors = outcome.moveErrors || [];
     const moved = outcome.moved || 0;
@@ -69,7 +71,7 @@ function processScene(scene, config, summary) {
         sceneId: outcome.sceneId,
         error: "moveFiles failed: " + message,
       });
-      logError(outcome.sceneId, "moveFiles failed: " + message);
+      logError(noun, outcome.sceneId, "moveFiles failed: " + message);
     }
     if (moved > 0) {
       summary.changed++;
@@ -105,6 +107,8 @@ export function run(args) {
 }
 
 function runSweep(args) {
+  const entityType = args.entity || "scenes";
+  const adapter = adapterFor(entityType);
   const rawConfig = gqlGetConfig();
   let config = normalizeConfig(rawConfig);
 
@@ -121,7 +125,7 @@ function runSweep(args) {
 
   try {
     const suspiciousRules = [];
-    (config.scenes.rules || []).forEach((rule) => {
+    (config[entityType].rules || []).forEach((rule) => {
       if (
         rule.enabled === false ||
         !rule.conditions ||
@@ -129,8 +133,8 @@ function runSweep(args) {
       ) {
         return;
       }
-      const filter = ruleToPreviewFilter(rule, config.scenes);
-      if (filter !== null && gqlCountScenes(filter) === 0) {
+      const filter = ruleToPreviewFilter(rule, config[entityType]);
+      if (filter !== null && gqlCountEntities(entityType, filter) === 0) {
         suspiciousRules.push(rule);
       }
     });
@@ -159,29 +163,31 @@ function runSweep(args) {
     args.sceneIds.forEach((id) => {
       let scene;
       try {
-        scene = gqlFindScene(id);
+        scene = gqlFindEntity(entityType, id);
       } catch (e) {
         summary.errors.push({ sceneId: id, error: String(e) });
-        logError(id, String(e));
+        logError(adapter.noun, id, String(e));
         return;
       }
       if (!scene) {
-        summary.errors.push({ sceneId: id, error: "scene not found" });
-        logError(id, "scene not found");
+        summary.errors.push({ sceneId: id, error: adapter.noun + " not found" });
+        logError(adapter.noun, id, adapter.noun + " not found");
         return;
       }
-      processScene(scene, config, summary);
+      processScene(scene, config, summary, entityType);
     });
     const text = summaryText(
       "librarian: processed " +
         summary.processed +
-        " explicitly requested scene(s)",
+        " explicitly requested " +
+        adapter.noun +
+        "(s)",
       summary,
     );
     return { Output: text };
   }
 
-  const sceneFilter = args.scene_filter || null;
+  const sceneFilter = args.scene_filter || args.entity_filter || null;
   const searchQuery = (args.filter && args.filter.q) || null;
 
   let page = 1;
@@ -200,22 +206,22 @@ function runSweep(args) {
 
     let result;
     try {
-      result = gqlFindScenes(sceneFilter, findFilter);
+      result = gqlFindEntities(entityType, sceneFilter, findFilter);
     } catch (e) {
       const message =
-        "failed to fetch page " + page + " of scenes: " + String(e);
+        "failed to fetch page " + page + " of " + adapter.plural + ": " + String(e);
       summary.errors.push({ sceneId: null, error: message });
-      logError(null, message);
+      logError(adapter.noun, null, message);
       break;
     }
     total = result.count;
-    const scenes = result.scenes;
+    const scenes = result.items;
     if (scenes.length === 0) {
       break;
     }
 
     scenes.forEach((scene) => {
-      processScene(scene, config, summary);
+      processScene(scene, config, summary, entityType);
     });
 
     logProgress(total > 0 ? Math.min(1, summary.processed / total) : 1);

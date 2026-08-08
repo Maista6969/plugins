@@ -10,15 +10,38 @@ tasks:
     description: This task is meant to be triggered elsewhere, clicking this button does nothing
     defaultArgs:
       mode: dummy
-  - name: Rename everything
+  - name: Rename all scenes
     description: Applies Librarian's rename rules to every scene in your Stash
     defaultArgs:
       mode: task
+      entity: scenes
+  - name: Rename all galleries
+    description: Applies Librarian's rename rules to every zip gallery in your Stash. Folder-based galleries are skipped, since Stash cannot rename a gallery folder
+    defaultArgs:
+      mode: task
+      entity: galleries
+  - name: Rename all images
+    description: Applies Librarian's rename rules to every image in your Stash. Images inside zip galleries are skipped, since Stash cannot rename files within a zip
+    defaultArgs:
+      mode: task
+      entity: images
 hooks:
   - name: Auto-rename on scene update
     description: Re-evaluates rename rules whenever an organized scene is updated.
     triggeredBy:
       - Scene.Update.Post
+    defaultArgs:
+      mode: hook
+  - name: Auto-rename on gallery update
+    description: Re-evaluates rename rules whenever an organized zip gallery is updated. Off by default.
+    triggeredBy:
+      - Gallery.Update.Post
+    defaultArgs:
+      mode: hook
+  - name: Auto-rename on image update
+    description: Re-evaluates rename rules whenever an organized image is updated. Off by default.
+    triggeredBy:
+      - Image.Update.Post
     defaultArgs:
       mode: hook
 ui:

@@ -7,7 +7,8 @@ import { StashBoxSelect } from "./StashBoxSelect.js";
 import { RulePreviewPanel } from "./RulePreviewPanel.js";
 import { TextSettingModal } from "./TextSettingModal.js";
 import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
-import { useSceneCount } from "./useSceneCount.js";
+import { useEntityCount } from "./useEntityCount.js";
+import { adapterFor } from "../../core/entity-adapter.js";
 import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
@@ -25,20 +26,34 @@ interface RuleEditModalProps {
   onChange: (next: Rule) => void;
   onClose: () => void;
   config: any;
+  entityType?: string;
   hasEarlierActiveRule: boolean;
 }
 
-function matchCountHeading(count: number | null, upperBound: boolean): string {
+function capitalise(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function matchCountHeading(
+  count: number | null,
+  upperBound: boolean,
+  noun: string,
+  plural: string,
+): string {
   if (count == null) {
-    return "Scenes currently matching this rule";
+    return capitalise(plural) + " currently matching this rule";
   }
   if (count === 1) {
     return upperBound
-      ? "Up to 1 scene currently matches this rule"
-      : "1 scene currently matches this rule";
+      ? "Up to 1 " + noun + " currently matches this rule"
+      : "1 " + noun + " currently matches this rule";
   }
   return (
-    (upperBound ? "Up to " : "") + count + " scenes currently match this rule"
+    (upperBound ? "Up to " : "") +
+    count +
+    " " +
+    plural +
+    " currently match this rule"
   );
 }
 
@@ -47,10 +62,14 @@ export function RuleEditModal({
   onChange,
   onClose,
   config,
+  entityType,
   hasEarlierActiveRule,
 }: RuleEditModalProps) {
-  const ruleFilter = ruleToPreviewFilter(rule, config.scenes);
-  const matchCount = useSceneCount(
+  const type = entityType || "scenes";
+  const adapter = adapterFor(type);
+  const ruleFilter = ruleToPreviewFilter(rule, config[type]);
+  const matchCount = useEntityCount(
+    type,
     ruleFilter === null ? undefined : ruleFilter,
   );
 
@@ -78,6 +97,7 @@ export function RuleEditModal({
 
           <LibraryRootPicker
             value={rule.libraryRoot || ""}
+            entityType={entityType}
             subHeading="The root library path for which this rule is based"
             onChange={(libraryRoot) => onChange({ ...rule, libraryRoot })}
           />
@@ -85,6 +105,7 @@ export function RuleEditModal({
           <PatternInput
             label="Folder pattern"
             isFolder
+            entityType={entityType}
             subHeading="May contain “/” or “\\” for multiple nested folder levels. Leave blank to keep files in their current folder, or use “/” to place them directly under the library root"
             value={rule.folderPattern}
             onChange={(folderPattern) => onChange({ ...rule, folderPattern })}
@@ -92,6 +113,7 @@ export function RuleEditModal({
 
           <PatternInput
             label="Filename pattern"
+            entityType={entityType}
             subHeading={
               'The file name without the extension. Cannot contain < > : " / \\ | ? * (stripped automatically if present)'
             }
@@ -103,6 +125,7 @@ export function RuleEditModal({
           />
 
           <ConditionsEditor
+            entityType={type}
             value={{
               conditionLogic: rule.conditionLogic,
               conditions: rule.conditions,
@@ -124,14 +147,16 @@ export function RuleEditModal({
             </div>
           )}
 
-          {(patternUsesAnyToken(rule.folderPattern, ["stash_id"]) ||
-            patternUsesAnyToken(rule.filenamePattern, ["stash_id"])) && (
+          {type === "scenes" &&
+            (patternUsesAnyToken(rule.folderPattern, ["stash_id"]) ||
+              patternUsesAnyToken(rule.filenamePattern, ["stash_id"])) && (
             <div>
               StashID source{" "}
               <StashBoxSelect
                 value={rule.stashBoxEndpoint}
                 inheritedEndpoint={
-                  config.defaultPattern && config.defaultPattern.stashBoxEndpoint
+                  config[type].defaultPattern &&
+                  config[type].defaultPattern.stashBoxEndpoint
                 }
                 onChange={(stashBoxEndpoint) =>
                   onChange({ ...rule, stashBoxEndpoint })
@@ -143,7 +168,12 @@ export function RuleEditModal({
 
         <div className="librarian-rule-preview-section">
           <h4 className="filter-container text-muted paginationIndex center-text">
-            {matchCountHeading(matchCount, hasEarlierActiveRule)}
+            {matchCountHeading(
+              matchCount,
+              hasEarlierActiveRule,
+              adapter.noun,
+              adapter.plural,
+            )}
           </h4>
           {hasEarlierActiveRule && (
             <p className="librarian-token-hint text-muted">
@@ -152,7 +182,7 @@ export function RuleEditModal({
               doesn't account for rule order
             </p>
           )}
-          <RulePreviewPanel rule={rule} config={config} />
+          <RulePreviewPanel rule={rule} config={config} entityType={type} />
         </div>
       </Modal.Body>
       <Modal.Footer className="ModalFooter">

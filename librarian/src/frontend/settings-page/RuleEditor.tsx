@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, {useState, useEffect } from "react";
+import { adapterFor } from "../../core/entity-adapter.js";
 import { Condition } from "./ConditionRow.js";
 import { RuleEditModal } from "./RuleEditModal.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
@@ -34,8 +35,10 @@ interface RuleEditorProps {
   onHandleMouseEnter: () => void;
   onHandleMouseLeave: () => void;
   config: any;
+  entityType?: string;
   hasEarlierActiveRule: boolean;
   autoOpen?: boolean;
+  onAutoOpened?: () => void;
 }
 
 export function RuleEditor({
@@ -49,10 +52,21 @@ export function RuleEditor({
   onHandleMouseEnter,
   onHandleMouseLeave,
   config,
+  entityType,
   hasEarlierActiveRule,
   autoOpen,
+  onAutoOpened,
 }: RuleEditorProps) {
   const [showModal, setShowModal] = useState(!!autoOpen);
+
+  // Consume the flag on mount so returning to this tab does not reopen the
+  // modal: switching tabs remounts these rows, re-evaluating the initial state
+  useEffect(() => {
+    if (autoOpen && onAutoOpened) {
+      onAutoOpened();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const enabled = rule.enabled !== false;
 
@@ -113,6 +127,7 @@ export function RuleEditor({
           onChange={onChange}
           onClose={() => setShowModal(false)}
           config={config}
+          entityType={entityType}
           hasEarlierActiveRule={hasEarlierActiveRule}
         />
       )}
@@ -132,9 +147,9 @@ export function RuleEditor({
           }}
         >
           <p>
-            “{rule.name || "Unnamed rule"}” will be permanently removed. Scenes
-            it currently matches will fall through to the next rule (or the
-            default pattern) instead
+            “{rule.name || "Unnamed rule"}” will be permanently removed. The{" "}
+            {adapterFor(entityType).plural} it currently matches will fall through
+            to the next rule (or the default pattern) instead
           </p>
         </ConfirmModal>
       )}

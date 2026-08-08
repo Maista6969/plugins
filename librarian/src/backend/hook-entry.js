@@ -1,5 +1,5 @@
 import {
-  gqlFindScene,
+  gqlFindEntity,
   gqlGetConfig,
   gqlGetLibraryPaths,
   gqlConfigurePlugin,
@@ -7,7 +7,15 @@ import {
 import { normalizeConfig } from "../core/config-schema.js";
 import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
 import { describePatternPair, joinBasename } from "../core/path-template.js";
-import { renameScene } from "./core-runner.js";
+import { renameEntity } from "./core-runner.js";
+import { adapterFor } from "../core/entity-adapter.js";
+
+// Stash sends the trigger name, so one hook entry point serves all three types
+const ENTITY_TYPE_BY_TRIGGER = {
+  "Scene.Update.Post": "scenes",
+  "Gallery.Update.Post": "galleries",
+  "Image.Update.Post": "images",
+};
 
 function logInfo(message) {
   if (typeof log !== "undefined" && log.Info) {
@@ -26,13 +34,19 @@ export function run(args) {
     const hookContext = args.hookContext;
     if (!hookContext || !hookContext.id) {
       return {
-        Error: "librarian: hook invoked without a scene id in hookContext",
+        Error: "librarian: hook invoked without an entity id in hookContext",
       };
     }
 
+    const entityType =
+      ENTITY_TYPE_BY_TRIGGER[hookContext.Type || hookContext.type] ||
+      args.entity ||
+      "scenes";
+    const noun = adapterFor(entityType).noun;
+
     const rawConfig = gqlGetConfig();
     let config = normalizeConfig(rawConfig);
-    if (!config.scenes.autoRename) {
+    if (!config[entityType].autoRename) {
       return { Output: "skipped: automatic renaming is disabled" };
     }
     try {
@@ -46,12 +60,14 @@ export function run(args) {
       // silently skipped
     }
 
-    const scene = gqlFindScene(hookContext.id);
+    const scene = gqlFindEntity(entityType, hookContext.id);
     if (!scene) {
-      return { Output: "skipped: scene " + hookContext.id + " not found" };
+      return {
+        Output: "skipped: " + noun + " " + hookContext.id + " not found",
+      };
     }
 
-    const outcome = renameScene(scene, config);
+    const outcome = renameEntity(scene, config, entityType);
     if (outcome.status === "error") {
       const messages = outcome.missingData
         .map((m) => {
@@ -59,7 +75,9 @@ export function run(args) {
         })
         .join(", ");
       const text =
-        "librarian: scene " +
+        "librarian: " +
+        noun +
+        " " +
         outcome.sceneId +
         ' matched pattern "' +
         describePatternPair(outcome.folderPattern, outcome.filenamePattern) +
@@ -70,13 +88,15 @@ export function run(args) {
     }
     if (outcome.status === "skipped") {
       const detail =
-        outcome.reason === "excluded" &&
+        outcome.message ||
+        (outcome.reason === "excluded" &&
         outcome.excludedBy &&
         outcome.excludedBy.length > 0
           ? outcome.reason + ": " + outcome.excludedBy.join(", ")
-          : outcome.reason;
+          : outcome.reason);
       return {
-        Output: "skipped: scene " + outcome.sceneId + " (" + detail + ")",
+        Output:
+          "skipped: " + noun + " " + outcome.sceneId + " (" + detail + ")",
       };
     }
 
@@ -88,7 +108,12 @@ export function run(args) {
         })
         .join("; ");
       const text =
-        "librarian: scene " + outcome.sceneId + " moveFiles failed: " + message;
+        "librarian: " +
+        noun +
+        " " +
+        outcome.sceneId +
+        " moveFiles failed: " +
+        message;
       logError(text);
       return { Output: text };
     }
@@ -101,7 +126,8 @@ export function run(args) {
       });
     return {
       Output:
-        "scene " +
+        noun +
+        " " +
         outcome.sceneId +
         (changedPaths.length > 0
           ? " renamed to: " + changedPaths.join(", ")

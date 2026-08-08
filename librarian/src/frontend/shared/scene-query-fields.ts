@@ -58,3 +58,68 @@ export const SCENE_FIELDS = `
     fingerprints { type value }
   }
 `;
+
+const COMMON_METADATA_FIELDS = `
+  id
+  title
+  code
+  date
+  organized
+  rating100
+  studio {
+    ${STUDIO_FIELDS}
+  }
+  performers { id name favorite rating100 }
+  tags { id name sort_name }
+`;
+
+// folder is fetched so folder-based galleries can be told apart from zip ones
+export const GALLERY_FIELDS = `
+  ${COMMON_METADATA_FIELDS}
+  paths { cover }
+  files {
+    id
+    path
+    parent_folder { id }
+    fingerprints { type value }
+  }
+  folder { id path }
+`;
+
+// visual_files rather than the deprecated files, which silently drops
+// video-backed (animated) images
+export const IMAGE_FIELDS = `
+  ${COMMON_METADATA_FIELDS}
+  paths { thumbnail }
+  visual_files {
+    __typename
+    ... on ImageFile {
+      id
+      path
+      parent_folder { id }
+      zip_file_id
+      width
+      height
+      fingerprints { type value }
+    }
+    ... on VideoFile {
+      id
+      path
+      parent_folder { id }
+      zip_file_id
+      width
+      height
+      video_codec
+      audio_codec
+      bit_rate
+      frame_rate
+      fingerprints { type value }
+    }
+  }
+`;
+
+export const ENTITY_FIELDS: Record<string, string> = {
+  scenes: SCENE_FIELDS,
+  galleries: GALLERY_FIELDS,
+  images: IMAGE_FIELDS,
+};

@@ -1,27 +1,37 @@
 import { useState } from "react";
 import { useApolloClient } from "@apollo/client";
-import { planScene } from "../../core/plan-scene.js";
+import { planEntity } from "../../core/plan-scene.js";
 import {
   fetchPreviewRows,
   fetchScopedPreviewRows,
   PreviewSort,
-} from "./scene-preview-query.js";
+} from "./entity-preview-query.js";
 
-export function useManualScenePreview(config: any) {
+export function useManualEntityPreview(
+  config: any,
+  entityType: string = "scenes",
+) {
   const client = useApolloClient();
   // null = never run yet (distinct from [] = ran, zero matches).
   const [rows, setRows] = useState<{ scene: any; plan: any }[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   function run(
-    sceneFilter: any,
+    entityFilter: any,
     sort?: PreviewSort,
     isStolen?: (plan: any) => boolean,
   ) {
     setLoading(true);
     const promise = isStolen
-      ? fetchScopedPreviewRows(client, sceneFilter, config, sort, isStolen)
-      : fetchPreviewRows(client, sceneFilter, config, sort);
+      ? fetchScopedPreviewRows(
+          client,
+          entityFilter,
+          config,
+          sort,
+          isStolen,
+          entityType,
+        )
+      : fetchPreviewRows(client, entityFilter, config, sort, entityType);
     promise
       .then((plans: { scene: any; plan: any }[]) => {
         setRows(plans);
@@ -31,17 +41,20 @@ export function useManualScenePreview(config: any) {
       });
   }
 
-  function handleSceneOrganized(sceneId: string, patchedScene: any) {
+  function handleEntityOrganized(entityId: string, patchedEntity: any) {
     setRows(
       (prev) =>
         prev &&
         prev.map((row) =>
-          row.scene.id === sceneId
-            ? { scene: patchedScene, plan: planScene(patchedScene, config) }
+          row.scene.id === entityId
+            ? {
+                scene: patchedEntity,
+                plan: planEntity(patchedEntity, config, entityType),
+              }
             : row,
         ),
     );
   }
 
-  return { rows, loading, run, handleSceneOrganized };
+  return { rows, loading, run, handleEntityOrganized };
 }

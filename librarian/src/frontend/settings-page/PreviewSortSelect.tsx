@@ -1,5 +1,5 @@
 import React from "react";
-import { PREVIEW_SORT_FIELDS, SortDirection } from "./scene-preview-query.js";
+import { PREVIEW_SORT_FIELDS, SortDirection } from "./entity-preview-query.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Dropdown, ButtonGroup, Button, OverlayTrigger, Tooltip } =
@@ -31,7 +31,7 @@ export function PreviewSortSelect({
     <Dropdown as={ButtonGroup} className="librarian-sort-by-select">
       <Dropdown.Toggle
         variant="secondary"
-        title="Sort field for the sample of scenes fetched below"
+        title="Sort field for the sample fetched below"
       >
         {current ? current.label : ""}
       </Dropdown.Toggle>
