@@ -11,6 +11,7 @@ import { runRenameTask } from "../shared/stash-api.js";
 import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
 import {
   DEFAULT_PREVIEW_SORT,
+  PREVIEW_REFRESH_DEBOUNCE_MS,
   changeSortField,
   toggleSortDirection,
 } from "./entity-preview-query.js";
@@ -32,17 +33,14 @@ export function ConfigPreviewPanel({
   const client = useApolloClient();
   const [sort, setSort] = useState(DEFAULT_PREVIEW_SORT);
   const [closed, setClosed] = useState(true);
-  const { rows, loading, run, handleEntityOrganized } = useManualEntityPreview(
-    config,
-    type,
-  );
+  const { rows, loading, run, replan, handleEntityOrganized } =
+    useManualEntityPreview(config, type);
   const [confirming, setConfirming] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobInfo | null>(null);
   const running = !!jobId && (!job || !isTerminalStatus(job.status));
 
   const section: any = config[type] || {};
-  const sectionDefaultPattern: any = section.defaultPattern || {};
   const plural = adapterFor(type).plural;
 
   // Shared with the rule preview so the two cannot drift apart. The StashID
@@ -86,17 +84,37 @@ export function ConfigPreviewPanel({
     return "Rename job " + job.status.toLowerCase();
   }
 
-  const contentKey = JSON.stringify({
-    entityFilter: effectiveFilter,
-    folderPattern: sectionDefaultPattern.folderPattern,
-    filenamePattern: sectionDefaultPattern.filenamePattern,
-    sortBy: sectionDefaultPattern.sortBy,
-    spaceReplacement: config.sanitize && config.sanitize.spaceReplacement,
+  // Re-query only when the matching set could have changed; otherwise re-plan
+  // the rows already in hand. This preview plans against the whole section, so
+  // rules are part of the planning key: editing or reordering one changes it.
+  const filterKey = JSON.stringify({
+    entityType: type,
+    filter: effectiveFilter,
   });
+  const planKey = JSON.stringify({
+    rules: section.rules,
+    defaultPattern: section.defaultPattern,
+    delimiters: config.delimiters,
+    sanitize: config.sanitize,
+  });
+
   useEffect(() => {
-    setClosed(true);
+    if (rows === null || closed) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      run(effectiveFilter, sort);
+    }, PREVIEW_REFRESH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentKey]);
+  }, [filterKey]);
+
+  useEffect(() => {
+    if (rows !== null && !closed) {
+      replan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planKey]);
 
   const sortKey = JSON.stringify(sort);
   useEffect(() => {

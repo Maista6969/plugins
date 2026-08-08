@@ -297,7 +297,13 @@ function SettingsPageContent() {
           Shows what the current rules would do to a sample of recent{" "}
           {adapterFor(entityType).plural}
         </p>
-        <ConfigPreviewPanel config={config} entityType={entityType} />
+        {/* keyed like the settings panel so switching tabs cannot leave rows
+            from another entity type on screen */}
+        <ConfigPreviewPanel
+          key={entityType}
+          config={config}
+          entityType={entityType}
+        />
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
   PERFORMER_SORT_TOKENS,
+  folderPatternMode,
 } from "../../core/path-template.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -74,6 +75,11 @@ export function EntitySettingsPanel({
     "galleries",
     entityType === "galleries" ? { is_zip: false } : undefined,
   );
+
+  // A blank folder pattern keeps files in their own folder, so the library root
+  // has no effect. Hide the picker rather than letting it be set and ignored.
+  const keepsInPlace =
+    folderPatternMode(defaultPattern.folderPattern) === "keep";
 
   const usesStashId =
     patternUsesAnyToken(defaultPattern.folderPattern, ["stash_id"]) ||
@@ -171,14 +177,23 @@ export function EntitySettingsPanel({
             Will be used for every {noun} unless they have a more specific rule
             above
           </p>
-          <LibraryRootPicker
-            value={defaultPattern.libraryRoot}
-            entityType={entityType}
-            subHeading={"The library that " + plural + " end up in by default"}
-            onChange={(libraryRoot: string) =>
-              updateDefaultPattern({ libraryRoot })
-            }
-          />
+          {keepsInPlace ? (
+            <p className="librarian-token-hint text-muted">
+              The folder pattern below is blank, so each {noun} keeps the folder
+              it is already in and no library root is needed. Give the folder
+              pattern a value (or “/” for the library root itself) to move{" "}
+              {plural} into a library.
+            </p>
+          ) : (
+            <LibraryRootPicker
+              value={defaultPattern.libraryRoot}
+              entityType={entityType}
+              subHeading={"The library that " + plural + " end up in by default"}
+              onChange={(libraryRoot: string) =>
+                updateDefaultPattern({ libraryRoot })
+              }
+            />
+          )}
 
           <PatternInput
             label="Folder pattern"

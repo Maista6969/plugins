@@ -1066,3 +1066,25 @@ test("whitespace-only folder patterns keep files put rather than creating a fold
   assert.equal(result.status, "ok");
   assert.equal(result.files[0].folder, "/data/old");
 });
+
+test("re-planning the same raw scene with a changed config yields the new result, which is what the preview's local re-plan relies on", () => {
+  const raw = JSON.parse(JSON.stringify(normalOrganizedScene));
+  const before = planScene(raw, baseConfig());
+  const after = planScene(
+    raw,
+    baseConfig({
+      defaultPattern: { folderPattern: "{studio}", filenamePattern: "{title}" },
+    }),
+  );
+  assert.equal(before.files[0].folder, "/data/Parent Co/Leaf Studio");
+  assert.equal(after.files[0].folder, "/data/Leaf Studio");
+  assert.equal(after.files[0].basename, "Normal Scene.mp4");
+});
+
+test("planning does not mutate the raw scene it was given, so a row can be re-planned repeatedly", () => {
+  const raw = JSON.parse(JSON.stringify(normalOrganizedScene));
+  const snapshot = JSON.stringify(raw);
+  planScene(raw, baseConfig());
+  planScene(raw, baseConfig({ defaultPattern: { folderPattern: "{studio}" } }));
+  assert.equal(JSON.stringify(raw), snapshot);
+});

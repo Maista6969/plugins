@@ -7,6 +7,7 @@ import { ApplyRuleButton } from "./ApplyRuleButton.js";
 import { adapterFor } from "../../core/entity-adapter.js";
 import {
   DEFAULT_PREVIEW_SORT,
+  PREVIEW_REFRESH_DEBOUNCE_MS,
   changeSortField,
   toggleSortDirection,
 } from "./entity-preview-query.js";
@@ -27,7 +28,7 @@ export function RulePreviewPanel({
 }: RulePreviewPanelProps) {
   const type = entityType || "scenes";
   const sceneFilter = ruleToPreviewFilter(rule, config[type]);
-  const { rows, loading, run, handleEntityOrganized } = useManualEntityPreview(
+  const { rows, loading, run, replan, handleEntityOrganized } = useManualEntityPreview(
     config,
     type,
   );
@@ -54,17 +55,36 @@ export function RulePreviewPanel({
     run(sceneFilter, sort, isStolenByAnotherRule);
   }
 
-  const ruleContentKey = JSON.stringify({
-    sceneFilter,
-    folderPattern: rule.folderPattern,
-    filenamePattern: rule.filenamePattern,
-    sortBy: rule.sortBy,
-    spaceReplacement: config.sanitize && config.sanitize.spaceReplacement,
+  // Two kinds of invalidation. A different filter means a different set of
+  // matching entities, so the server has to be asked again. Anything else only
+  // changes the rendered outcome for entities already in hand, so re-plan
+  // locally: that keeps typing in a pattern free of a query per keystroke.
+  const filterKey = JSON.stringify({ entityType: type, filter: sceneFilter });
+  // conditions are deliberately left out, being already covered by filterKey
+  const { conditions, conditionLogic, ...planningRule } = rule;
+  const planKey = JSON.stringify({
+    rule: planningRule,
+    delimiters: config.delimiters,
+    sanitize: config.sanitize,
   });
+
   useEffect(() => {
-    setClosed(true);
+    if (rows === null || closed) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      run(sceneFilter, sort, isStolenByAnotherRule);
+    }, PREVIEW_REFRESH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ruleContentKey]);
+  }, [filterKey]);
+
+  useEffect(() => {
+    if (rows !== null && !closed) {
+      replan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planKey]);
 
   const sortKey = JSON.stringify(sort);
   useEffect(() => {

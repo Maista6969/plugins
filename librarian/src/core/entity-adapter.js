@@ -50,7 +50,7 @@ const GALLERIES = {
       return {
         reason: "folder_gallery",
         message:
-          "this gallery is a folder of loose images rather than a zip. Stash has no way to move or rename a gallery folder, and moving the images individually would leave this gallery (with its title, date, rating and tags) behind on the old folder while a new empty gallery is created for the new one. Convert it to a zip if you want Librarian to rename it",
+          "this gallery is a folder of loose images, convert it to a zip if you want Librarian to rename it",
       };
     }
     return null;
@@ -61,10 +61,12 @@ const IMAGES = {
   noun: "image",
   plural: "images",
   label: "Images",
-  // ImageFile exposes format/width/height, so resolution resolves but the
-  // video-only tokens do not
-  tokens: METADATA_TOKENS.concat(["resolution"]),
-  fileTechTokens: ["resolution"],
+  // No file-tech tokens. Stash has no imageMerge, and scanning only associates
+  // files by exact-content hash, so the several files an image can hold are
+  // always byte-identical duplicates: resolution could never tell them apart.
+  // Scenes are the only type where files of differing quality coexist, via sceneMerge.
+  tokens: METADATA_TOKENS,
+  fileTechTokens: [],
   // files is deprecated and silently drops video-backed images, so an animated
   // image would look like it simply had no files
   files: (raw) => {

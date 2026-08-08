@@ -13,6 +13,7 @@ import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
   PERFORMER_SORT_TOKENS,
+  folderPatternMode,
 } from "../../core/path-template.js";
 import type { Rule } from "./RuleEditor.js";
 
@@ -67,6 +68,8 @@ export function RuleEditModal({
 }: RuleEditModalProps) {
   const type = entityType || "scenes";
   const adapter = adapterFor(type);
+  // same reasoning as the default pattern: a keep-in-place rule ignores its root
+  const keepsInPlace = folderPatternMode(rule.folderPattern) === "keep";
   const ruleFilter = ruleToPreviewFilter(rule, config[type]);
   const matchCount = useEntityCount(
     type,
@@ -95,12 +98,21 @@ export function RuleEditModal({
             placeholder="e.g. OnlyFans performers"
           />
 
-          <LibraryRootPicker
-            value={rule.libraryRoot || ""}
-            entityType={entityType}
-            subHeading="The root library path for which this rule is based"
-            onChange={(libraryRoot) => onChange({ ...rule, libraryRoot })}
-          />
+          {keepsInPlace ? (
+            <p className="librarian-token-hint text-muted">
+              This rule's folder pattern is blank, so matching{" "}
+              {adapter.plural} keep the folder they are already in and no library
+              root is needed. Give the folder pattern a value (or “/” for the
+              library root itself) to move them into a library.
+            </p>
+          ) : (
+            <LibraryRootPicker
+              value={rule.libraryRoot || ""}
+              entityType={entityType}
+              subHeading="The root library path for which this rule is based"
+              onChange={(libraryRoot) => onChange({ ...rule, libraryRoot })}
+            />
+          )}
 
           <PatternInput
             label="Folder pattern"

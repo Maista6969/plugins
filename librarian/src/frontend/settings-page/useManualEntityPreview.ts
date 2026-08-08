@@ -41,6 +41,19 @@ export function useManualEntityPreview(
       });
   }
 
+  // Plans are computed client-side, so a pattern or formatting change only needs
+  // the rows in hand re-planned: no reason to re-query for the same entities
+  function replan() {
+    setRows(
+      (prev) =>
+        prev &&
+        prev.map((row) => ({
+          scene: row.scene,
+          plan: planEntity(row.scene, config, entityType),
+        })),
+    );
+  }
+
   function handleEntityOrganized(entityId: string, patchedEntity: any) {
     setRows(
       (prev) =>
@@ -56,5 +69,5 @@ export function useManualEntityPreview(
     );
   }
 
-  return { rows, loading, run, handleEntityOrganized };
+  return { rows, loading, run, replan, handleEntityOrganized };
 }

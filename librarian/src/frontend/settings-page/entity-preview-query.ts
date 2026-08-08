@@ -36,6 +36,10 @@ export const SAMPLE_QUERIES: Record<string, any> = {
 
 export const SAMPLE_SIZE = 10;
 
+// Conditions include free-text inputs (the path criterion), so an open preview
+// waits for typing to settle before re-querying
+export const PREVIEW_REFRESH_DEBOUNCE_MS = 350;
+
 export type SortDirection = "ASC" | "DESC";
 
 export interface PreviewSortField {
