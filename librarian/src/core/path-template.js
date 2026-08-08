@@ -1,4 +1,10 @@
 import { sortEntities } from "./entity-sort.js";
+import {
+  scanPattern,
+  splitTopLevel,
+  applyEntityModifiers,
+  applyTextModifiers,
+} from "./token-grammar.js";
 
 export const KNOWN_TOKENS = [
   "studio",
@@ -137,27 +143,35 @@ export function sanitizeSegment(segment, sanitizeOptions) {
   return result === "" ? "_" : result;
 }
 
-function sanitizeList(names) {
-  return names.map((name) => {
-    return sanitizeTokenValue(name);
+function entitiesForIds(entities, idsToKeep) {
+  const keep = idsToKeep || [];
+  return entities.filter((e) => {
+    return keep.indexOf(e.id) !== -1;
   });
 }
 
-function namesForEntities(entities, idsToKeep) {
-  const keep = idsToKeep || [];
-  return entities
-    .filter((e) => {
-      return keep.indexOf(e.id) !== -1;
-    })
-    .map((e) => {
-      return e.name;
-    });
+// Multi-value tokens carry their entities rather than a pre-joined string, so a
+// modifier can filter on fields other than the name. A marker property rather
+// than a class keeps this Goja-safe
+function listValue(entities, delimiter) {
+  return { __list: true, entities: entities, delimiter: delimiter };
 }
 
-// count === null/undefined means "no limit" (the whole list).
-function joinList(list, count, delimiter) {
-  const limited = count != null ? list.slice(0, count) : list;
-  return limited.join(delimiter);
+// The one place a token turns into text. Order is fixed: filter, then limit,
+// then sanitize each name, then join, then rewrite the result
+function renderTokenValue(value, parsed) {
+  if (value && value.__list) {
+    let entities = applyEntityModifiers(value.entities, parsed);
+    if (parsed.limit != null) {
+      entities = entities.slice(0, parsed.limit);
+    }
+    const names = entities.map((e) => {
+      return sanitizeTokenValue(e.name);
+    });
+    return applyTextModifiers(names.join(value.delimiter), parsed);
+  }
+  // plain strings, and the probe maps filenameHasContentWithout builds
+  return applyTextModifiers(String(value), parsed);
 }
 
 const YEAR_RE = /^(\d{4})/;
@@ -186,28 +200,18 @@ export function buildTokens(sceneView, config, matchedIds) {
   const sortedTags = sortEntities(sceneView.tags || [], "alphabetical", (t) => {
     return t.sort_name || t.name;
   });
-  const sortedPerformerNames = sortedPerformers.map((p) => {
-    return p.name;
-  });
-  const sortedTagNames = sortedTags.map((t) => {
-    return t.name;
-  });
-
-  const sanitizedPerformers = sanitizeList(sortedPerformerNames);
-  const sanitizedTags = sanitizeList(sortedTagNames);
-
+  // compared against the raw name, before sanitizing strips characters the
+  // title still contains
   const titleLower = (sceneView.title || "").toLowerCase();
-  const rawPerformersNotInTitle = sortedPerformerNames.filter((name) => {
-    return titleLower.indexOf(name.toLowerCase()) === -1;
+  const performersNotInTitle = sortedPerformers.filter((p) => {
+    return titleLower.indexOf((p.name || "").toLowerCase()) === -1;
   });
-  const performersNotInTitle = sanitizeList(rawPerformersNotInTitle);
 
-  const matchedPerformers = sanitizeList(
-    namesForEntities(sortedPerformers, matched.performerIds),
+  const matchedPerformers = entitiesForIds(
+    sortedPerformers,
+    matched.performerIds,
   );
-  const matchedTags = sanitizeList(
-    namesForEntities(sortedTags, matched.tagIds),
-  );
+  const matchedTags = entitiesForIds(sortedTags, matched.tagIds);
 
   const stashBoxEndpoint = matched.stashBoxEndpoint || "";
   const stashIdEntry = stashBoxEndpoint
@@ -221,15 +225,17 @@ export function buildTokens(sceneView, config, matchedIds) {
     studio_root: sanitizeTokenValue(studioRoot),
     // The one token deliberately exempt from having "/" stripped because it's supposed to build a directory hierarchy
     studio_hierarchy: chain.map((name) => sanitizeTokenValue(name)).join("/"),
-    performers: (count) =>
-      joinList(sanitizedPerformers, count, delimiters.performers || ", "),
-    performers_not_in_title: (count) =>
-      joinList(performersNotInTitle, count, delimiters.performers || ", "),
-    matched_performers: (count) =>
-      joinList(matchedPerformers, count, delimiters.performers || ", "),
-    tags: (count) => joinList(sanitizedTags, count, delimiters.tags || ", "),
-    matched_tags: (count) =>
-      joinList(matchedTags, count, delimiters.tags || ", "),
+    performers: listValue(sortedPerformers, delimiters.performers || ", "),
+    performers_not_in_title: listValue(
+      performersNotInTitle,
+      delimiters.performers || ", ",
+    ),
+    matched_performers: listValue(
+      matchedPerformers,
+      delimiters.performers || ", ",
+    ),
+    tags: listValue(sortedTags, delimiters.tags || ", "),
+    matched_tags: listValue(matchedTags, delimiters.tags || ", "),
     title: sanitizeTokenValue(sceneView.title || ""),
     code: sanitizeTokenValue(sceneView.code || ""),
     date: sanitizeTokenValue(sceneView.date || ""),
@@ -366,31 +372,19 @@ const TOKEN_REQUIREMENTS = {
   },
 };
 
-const TOKEN_REGEX = /\{(\w+)(?::(\d+))?(\?)?\}/g;
-
 function parseParts(pattern) {
+  const text = pattern || "";
   const parts = [];
   let lastIndex = 0;
-  let match;
-  const regex = new RegExp(TOKEN_REGEX.source, "g");
-  while ((match = regex.exec(pattern)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({
-        type: "literal",
-        text: pattern.slice(lastIndex, match.index),
-      });
+  scanPattern(text).forEach((token) => {
+    if (token.index > lastIndex) {
+      parts.push({ type: "literal", text: text.slice(lastIndex, token.index) });
     }
-    parts.push({
-      type: "token",
-      name: match[1],
-      count: match[2],
-      optional: match[3] === "?",
-      raw: match[0],
-    });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < pattern.length) {
-    parts.push({ type: "literal", text: pattern.slice(lastIndex) });
+    parts.push(Object.assign({ type: "token" }, token));
+    lastIndex = token.index + token.raw.length;
+  });
+  if (lastIndex < text.length) {
+    parts.push({ type: "literal", text: text.slice(lastIndex) });
   }
   return parts;
 }
@@ -432,15 +426,19 @@ function renderParts(parts, tokens) {
       return;
     }
 
-    if (!Object.prototype.hasOwnProperty.call(tokens, part.name)) {
+    // A malformed body ("{studio bogus}") renders as the literal text the user
+    // typed, which is what an unknown token has always done. The scanner is
+    // looser than the grammar so it can *report* these; it must not start
+    // rendering them as if the junk were not there
+    if (
+      part.errors.length > 0 ||
+      !Object.prototype.hasOwnProperty.call(tokens, part.name)
+    ) {
       output += part.raw;
       return;
     }
 
-    const value = tokens[part.name];
-    const count = part.count !== undefined ? parseInt(part.count, 10) : null;
-    const rendered =
-      typeof value === "function" ? String(value(count)) : String(value);
+    const rendered = renderTokenValue(tokens[part.name], part);
     if (part.optional) {
       optionalTokenCount++;
       if (rendered !== "") {
@@ -458,7 +456,9 @@ function renderParts(parts, tokens) {
 }
 
 function renderBracketAlternatives(text, tokens) {
-  const alternatives = text.split("|");
+  // "|" separates alternatives, but it also separates a token's modifiers, so
+  // the split has to ignore any pipe inside braces
+  const alternatives = splitTopLevel(text, "|");
   for (let i = 0; i < alternatives.length; i++) {
     const parts = parseParts(alternatives[i]);
     const rendered = renderParts(parts, tokens);
@@ -488,26 +488,22 @@ export function renderTemplate(pattern, tokens) {
 }
 
 export function patternUsesAnyToken(pattern, tokenNames) {
-  let match;
-  const regex = new RegExp(TOKEN_REGEX.source, "g");
-  while ((match = regex.exec(pattern || "")) !== null) {
-    if (tokenNames.indexOf(match[1]) !== -1) {
-      return true;
-    }
-  }
-  return false;
+  return scanPattern(pattern).some((token) => {
+    return tokenNames.indexOf(token.name) !== -1;
+  });
 }
 
 export function findUnknownTokens(pattern, allowedTokens) {
   const allowed = allowedTokens || KNOWN_TOKENS;
   const unknown = [];
-  let match;
-  const regex = new RegExp(TOKEN_REGEX.source, "g");
-  while ((match = regex.exec(pattern)) !== null) {
-    if (allowed.indexOf(match[1]) === -1 && unknown.indexOf(match[1]) === -1) {
-      unknown.push(match[1]);
+  scanPattern(pattern).forEach((token) => {
+    if (
+      allowed.indexOf(token.name) === -1 &&
+      unknown.indexOf(token.name) === -1
+    ) {
+      unknown.push(token.name);
     }
-  }
+  });
   return unknown;
 }
 
@@ -521,17 +517,13 @@ export const METADATA_TOKENS = KNOWN_TOKENS.filter((t) => {
 });
 
 export function hasUnsafeOptionalOnlyBasename(filenamePattern) {
-  const regex = new RegExp(TOKEN_REGEX.source, "g");
-  let match;
-  let tokenCount = 0;
-  let allOptional = true;
-  while ((match = regex.exec(filenamePattern || "")) !== null) {
-    tokenCount++;
-    if (match[3] !== "?") {
-      allOptional = false;
-    }
-  }
-  return tokenCount > 0 && allOptional;
+  const tokens = scanPattern(filenamePattern);
+  return (
+    tokens.length > 0 &&
+    tokens.every((token) => {
+      return token.optional;
+    })
+  );
 }
 
 export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
@@ -540,13 +532,10 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
   const seen = {};
   const seenMessages = {};
   patterns.forEach((pattern) => {
-    let match;
-    const regex = new RegExp(TOKEN_REGEX.source, "g");
-    while ((match = regex.exec(pattern || "")) !== null) {
-      const tokenName = match[1];
-      const optional = match[3] === "?";
-      if (optional || seen[tokenName]) {
-        continue;
+    scanPattern(pattern).forEach((token) => {
+      const tokenName = token.name;
+      if (token.optional || seen[tokenName]) {
+        return;
       }
       const requirement = TOKEN_REQUIREMENTS[tokenName];
       const effectiveMatchedIds = matchedIds || EMPTY_MATCHED_IDS;
@@ -576,7 +565,7 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
           seenMessages[message] = true;
         }
       }
-    }
+    });
   });
   return missing;
 }

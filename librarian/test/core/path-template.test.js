@@ -936,3 +936,117 @@ test("folderPatternMode reads intent off the raw pattern, which renderPath would
   assert.equal(folderPatternMode("{studio?}"), "render");
   assert.equal(folderPatternMode("literal"), "render");
 });
+
+// "|" separates bracket alternatives AND a token's modifiers. Splitting a
+// bracket naively tears "{performers|thing=value}" into two halves and renders
+// garbage, so the split has to ignore pipes inside braces
+test("a '|' inside a token's modifiers does not start a new bracket alternative", () => {
+  const view = sceneView({ performerNames: ["Amy", "Zed"] });
+  assert.equal(
+    render("<{performers|limit=9}|no performers>", view),
+    "Amy, Zed",
+  );
+  assert.equal(
+    render(
+      "<{performers|limit=9?}|no performers>",
+      sceneView({ performerNames: [] }),
+    ),
+    "no performers",
+  );
+});
+
+test("the ? has to come last, and says so instead of being ignored", () => {
+  const view = sceneView();
+  // easy mistake when adding a modifier to a token that was already optional
+  assert.equal(render("{performers?|limit=9}", view), "{performers?|limit=9}");
+  assert.equal(render("{performers|limit=9?}", view), "Amy, Zed");
+});
+
+test("the documented <a|b|c> alternatives still split on their pipes", () => {
+  assert.equal(
+    render("<{date?}|missing-date>", sceneView({ date: "" })),
+    "missing-date",
+  );
+  assert.equal(
+    render("<{date?}|missing-date>", sceneView({ date: "2024-03-05" })),
+    "2024-03-05",
+  );
+});
+
+// Locks in rendering for the patterns the README teaches, so the grammar
+// refactor cannot quietly change what an existing user's pattern produces
+test("README example patterns render exactly as documented", () => {
+  const view = sceneView({
+    title: "My Title",
+    code: "v1234",
+    date: "2024-03-05",
+    studioNames: ["OnlyFans"],
+    performerNames: ["Ava Kensington", "Marcus Chen"],
+    rating100: 85,
+  });
+  assert.equal(render("{studio_hierarchy}", view), "OnlyFans");
+  assert.equal(
+    render("{studio} - {date} - {title}", view),
+    "OnlyFans - 2024-03-05 - My Title",
+  );
+  assert.equal(
+    render("{studio}<, {date?}>< - {title?}>", view),
+    "OnlyFans, 2024-03-05 - My Title",
+  );
+  assert.equal(
+    render("<{code?}|{date?}|xxx> - {performers}", view),
+    "v1234 - Ava Kensington, Marcus Chen",
+  );
+  assert.equal(
+    render(
+      "<{code?}|{date?}|xxx> - {performers}",
+      Object.assign({}, view, { code: "" }),
+    ),
+    "2024-03-05 - Ava Kensington, Marcus Chen",
+  );
+  assert.equal(
+    render(
+      "<{code?}|{date?}|xxx> - {performers}",
+      Object.assign({}, view, { code: "", date: "" }),
+    ),
+    "xxx - Ava Kensington, Marcus Chen",
+  );
+  assert.equal(
+    render("{performers_not_in_title:2?}", view),
+    "Ava Kensington, Marcus Chen",
+  );
+  assert.equal(render("< ({code?})| [{date?}]>", view), " (v1234)");
+  assert.equal(
+    render("< ({code?})| [{date?}]>", Object.assign({}, view, { code: "" })),
+    " [2024-03-05]",
+  );
+});
+
+// The scanner is looser than the grammar so malformed bodies can be reported.
+// It must not start rendering them: "{studio bogus}" is not a studio token
+test("a token with a malformed body renders literally, like an unknown token", () => {
+  const view = sceneView();
+  assert.equal(render("{studio bogus}", view), "{studio bogus}");
+  assert.equal(render("{performers:x}", view), "{performers:x}");
+  assert.equal(render("{nonsense}", view), "{nonsense}");
+});
+
+test("patternUsesAnyToken and hasUnsafeOptionalOnlyBasename see through modifiers", () => {
+  assert.equal(
+    patternUsesAnyToken("{performers|thing=value}", PERFORMER_SORT_TOKENS),
+    true,
+  );
+  assert.equal(
+    patternUsesAnyToken("{performers:1|thing=value?}", PERFORMER_SORT_TOKENS),
+    true,
+  );
+  assert.equal(patternUsesAnyToken("{title}", PERFORMER_SORT_TOKENS), false);
+  assert.equal(
+    hasUnsafeOptionalOnlyBasename("{performers|thing=value?}"),
+    true,
+  );
+  assert.equal(
+    hasUnsafeOptionalOnlyBasename("{performers|thing=value}"),
+    false,
+  );
+});
