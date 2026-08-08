@@ -48,6 +48,7 @@ export const SCENE_FIELDS = `
   files {
     id
     path
+    parent_folder { id }
     width
     height
     video_codec

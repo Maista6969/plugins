@@ -209,7 +209,7 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
         onMoveOne={applyOne}
         pendingSceneIds={pendingSceneIds}
         onSceneOrganized={setSceneOverride}
-        rules={config.rules}
+        rules={(config.scenes || {}).rules}
       />
     </div>
   );

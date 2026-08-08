@@ -601,6 +601,13 @@ export function joinBasename(folder, basename) {
   return f.replace(/[\\/]+$/, "") + sep + basename;
 }
 
+export function folderPatternMode(folderPattern) {
+  const raw = (folderPattern == null ? "" : String(folderPattern)).trim();
+  if (raw === "") return "keep";
+  if (/^[\\/]+$/.test(raw)) return "root";
+  return "render";
+}
+
 function filenameHasContentWithout(
   filenamePattern,
   tokens,

@@ -8,10 +8,10 @@ import {
   gqlFindDeadEntityIds,
 } from "./gql.js";
 import { normalizeConfig } from "../core/config-schema.js";
-import { pruneDeadLibraryRoots } from "../core/prune-dead-library-roots.js";
+import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
 import {
   collectEntityIds,
-  pruneDeadEntities,
+  pruneDeadEntitiesAll,
 } from "../core/prune-dead-entities.js";
 import { ruleToPreviewFilter } from "../core/rule-to-filter.js";
 import { describePatternPair } from "../core/path-template.js";
@@ -110,7 +110,7 @@ function runSweep(args) {
 
   try {
     const validPaths = gqlGetLibraryPaths();
-    const pruned = pruneDeadLibraryRoots(config, validPaths);
+    const pruned = pruneDeadLibraryRootsAll(config, validPaths);
     if (pruned.config !== config) {
       config = pruned.config;
       gqlConfigurePlugin(config);
@@ -121,7 +121,7 @@ function runSweep(args) {
 
   try {
     const suspiciousRules = [];
-    (config.rules || []).forEach((rule) => {
+    (config.scenes.rules || []).forEach((rule) => {
       if (
         rule.enabled === false ||
         !rule.conditions ||
@@ -129,7 +129,7 @@ function runSweep(args) {
       ) {
         return;
       }
-      const filter = ruleToPreviewFilter(rule, config);
+      const filter = ruleToPreviewFilter(rule, config.scenes);
       if (filter !== null && gqlCountScenes(filter) === 0) {
         suspiciousRules.push(rule);
       }
@@ -137,7 +137,7 @@ function runSweep(args) {
     if (suspiciousRules.length > 0) {
       const referencedIds = collectEntityIds({ rules: suspiciousRules });
       const deadIds = gqlFindDeadEntityIds(referencedIds);
-      const prunedEntities = pruneDeadEntities(config, deadIds);
+      const prunedEntities = pruneDeadEntitiesAll(config, deadIds);
       if (prunedEntities.config !== config) {
         config = prunedEntities.config;
         gqlConfigurePlugin(config);

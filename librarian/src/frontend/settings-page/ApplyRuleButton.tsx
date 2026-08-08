@@ -21,7 +21,7 @@ export function ApplyRuleButton({ rule, config }: ApplyRuleButtonProps) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobInfo | null>(null);
 
-  const sceneFilter = ruleToPreviewFilter(rule, config);
+  const sceneFilter = ruleToPreviewFilter(rule, config.scenes);
   const notReady = sceneFilter === null;
   const disabledRule = rule.enabled === false;
   const running = !!jobId && (!job || !isTerminalStatus(job.status));

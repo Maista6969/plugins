@@ -19,7 +19,7 @@ const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
 
 export function RulePreviewPanel({ rule, config }: RulePreviewPanelProps) {
-  const sceneFilter = ruleToPreviewFilter(rule, config);
+  const sceneFilter = ruleToPreviewFilter(rule, config.scenes);
   const { rows, loading, run, handleSceneOrganized } =
     useManualScenePreview(config);
   const [closed, setClosed] = useState(false);
@@ -116,7 +116,7 @@ export function RulePreviewPanel({ rule, config }: RulePreviewPanelProps) {
             <PlanResultTable
               rows={rows}
               onSceneOrganized={handleSceneOrganized}
-              rules={config.rules}
+              rules={(config.scenes || {}).rules}
             />
           )}
         </div>

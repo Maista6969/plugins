@@ -11,6 +11,7 @@ import {
   normalizePathForCompare,
   findMissingRequiredData,
   describePatternPair,
+  folderPatternMode,
 } from "./path-template.js";
 import { assignSuffixes } from "./file-ordering.js";
 import { deriveFileTech } from "./file-tech.js";
@@ -64,9 +65,19 @@ function dataError(
 // Used in both the frontend and in the Goja backend so it needs to
 // stay compatible with the limited JS environment the VM provides
 export function planScene(rawScene, config) {
+  return planEntity(rawScene, config, "scenes");
+}
+
+export function entitySettings(config, entityType) {
+  const cfg = config || {};
+  return Object.assign({}, cfg, cfg[entityType] || {});
+}
+
+export function planEntity(rawScene, config, entityType) {
+  const settings = entitySettings(config, entityType);
   const sceneView = normalizeScene(rawScene);
 
-  if (config.onlyOrganized && !sceneView.organized) {
+  if (settings.onlyOrganized && !sceneView.organized) {
     return {
       status: "skipped",
       reason: "not_organized",
@@ -76,8 +87,8 @@ export function planScene(rawScene, config) {
   }
 
   if (
-    config.onlyWithStashId &&
-    !hasRequiredStashId(sceneView, config.stashIdEndpoints)
+    settings.onlyWithStashId &&
+    !hasRequiredStashId(sceneView, settings.stashIdEndpoints)
   ) {
     return {
       status: "skipped",
@@ -87,7 +98,7 @@ export function planScene(rawScene, config) {
     };
   }
 
-  const excludeConditions = config.excludeConditions;
+  const excludeConditions = settings.excludeConditions;
   if (excludeConditions) {
     const matched = matchingConditions(
       sceneView,
@@ -116,23 +127,28 @@ export function planScene(rawScene, config) {
     };
   }
 
-  const matchedRule = matchRule(sceneView, config.rules || []);
+  const matchedRule = matchRule(sceneView, settings.rules || []);
   const folderPattern = matchedRule
     ? matchedRule.folderPattern
-    : (config.defaultPattern && config.defaultPattern.folderPattern) || "";
+    : (settings.defaultPattern && settings.defaultPattern.folderPattern) || "";
   const filenamePattern = matchedRule
     ? matchedRule.filenamePattern
-    : (config.defaultPattern && config.defaultPattern.filenamePattern) || "";
+    : (settings.defaultPattern && settings.defaultPattern.filenamePattern) ||
+      "";
   const sortBy =
     (matchedRule && matchedRule.sortBy) ||
-    (config.defaultPattern && config.defaultPattern.sortBy) ||
+    (settings.defaultPattern && settings.defaultPattern.sortBy) ||
     "alphabetical";
-  const renderConfig = Object.assign({}, config, { sortBy: sortBy });
+  const renderConfig = Object.assign({}, settings, { sortBy: sortBy });
+
+  const folderMode = folderPatternMode(folderPattern);
 
   const libraryRoot = matchedRule
     ? matchedRule.libraryRoot
-    : config.defaultPattern && config.defaultPattern.libraryRoot;
-  if (!libraryRoot) {
+    : settings.defaultPattern && settings.defaultPattern.libraryRoot;
+
+  // keep-in-place never leaves the file's own folder, so it needs no root
+  if (folderMode !== "keep" && !libraryRoot) {
     return dataError(
       "no_library_root",
       sceneView.id,
@@ -152,7 +168,7 @@ export function planScene(rawScene, config) {
 
   const stashBoxEndpoint =
     (matchedRule && matchedRule.stashBoxEndpoint) ||
-    (config.defaultPattern && config.defaultPattern.stashBoxEndpoint) ||
+    (settings.defaultPattern && settings.defaultPattern.stashBoxEndpoint) ||
     "";
   const matchedIds = {
     performerIds: getMatchedEntityIds(sceneView, matchedRule, "performer"),
@@ -226,9 +242,38 @@ export function planScene(rawScene, config) {
       );
     }
 
+    const current = splitPath(file.path);
+
+    if (folderMode === "render" && !rendered.folder) {
+      return dataError(
+        "empty_folder",
+        sceneView.id,
+        matchedRule,
+        folderPattern,
+        filenamePattern,
+        [
+          {
+            token: null,
+            message:
+              "the folder pattern produced no folder for this scene (every token is either optional or has no data). Refusing to guess: leave the folder pattern blank to keep files in their current folder, or set it to / to move them to the library root",
+          },
+        ],
+      );
+    }
+
     perFile.push({
       file: file,
-      folder: joinPath(libraryRoot, rendered.folder),
+      current: current,
+      // Move by folder id when keeping files put: it is authoritative, cannot
+      // create a folder hierarchy, and avoids re-parsing the path
+      folderId:
+        folderMode === "keep" && file.parent_folder
+          ? file.parent_folder.id
+          : null,
+      folder:
+        folderMode === "keep"
+          ? current.folder
+          : joinPath(libraryRoot, rendered.folder),
       basenameNoExt: rendered.basenameNoExt,
     });
   }
@@ -257,7 +302,7 @@ export function planScene(rawScene, config) {
     suffixed.forEach((s, i) => {
       const entry = group[i];
       const file = entry.file;
-      const current = splitPath(file.path);
+      const current = entry.current;
       const extension = getExtension(current.basename);
       const basename = s.basenameNoExt + extension;
       const currentFolder = normalizePathForCompare(current.folder);
@@ -267,6 +312,7 @@ export function planScene(rawScene, config) {
       resultByFileId[file.id] = {
         fileId: file.id,
         folder: entry.folder,
+        folderId: entry.folderId,
         basename: basename,
         currentBasename: current.basename,
         currentPath: file.path,

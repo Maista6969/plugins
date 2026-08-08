@@ -8,6 +8,7 @@ import {
   sanitizeTokenValue,
   normalizePathForCompare,
   joinBasename,
+  folderPatternMode,
   findUnknownTokens,
   findMissingRequiredData,
   hasUnsafeOptionalOnlyBasename,
@@ -920,4 +921,18 @@ test("the {stash_id} entry carries no endpoint when no source is configured, sin
   const view = sceneView({ stashIds: [] });
   const missing = findMissingRequiredData(["{stash_id}"], view);
   assert.equal(missing[0].endpoint, undefined);
+});
+
+test("folderPatternMode reads intent off the raw pattern, which renderPath would otherwise erase", () => {
+  // renderPath strips empty segments, so all of these render identically to ""
+  assert.equal(folderPatternMode(""), "keep");
+  assert.equal(folderPatternMode("   "), "keep");
+  assert.equal(folderPatternMode(undefined), "keep");
+  assert.equal(folderPatternMode(null), "keep");
+  assert.equal(folderPatternMode("/"), "root");
+  assert.equal(folderPatternMode("//"), "root");
+  assert.equal(folderPatternMode("\\"), "root");
+  assert.equal(folderPatternMode("{studio}"), "render");
+  assert.equal(folderPatternMode("{studio?}"), "render");
+  assert.equal(folderPatternMode("literal"), "render");
 });

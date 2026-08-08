@@ -1,3 +1,5 @@
+import { ENTITY_TYPES } from "./config-schema.js";
+
 function fieldEntityType(field) {
   if (field === "studio") return "studio";
   if (field === "performer") return "performer";
@@ -5,6 +7,53 @@ function fieldEntityType(field) {
   return null;
 }
 
+const ID_TYPES = ["performer", "tag", "studio"];
+
+export function collectEntityIdsAll(config) {
+  const ids = { performer: new Set(), tag: new Set(), studio: new Set() };
+  ENTITY_TYPES.forEach((type) => {
+    const section = config[type];
+    if (!section) {
+      return;
+    }
+    const sectionIds = collectEntityIds(section);
+    ID_TYPES.forEach((idType) => {
+      sectionIds[idType].forEach((id) => {
+        ids[idType].add(id);
+      });
+    });
+  });
+  return ids;
+}
+
+export function pruneDeadEntitiesAll(config, deadIds) {
+  let next = config;
+  let removedReferences = 0;
+  let removedRules = 0;
+
+  ENTITY_TYPES.forEach((type) => {
+    const section = config[type];
+    if (!section) {
+      return;
+    }
+    const result = pruneDeadEntities(section, deadIds);
+    if (result.config !== section) {
+      const patch = {};
+      patch[type] = result.config;
+      next = Object.assign({}, next, patch);
+    }
+    removedReferences += result.removedReferences;
+    removedRules += result.removedRules;
+  });
+
+  return {
+    config: next,
+    removedReferences: removedReferences,
+    removedRules: removedRules,
+  };
+}
+
+// Operates on a single entity-type section
 export function collectEntityIds(config) {
   const ids = { performer: new Set(), tag: new Set(), studio: new Set() };
 

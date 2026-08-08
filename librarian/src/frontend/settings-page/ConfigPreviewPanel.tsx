@@ -33,8 +33,11 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
   const [job, setJob] = useState<JobInfo | null>(null);
   const running = !!jobId && (!job || !isTerminalStatus(job.status));
 
+  const scenes: any = config.scenes || {};
+  const scenesDefaultPattern: any = scenes.defaultPattern || {};
+
   // shared with the rule preview so the two cannot drift apart
-  const effectiveFilter = configGateFilter(config);
+  const effectiveFilter = configGateFilter(scenes);
 
   const visible = rows !== null && !closed;
 
@@ -72,9 +75,9 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
 
   const contentKey = JSON.stringify({
     sceneFilter: effectiveFilter,
-    folderPattern: config.defaultPattern.folderPattern,
-    filenamePattern: config.defaultPattern.filenamePattern,
-    sortBy: config.defaultPattern.sortBy,
+    folderPattern: scenesDefaultPattern.folderPattern,
+    filenamePattern: scenesDefaultPattern.filenamePattern,
+    sortBy: scenesDefaultPattern.sortBy,
     spaceReplacement: config.sanitize && config.sanitize.spaceReplacement,
   });
   useEffect(() => {
@@ -167,7 +170,7 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
             <PlanResultTable
               rows={rows}
               onSceneOrganized={handleSceneOrganized}
-              rules={config.rules}
+              rules={scenes.rules}
             />
           )}
         </div>

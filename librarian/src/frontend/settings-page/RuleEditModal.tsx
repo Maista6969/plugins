@@ -49,7 +49,7 @@ export function RuleEditModal({
   config,
   hasEarlierActiveRule,
 }: RuleEditModalProps) {
-  const ruleFilter = ruleToPreviewFilter(rule, config);
+  const ruleFilter = ruleToPreviewFilter(rule, config.scenes);
   const matchCount = useSceneCount(
     ruleFilter === null ? undefined : ruleFilter,
   );
@@ -84,7 +84,8 @@ export function RuleEditModal({
 
           <PatternInput
             label="Folder pattern"
-            subHeading="May contain “/” or “\\” for multiple nested folder levels. Leave blank to place files directly under the library root"
+            isFolder
+            subHeading="May contain “/” or “\\” for multiple nested folder levels. Leave blank to keep files in their current folder, or use “/” to place them directly under the library root"
             value={rule.folderPattern}
             onChange={(folderPattern) => onChange({ ...rule, folderPattern })}
           />

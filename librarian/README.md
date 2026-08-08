@@ -95,10 +95,31 @@ that defines a subset, such as having a particular set of tags or performers, be
   only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
 
-**Folder patterns and nesting**: a folder pattern may contain `/` or `\` to nest folders, so
-`{studio}/{date_year}` and `{studio}\{date_year}` are equivalent and both produce two levels.
-Whichever you write, the finished path uses your library's own separator, so a Windows library
-ends up with backslashes throughout regardless of how the pattern was typed.
+**Folder pattern**: the folder pattern accepts the same syntax as the filename pattern, and additionally
+treats three cases specially:
+
+| Folder pattern           | Result                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| blank                    | **Keep each file in the folder it is already in**, renaming it but never moving it |
+| `/`                      | Place files directly under the library root                                        |
+| renders empty for a file | An error for that file, rather than a silent guess                                 |
+
+Leaving the folder pattern blank is the option to use if you maintain your own folder hierarchy by hand,
+or if an external tool depends on your existing structure, and you only want Librarian to fix filenames.
+
+The third row covers a pattern like `{studio?}` that is not blank but happens to render to nothing for a
+particular scene (here, one with no studio). Rather than quietly dropping such a file into the library
+root, Librarian reports it so you can decide: write `/` if the root really is what you want, or leave the
+pattern blank to keep those files where they are.
+
+> ⚠️ **Behaviour change in version 1.0**: a blank folder pattern used to mean "put files in the library root",
+> which flattened manually-organised folder hierarchies. It now means "leave files where they are".
+> If you were relying on the old behaviour, change your folder pattern to `/`.
+
+**Nesting**: a folder pattern may contain `/` or `\` to nest folders, so `{studio}/{date_year}` and
+`{studio}\{date_year}` are equivalent and both produce two levels. Whichever you write, the finished
+path uses your library's own separator, so a Windows library ends up with backslashes throughout
+regardless of how the pattern was typed.
 
 Only the separators you write in the pattern itself split folders. A token whose _value_ contains a
 slash never does: a tag literally named `Rock/Pop` renders as the single folder `Rock Pop` rather than

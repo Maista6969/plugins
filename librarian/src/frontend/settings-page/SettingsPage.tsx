@@ -8,10 +8,10 @@ import {
 } from "../shared/stash-api.js";
 import { normalizeConfig } from "../../core/config-schema.js";
 import {
-  collectEntityIds,
-  pruneDeadEntities,
+  collectEntityIdsAll,
+  pruneDeadEntitiesAll,
 } from "../../core/prune-dead-entities.js";
-import { pruneDeadLibraryRoots } from "../../core/prune-dead-library-roots.js";
+import { pruneDeadLibraryRootsAll } from "../../core/prune-dead-library-roots.js";
 import { RuleList } from "./RuleList.js";
 import { PatternInput } from "./PatternInput.js";
 import { TextSettingModal } from "./TextSettingModal.js";
@@ -118,7 +118,7 @@ function SettingsPageContent() {
   const { BooleanSetting } = PluginApi.components;
 
   const excludeFilter = config
-    ? ruleToPreviewFilter(config.excludeConditions, config)
+    ? ruleToPreviewFilter(config.scenes.excludeConditions, config.scenes)
     : null;
   const excludeCount = useSceneCount(
     excludeFilter === null ? undefined : excludeFilter,
@@ -129,9 +129,9 @@ function SettingsPageContent() {
     getConfiguration(client).then(async (cfg) => {
       let effectiveConfig = cfg;
       try {
-        const referencedIds = collectEntityIds(cfg);
+        const referencedIds = collectEntityIdsAll(cfg);
         const deadIds = await findDeadEntityIds(client, referencedIds);
-        const pruned = pruneDeadEntities(effectiveConfig, deadIds);
+        const pruned = pruneDeadEntitiesAll(effectiveConfig, deadIds);
         if (pruned.config !== effectiveConfig) {
           effectiveConfig = pruned.config;
           Toast.success(
@@ -143,7 +143,10 @@ function SettingsPageContent() {
       }
       try {
         const validPaths = await fetchLibraryPaths(client);
-        const prunedRoots = pruneDeadLibraryRoots(effectiveConfig, validPaths);
+        const prunedRoots = pruneDeadLibraryRootsAll(
+          effectiveConfig,
+          validPaths,
+        );
         if (prunedRoots.config !== effectiveConfig) {
           effectiveConfig = prunedRoots.config;
           Toast.success(
@@ -207,6 +210,16 @@ function SettingsPageContent() {
     setPendingConfig(next);
   }
 
+  function updateScenes(patch: any) {
+    updateConfig({ ...config, scenes: { ...config.scenes, ...patch } });
+  }
+
+  function updateSceneDefaultPattern(patch: any) {
+    updateScenes({
+      defaultPattern: { ...config.scenes.defaultPattern, ...patch },
+    });
+  }
+
   function renderLoadingIndicator() {
     if (updateSuccess === false) {
       return (
@@ -244,30 +257,26 @@ function SettingsPageContent() {
           id="librarian-auto-rename"
           heading="Automatic renaming"
           subHeading="Run the plugin on every scene update"
-          checked={!!config.autoRename}
-          onChange={(v: boolean) => updateConfig({ ...config, autoRename: v })}
+          checked={!!config.scenes.autoRename}
+          onChange={(v: boolean) => updateScenes({ autoRename: v })}
         />
         <BooleanSetting
           id="librarian-only-organized"
           heading="Only rename scenes marked Organized"
           subHeading="Avoids modifying scenes you haven't reviewed yet"
-          checked={!!config.onlyOrganized}
-          onChange={(v: boolean) =>
-            updateConfig({ ...config, onlyOrganized: v })
-          }
+          checked={!!config.scenes.onlyOrganized}
+          onChange={(v: boolean) => updateScenes({ onlyOrganized: v })}
         />
         <div className="setting-group">
           <BooleanSetting
             id="librarian-only-with-stash-id"
             heading="Only rename scenes with at least one StashID"
             subHeading="Avoids modifying scenes have not been matched against a stash-box"
-            checked={!!config.onlyWithStashId}
-            onChange={(v: boolean) =>
-              updateConfig({ ...config, onlyWithStashId: v })
-            }
+            checked={!!config.scenes.onlyWithStashId}
+            onChange={(v: boolean) => updateScenes({ onlyWithStashId: v })}
           />
           {/* Only worth choosing between sources when more than one is configured */}
-          {config.onlyWithStashId && stashBoxes.length > 1 && (
+          {config.scenes.onlyWithStashId && stashBoxes.length > 1 && (
             <div className="setting">
               <div>
                 <h3>Accepted sources</h3>
@@ -277,9 +286,9 @@ function SettingsPageContent() {
               </div>
               <div>
                 <StashBoxMultiSelect
-                  value={config.stashIdEndpoints}
+                  value={config.scenes.stashIdEndpoints}
                   onChange={(stashIdEndpoints: string[]) =>
-                    updateConfig({ ...config, stashIdEndpoints })
+                    updateScenes({ stashIdEndpoints })
                   }
                 />
               </div>
@@ -295,9 +304,9 @@ function SettingsPageContent() {
             of what other rules they would match
           </p>
           <ConditionsEditor
-            value={config.excludeConditions}
+            value={config.scenes.excludeConditions}
             onChange={(excludeConditions) =>
-              updateConfig({ ...config, excludeConditions })
+              updateScenes({ excludeConditions })
             }
           />
           {excludeCountText(excludeCount) && (
@@ -311,8 +320,8 @@ function SettingsPageContent() {
       <SettingsSection heading="Rules">
         <div className="content">
           <RuleList
-            rules={config.rules}
-            onChange={(rules) => updateConfig({ ...config, rules })}
+            rules={config.scenes.rules}
+            onChange={(rules) => updateScenes({ rules })}
             config={config}
           />
         </div>
@@ -373,81 +382,64 @@ function SettingsPageContent() {
             above
           </p>
           <LibraryRootPicker
-            value={config.defaultPattern.libraryRoot}
+            value={config.scenes.defaultPattern.libraryRoot}
             subHeading="The library that files end up in by default"
             onChange={(libraryRoot: string) =>
-              updateConfig({
-                ...config,
-                defaultPattern: { ...config.defaultPattern, libraryRoot },
-              })
+              updateSceneDefaultPattern({ libraryRoot })
             }
           />
 
           <PatternInput
             label="Folder pattern"
-            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Leave blank to place files directly under the library root"
-            value={config.defaultPattern.folderPattern}
+            isFolder
+            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Leave blank to keep files in their current folder, or use “/” to place them directly under the library root"
+            value={config.scenes.defaultPattern.folderPattern}
             onChange={(folderPattern: string) =>
-              updateConfig({
-                ...config,
-                defaultPattern: { ...config.defaultPattern, folderPattern },
-              })
+              updateSceneDefaultPattern({ folderPattern })
             }
           />
 
           <PatternInput
             label="Filename pattern"
             subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”"
-            value={config.defaultPattern.filenamePattern}
+            value={config.scenes.defaultPattern.filenamePattern}
             onChange={(filenamePattern: string) =>
-              updateConfig({
-                ...config,
-                defaultPattern: { ...config.defaultPattern, filenamePattern },
-              })
+              updateSceneDefaultPattern({ filenamePattern })
             }
             validate={(v) => !hasUnsafeOptionalOnlyBasename(v)}
           />
 
           {(patternUsesAnyToken(
-            config.defaultPattern.folderPattern,
+            config.scenes.defaultPattern.folderPattern,
             PERFORMER_SORT_TOKENS,
           ) ||
             patternUsesAnyToken(
-              config.defaultPattern.filenamePattern,
+              config.scenes.defaultPattern.filenamePattern,
               PERFORMER_SORT_TOKENS,
             )) && (
             <div>
               Sort performers{" "}
               <SortBySelect
-                value={config.defaultPattern.sortBy}
+                value={config.scenes.defaultPattern.sortBy}
                 onChange={(sortBy: string) =>
-                  updateConfig({
-                    ...config,
-                    defaultPattern: { ...config.defaultPattern, sortBy },
-                  })
+                  updateSceneDefaultPattern({ sortBy })
                 }
               />
             </div>
           )}
 
-          {(patternUsesAnyToken(config.defaultPattern.folderPattern, [
+          {(patternUsesAnyToken(config.scenes.defaultPattern.folderPattern, [
             "stash_id",
           ]) ||
-            patternUsesAnyToken(config.defaultPattern.filenamePattern, [
+            patternUsesAnyToken(config.scenes.defaultPattern.filenamePattern, [
               "stash_id",
             ])) && (
             <div>
               StashID source{" "}
               <StashBoxSelect
-                value={config.defaultPattern.stashBoxEndpoint}
+                value={config.scenes.defaultPattern.stashBoxEndpoint}
                 onChange={(stashBoxEndpoint: string) =>
-                  updateConfig({
-                    ...config,
-                    defaultPattern: {
-                      ...config.defaultPattern,
-                      stashBoxEndpoint,
-                    },
-                  })
+                  updateSceneDefaultPattern({ stashBoxEndpoint })
                 }
               />
             </div>

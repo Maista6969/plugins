@@ -9,6 +9,7 @@ const CONFIGURATION_QUERY = gql`
         stashes {
           path
           excludeVideo
+          excludeImage
         }
         stashBoxes {
           name
@@ -71,14 +72,30 @@ export async function setConfiguration(client: any, config: any) {
   });
 }
 
-export async function fetchLibraryPaths(client: any): Promise<string[]> {
+export interface LibraryPathsByType {
+  scenes: string[];
+  galleries: string[];
+  images: string[];
+}
+
+// A Stash library path can opt out of video and images independently, so the
+// valid roots differ per entity type
+export async function fetchLibraryPaths(
+  client: any,
+): Promise<LibraryPathsByType> {
   const { data } = await client.query({
     query: CONFIGURATION_QUERY,
     variables: { include: [PLUGIN_ID] },
     fetchPolicy: "no-cache",
   });
   const stashes = data?.configuration?.general?.stashes || [];
-  return stashes.filter((s: any) => !s.excludeVideo).map((s: any) => s.path);
+  const pathsFor = (excluded: string) =>
+    stashes.filter((s: any) => !s[excluded]).map((s: any) => s.path);
+  return {
+    scenes: pathsFor("excludeVideo"),
+    galleries: pathsFor("excludeImage"),
+    images: pathsFor("excludeImage"),
+  };
 }
 
 export interface StashBoxSummary {

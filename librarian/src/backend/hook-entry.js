@@ -5,11 +5,8 @@ import {
   gqlConfigurePlugin,
 } from "./gql.js";
 import { normalizeConfig } from "../core/config-schema.js";
-import { pruneDeadLibraryRoots } from "../core/prune-dead-library-roots.js";
-import {
-  describePatternPair,
-  joinBasename,
-} from "../core/path-template.js";
+import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
+import { describePatternPair, joinBasename } from "../core/path-template.js";
 import { renameScene } from "./core-runner.js";
 
 function logInfo(message) {
@@ -35,12 +32,12 @@ export function run(args) {
 
     const rawConfig = gqlGetConfig();
     let config = normalizeConfig(rawConfig);
-    if (!config.autoRename) {
+    if (!config.scenes.autoRename) {
       return { Output: "skipped: automatic renaming is disabled" };
     }
     try {
       const validPaths = gqlGetLibraryPaths();
-      const pruned = pruneDeadLibraryRoots(config, validPaths);
+      const pruned = pruneDeadLibraryRootsAll(config, validPaths);
       if (pruned.config !== config) {
         config = pruned.config;
         gqlConfigurePlugin(config);

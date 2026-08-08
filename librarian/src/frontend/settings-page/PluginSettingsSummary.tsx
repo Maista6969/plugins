@@ -3,6 +3,7 @@ import { useApolloClient } from "@apollo/client";
 import { Link } from "react-router-dom";
 import { getConfiguration } from "../shared/stash-api.js";
 import { SETTINGS_ROUTE } from "../shared/SettingsLink.js";
+import { folderPatternMode } from "../../core/path-template.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -29,7 +30,8 @@ export function PluginSettingsSummary() {
     );
   }
 
-  const rules: any[] = config.rules || [];
+  const scenes: any = config.scenes || {};
+  const rules: any[] = scenes.rules || [];
   const enabledRules = rules.filter((r) => r.enabled !== false);
   const UNNAMED_RULE_RE = /^Unnamed rule( \d+)?$/;
   const namedEnabledRules = enabledRules.filter(
@@ -37,9 +39,12 @@ export function PluginSettingsSummary() {
   );
   const unnamedEnabledCount = enabledRules.length - namedEnabledRules.length;
 
+  // keep-in-place patterns never leave the file's own folder, so they need no root
+  const rootRequired = (p: any) =>
+    folderPatternMode(p && p.folderPattern) !== "keep" && !p.libraryRoot;
   const needsLibraryRoot =
-    !config.defaultPattern.libraryRoot ||
-    rules.some((r) => r.enabled !== false && !r.libraryRoot);
+    rootRequired(scenes.defaultPattern || {}) ||
+    rules.some((r) => r.enabled !== false && rootRequired(r));
 
   function renderRulesList() {
     if (rules.length === 0) {

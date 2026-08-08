@@ -37,6 +37,7 @@ export const SCENE_FIELDS = `
   files {
     id
     path
+    parent_folder { id }
     width
     height
     video_codec
@@ -83,6 +84,7 @@ const LIBRARY_PATHS_QUERY = `
         stashes {
           path
           excludeVideo
+          excludeImage
         }
       }
     }
@@ -128,8 +130,18 @@ export function gqlFindScene(id) {
   return doQuery(FIND_SCENE_QUERY, { id: id }).findScene;
 }
 
-export function gqlMoveFile(fileId, destinationFolder, destinationBasename) {
-  const input = { ids: [fileId], destination_folder: destinationFolder };
+export function gqlMoveFile(
+  fileId,
+  destinationFolder,
+  destinationBasename,
+  destinationFolderId,
+) {
+  const input = { ids: [fileId] };
+  if (destinationFolderId) {
+    input.destination_folder_id = destinationFolderId;
+  } else {
+    input.destination_folder = destinationFolder;
+  }
   if (destinationBasename) {
     input.destination_basename = destinationBasename;
   }
@@ -149,7 +161,14 @@ export function gqlGetLibraryPaths() {
       result.configuration.general &&
       result.configuration.general.stashes) ||
     [];
-  return stashes.filter((s) => !s.excludeVideo).map((s) => s.path);
+  const pathsFor = (excluded) => {
+    return stashes.filter((s) => !s[excluded]).map((s) => s.path);
+  };
+  return {
+    scenes: pathsFor("excludeVideo"),
+    galleries: pathsFor("excludeImage"),
+    images: pathsFor("excludeImage"),
+  };
 }
 
 export function gqlConfigurePlugin(config) {

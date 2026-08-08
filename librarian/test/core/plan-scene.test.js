@@ -807,7 +807,7 @@ test("a matched rule's OWN libraryRoot is used, not the default pattern's", () =
         enabled: true,
         conditionLogic: "AND",
         conditions: [{ field: "tag", op: "any_of", value: ["t1"] }],
-        folderPattern: "",
+        folderPattern: "/",
         filenamePattern: "{title}",
         libraryRoot: "/data/archive",
       },
@@ -828,7 +828,7 @@ test("a scene matching no rule uses the default pattern's own libraryRoot", () =
         conditions: [
           { field: "tag", op: "any_of", value: ["tag-nonexistent"] },
         ],
-        folderPattern: "",
+        folderPattern: "/",
         filenamePattern: "{title}",
         libraryRoot: "/data/archive",
       },
@@ -842,7 +842,7 @@ test("a scene matching no rule uses the default pattern's own libraryRoot", () =
 test("a matched rule with NO libraryRoot of its own errors as 'no_library_root', not a silent skip or a bad path", () => {
   const config = normalizeConfig({
     defaultPattern: {
-      folderPattern: "",
+      folderPattern: "/",
       filenamePattern: "{title}",
       libraryRoot: "/data/main",
     },
@@ -852,7 +852,7 @@ test("a matched rule with NO libraryRoot of its own errors as 'no_library_root',
         enabled: true,
         conditionLogic: "AND",
         conditions: [{ field: "tag", op: "any_of", value: ["t1"] }],
-        folderPattern: "",
+        folderPattern: "/",
         filenamePattern: "{title}",
       },
     ],
@@ -866,7 +866,7 @@ test("a matched rule with NO libraryRoot of its own errors as 'no_library_root',
 
 test("a scene falling through to a default pattern with NO libraryRoot errors as 'no_library_root' too", () => {
   const config = normalizeConfig({
-    defaultPattern: { folderPattern: "", filenamePattern: "{title}" },
+    defaultPattern: { folderPattern: "/", filenamePattern: "{title}" },
     rules: [],
   });
   const result = planScene(normalOrganizedScene, config);
@@ -956,7 +956,10 @@ function sceneWithStashIds(endpoints) {
 
 test("onlyWithStashId accepts a StashID from any source when no sources are chosen", () => {
   const config = baseConfig({ onlyWithStashId: true, stashIdEndpoints: [] });
-  assert.equal(planScene(sceneWithStashIds(["https://a/graphql"]), config).status, "ok");
+  assert.equal(
+    planScene(sceneWithStashIds(["https://a/graphql"]), config).status,
+    "ok",
+  );
   assert.equal(planScene(sceneWithStashIds([]), config).status, "skipped");
 });
 
@@ -965,10 +968,19 @@ test("onlyWithStashId requires a StashID from one of the chosen sources", () => 
     onlyWithStashId: true,
     stashIdEndpoints: ["https://a/graphql", "https://b/graphql"],
   });
-  assert.equal(planScene(sceneWithStashIds(["https://a/graphql"]), config).status, "ok");
-  assert.equal(planScene(sceneWithStashIds(["https://b/graphql"]), config).status, "ok");
   assert.equal(
-    planScene(sceneWithStashIds(["https://a/graphql", "https://c/graphql"]), config).status,
+    planScene(sceneWithStashIds(["https://a/graphql"]), config).status,
+    "ok",
+  );
+  assert.equal(
+    planScene(sceneWithStashIds(["https://b/graphql"]), config).status,
+    "ok",
+  );
+  assert.equal(
+    planScene(
+      sceneWithStashIds(["https://a/graphql", "https://c/graphql"]),
+      config,
+    ).status,
     "ok",
   );
 
@@ -984,4 +996,73 @@ test("chosen sources are ignored while onlyWithStashId is off", () => {
     stashIdEndpoints: ["https://a/graphql"],
   });
   assert.equal(planScene(sceneWithStashIds([]), config).status, "ok");
+});
+
+test("a blank folder pattern keeps the file in its current folder rather than flattening to the library root", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "", filenamePattern: "{title}" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data/old");
+  assert.equal(result.files[0].basename, "Normal Scene.mp4");
+});
+
+test("a blank folder pattern moves by parent folder id so the path is never re-parsed", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "", filenamePattern: "{title}" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.files[0].folderId, "f-old");
+});
+
+test("a blank folder pattern needs no libraryRoot, since the file never leaves its folder", () => {
+  const config = normalizeConfig({
+    defaultPattern: { folderPattern: "", filenamePattern: "{title}" },
+    rules: [],
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data/old");
+});
+
+test("a blank folder pattern reports unchanged when the basename already matches", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "", filenamePattern: "old" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.files[0].basename, "old.mp4");
+  assert.equal(result.files[0].unchanged, true);
+});
+
+test("an explicit / folder pattern still targets the library root", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "/", filenamePattern: "{title}" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data");
+  assert.equal(result.files[0].folderId, null);
+});
+
+test("a non-empty folder pattern that renders empty errors instead of silently flattening to the root", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{studio?}",
+      filenamePattern: "{title}",
+    },
+  });
+  const result = planScene(noStudioScene, config);
+  assert.equal(result.status, "error");
+  assert.equal(result.reason, "empty_folder");
+  assert.ok(result.missingData[0].message.indexOf("library root") !== -1);
+});
+
+test("whitespace-only folder patterns keep files put rather than creating a folder named _", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "   ", filenamePattern: "{title}" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data/old");
 });

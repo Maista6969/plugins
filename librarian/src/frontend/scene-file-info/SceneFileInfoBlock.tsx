@@ -111,7 +111,7 @@ export function SceneFileInfoBlock({
     }
   }
 
-  const ruleLabel = matchedRuleLabel(plan, config.rules || []);
+  const ruleLabel = matchedRuleLabel(plan, (config.scenes || {}).rules || []);
   const TruncatedText = PluginApi.components.TruncatedText;
   const aggregateStatus = pending
     ? "pending"

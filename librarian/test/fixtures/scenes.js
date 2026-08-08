@@ -16,7 +16,7 @@ export const normalOrganizedScene = {
       id: "1",
       basename: "old.mp4",
       path: "/data/old/old.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
       width: 1920,
       height: 1080,
       video_codec: "h264",
@@ -47,13 +47,13 @@ export const multiFileScene = {
       id: "20",
       basename: "b.mp4",
       path: "/data/old/b.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
     {
       id: "19",
       basename: "a.mp4",
       path: "/data/old/a.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -71,7 +71,7 @@ export const unorganizedScene = {
       id: "30",
       basename: "new.mp4",
       path: "/data/incoming/new.mp4",
-      parent_folder: { path: "/data/incoming" },
+      parent_folder: { id: "f-incoming", path: "/data/incoming" },
     },
   ],
 };
@@ -89,7 +89,7 @@ export const noStudioScene = {
       id: "40",
       basename: "x.mp4",
       path: "/data/old/x.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -123,7 +123,7 @@ export const deepStudioHierarchyScene = {
       id: "50",
       basename: "y.mp4",
       path: "/data/old/y.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -145,7 +145,7 @@ export const slashInTagScene = {
       id: "60",
       basename: "z.mp4",
       path: "/data/old/z.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -170,7 +170,7 @@ export const multiRuleMatchScene = {
       id: "70",
       basename: "w.mp4",
       path: "/data/old/w.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -192,7 +192,7 @@ export const noRuleMatchScene = {
       id: "80",
       basename: "v.mp4",
       path: "/data/old/v.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -214,7 +214,7 @@ export const tagMatchedButMissingStudioHierarchyScene = {
       id: "90",
       basename: "u.mp4",
       path: "/data/old/u.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -236,7 +236,7 @@ export const cjkEmojiScene = {
       id: "95",
       basename: "old.mp4",
       path: "/data/old/old.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };
@@ -259,7 +259,7 @@ export const performerNamedInTitleScene = {
       id: "96",
       basename: "joy.mp4",
       path: "/data/old/joy.mp4",
-      parent_folder: { path: "/data/old" },
+      parent_folder: { id: "f-old", path: "/data/old" },
     },
   ],
 };

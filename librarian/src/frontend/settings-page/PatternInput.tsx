@@ -58,12 +58,14 @@ interface PatternModalFieldProps {
   value: string | undefined;
   setValue: (v?: string) => void;
   validate?: (value: string) => boolean;
+  isFolder?: boolean;
 }
 
 function PatternModalField({
   value,
   setValue,
   validate,
+  isFolder,
 }: PatternModalFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pattern = value || "";
@@ -114,6 +116,16 @@ function PatternModalField({
           a scene, every such scene would collide on the same name. Make at
           least one of them required (remove its <code>?</code>), or add a
           required token
+        </div>
+      )}
+      {isFolder && (
+        <div className="librarian-token-hint text-muted">
+          <p>
+            Leave this <strong>blank</strong> to keep every file in the folder
+            it is already in, renaming it without touching your folder
+            structure. Use <code>/</code> on its own to place files directly
+            under the library root instead.
+          </p>
         </div>
       )}
       <div className="librarian-token-hint text-muted"></div>
@@ -189,6 +201,7 @@ interface PatternInputProps {
   label?: string;
   subHeading?: React.ReactNode;
   validate?: (value: string) => boolean;
+  isFolder?: boolean;
 }
 
 export function PatternInput({
@@ -197,6 +210,7 @@ export function PatternInput({
   label,
   subHeading,
   validate,
+  isFolder,
 }: PatternInputProps) {
   return (
     <TextSettingModal
@@ -209,6 +223,7 @@ export function PatternInput({
           value={fieldValue}
           setValue={setValue}
           validate={validate}
+          isFolder={isFolder}
         />
       )}
       validate={validate}

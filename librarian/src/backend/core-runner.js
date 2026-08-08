@@ -13,7 +13,12 @@ export function renameScene(rawScene, config) {
   const moveErrors = [];
   toMove.forEach((file) => {
     try {
-      const ok = gqlMoveFile(file.fileId, file.folder, file.basename);
+      const ok = gqlMoveFile(
+        file.fileId,
+        file.folder,
+        file.basename,
+        file.folderId,
+      );
       if (!ok) {
         moveErrors.push({
           fileId: file.fileId,
