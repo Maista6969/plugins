@@ -2,7 +2,7 @@ import React from "react";
 import { ConditionsEditor } from "./ConditionsEditor.js";
 import { LibraryRootPicker } from "./LibraryRootPicker.js";
 import { PatternInput } from "./PatternInput.js";
-import { SortBySelect } from "./SortBySelect.js";
+import { SortCriteriaSelect } from "./SortCriteriaSelect.js";
 import { StashBoxSelect } from "./StashBoxSelect.js";
 import { RulePreviewPanel } from "./RulePreviewPanel.js";
 import { TextSettingModal } from "./TextSettingModal.js";
@@ -143,15 +143,6 @@ export function RuleEditModal({
             validate={(v) => !hasUnsafeOptionalOnlyBasename(v)}
           />
 
-          <ConditionsEditor
-            entityType={type}
-            value={{
-              conditionLogic: rule.conditionLogic,
-              conditions: rule.conditions,
-            }}
-            onChange={(next) => onChange({ ...rule, ...next })}
-          />
-
           {(patternUsesAnyToken(rule.folderPattern, PERFORMER_SORT_TOKENS) ||
             patternUsesAnyToken(
               rule.filenamePattern,
@@ -159,7 +150,7 @@ export function RuleEditModal({
             )) && (
             <div>
               Sort performers{" "}
-              <SortBySelect
+              <SortCriteriaSelect
                 value={rule.sortBy}
                 onChange={(sortBy) => onChange({ ...rule, sortBy })}
               />
@@ -183,6 +174,15 @@ export function RuleEditModal({
                 />
               </div>
             )}
+
+          <ConditionsEditor
+            entityType={type}
+            value={{
+              conditionLogic: rule.conditionLogic,
+              conditions: rule.conditions,
+            }}
+            onChange={(next) => onChange({ ...rule, ...next })}
+          />
         </div>
 
         <div className="librarian-rule-preview-section">

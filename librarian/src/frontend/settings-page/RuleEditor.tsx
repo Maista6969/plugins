@@ -19,7 +19,7 @@ export interface Rule {
   conditions: Condition[];
   folderPattern: string;
   filenamePattern: string;
-  sortBy?: string;
+  sortBy?: string[] | string;
   libraryRoot?: string;
   stashBoxEndpoint?: string;
 }

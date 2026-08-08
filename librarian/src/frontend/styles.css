@@ -351,3 +351,21 @@
   margin-bottom: 0;
   min-height: 1.5em;
 }
+
+.librarian-sort-criteria {
+  vertical-align: middle;
+}
+
+.librarian-sort-rank {
+  display: inline-block;
+  margin-right: 0.35rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* makes the always-on final tiebreak visible instead of a hidden rule */
+.librarian-sort-tiebreak {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  vertical-align: middle;
+}

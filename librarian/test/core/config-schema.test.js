@@ -34,7 +34,61 @@ test("a partially-specified nested object (defaultPattern) is merged field by fi
     config.scenes.defaultPattern.folderPattern,
     DEFAULT_CONFIG.scenes.defaultPattern.folderPattern,
   );
-  assert.equal(config.scenes.defaultPattern.sortBy, "alphabetical");
+  assert.deepEqual(config.scenes.defaultPattern.sortBy, ["name"]);
+});
+
+// mergeDefaults replaces a non-array with an array default, so without the
+// migration running first every stored legacy sortBy would silently revert
+test("a legacy sortBy string migrates to criteria rather than reverting to the default", () => {
+  const config = normalizeConfig({
+    scenes: { defaultPattern: { sortBy: "favorite_first" } },
+  });
+  assert.deepEqual(config.scenes.defaultPattern.sortBy, ["favorite", "name"]);
+});
+
+test("legacy sortBy migrates on defaultPattern and inside rules, for every entity type", () => {
+  const config = normalizeConfig({
+    scenes: {
+      defaultPattern: { sortBy: "rating" },
+      rules: [
+        { id: "r1", sortBy: "favorite_first" },
+        { id: "r2", sortBy: "alphabetical" },
+        { id: "r3" },
+      ],
+    },
+    galleries: { defaultPattern: { sortBy: "favorite_first" } },
+    images: { rules: [{ id: "i1", sortBy: "rating" }] },
+  });
+  assert.deepEqual(config.scenes.defaultPattern.sortBy, ["rating", "name"]);
+  assert.deepEqual(config.scenes.rules[0].sortBy, ["favorite", "name"]);
+  assert.deepEqual(config.scenes.rules[1].sortBy, ["name"]);
+  // a rule that never set one is left alone rather than gaining a field
+  assert.equal(config.scenes.rules[2].sortBy, undefined);
+  assert.deepEqual(config.galleries.defaultPattern.sortBy, [
+    "favorite",
+    "name",
+  ]);
+  assert.deepEqual(config.images.rules[0].sortBy, ["rating", "name"]);
+});
+
+test("sortBy migration is idempotent and degrades an unknown value safely", () => {
+  const once = normalizeConfig({
+    scenes: { defaultPattern: { sortBy: "favorite_first" } },
+  });
+  assert.deepEqual(normalizeConfig(once), once);
+  const bogus = normalizeConfig({
+    scenes: { defaultPattern: { sortBy: "nonsense" } },
+  });
+  assert.deepEqual(bogus.scenes.defaultPattern.sortBy, ["name"]);
+});
+
+test("a pre-sections legacy config gets its sortBy migrated too, after being hoisted", () => {
+  const config = normalizeConfig({
+    defaultPattern: { sortBy: "favorite_first" },
+    rules: [{ id: "r1", sortBy: "rating" }],
+  });
+  assert.deepEqual(config.scenes.defaultPattern.sortBy, ["favorite", "name"]);
+  assert.deepEqual(config.scenes.rules[0].sortBy, ["rating", "name"]);
 });
 
 test("a non-object raw value (null, a string, a number) is treated the same as no config at all", () => {

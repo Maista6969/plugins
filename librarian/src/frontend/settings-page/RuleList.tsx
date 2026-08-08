@@ -18,7 +18,7 @@ function newRule(existingRules: Rule[]): Rule {
     conditions: [{ field: "tag", op: "any_of", value: [] }],
     folderPattern: "",
     filenamePattern: "",
-    sortBy: "alphabetical",
+    sortBy: ["name"],
     // Intentionally left blank
     // LibraryRootPicker auto-fills if exactly one library is configured
     libraryRoot: "",

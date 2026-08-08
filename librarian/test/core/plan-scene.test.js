@@ -795,6 +795,58 @@ test("a rule's own sortBy controls {performers} ordering for ITS pattern, indepe
     planWithSortBy(undefined).files[0].basename,
     "Bo, Wendy, Zed.mp4",
   );
+
+  // the composable form, and the combination the legacy strings could not
+  // express: Wendy is the only favourite, then the rest by rating
+  assert.equal(
+    planWithSortBy(["favorite", "rating"]).files[0].basename,
+    "Wendy, Zed, Bo.mp4",
+  );
+  assert.equal(
+    planWithSortBy(["favorite"]).files[0].basename,
+    "Wendy, Bo, Zed.mp4",
+  );
+  assert.equal(
+    planWithSortBy(["rating"]).files[0].basename,
+    "Zed, Wendy, Bo.mp4",
+  );
+  assert.equal(planWithSortBy([]).files[0].basename, "Bo, Wendy, Zed.mp4");
+});
+
+test("a rule's sort criteria win over the default pattern's", () => {
+  const scene = {
+    id: "601",
+    title: "Precedence",
+    organized: true,
+    performers: [
+      { id: "p1", name: "Wendy", favorite: true, rating100: 70 },
+      { id: "p2", name: "Zed", favorite: false, rating100: 95 },
+    ],
+    tags: [{ id: "t1", name: "Rock" }],
+    files: [{ id: "1", path: "/data/old/scene.mp4" }],
+  };
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{performers}",
+      sortBy: ["rating"],
+    },
+    rules: [
+      {
+        id: "r1",
+        enabled: true,
+        conditionLogic: "AND",
+        conditions: [{ field: "tag", op: "any_of", value: ["t1"] }],
+        folderPattern: "",
+        filenamePattern: "{performers}",
+        sortBy: ["favorite"],
+      },
+    ],
+  });
+  assert.equal(planScene(scene, config).files[0].basename, "Wendy, Zed.mp4");
+
+  const noMatch = Object.assign({}, scene, { tags: [] });
+  assert.equal(planScene(noMatch, config).files[0].basename, "Zed, Wendy.mp4");
 });
 
 test("a matched rule's OWN libraryRoot is used, not the default pattern's", () => {

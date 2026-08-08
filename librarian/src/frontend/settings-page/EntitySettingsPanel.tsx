@@ -3,7 +3,7 @@ import { RuleList } from "./RuleList.js";
 import { PatternInput } from "./PatternInput.js";
 import { LibraryRootPicker } from "./LibraryRootPicker.js";
 import { ConditionsEditor } from "./ConditionsEditor.js";
-import { SortBySelect } from "./SortBySelect.js";
+import { SortCriteriaSelect } from "./SortCriteriaSelect.js";
 import { StashBoxSelect } from "./StashBoxSelect.js";
 import { StashBoxMultiSelect } from "./StashBoxMultiSelect.js";
 import { SettingsSection } from "./SettingsSection.js";
@@ -286,9 +286,11 @@ export function EntitySettingsPanel({
           {usesPerformerSort && (
             <div>
               Sort performers{" "}
-              <SortBySelect
+              <SortCriteriaSelect
                 value={defaultPattern.sortBy}
-                onChange={(sortBy: string) => updateDefaultPattern({ sortBy })}
+                onChange={(sortBy: string[]) =>
+                  updateDefaultPattern({ sortBy })
+                }
               />
             </div>
           )}

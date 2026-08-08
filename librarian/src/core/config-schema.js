@@ -1,3 +1,5 @@
+import { normalizeSortCriteria, DEFAULT_SORT_CRITERIA } from "./entity-sort.js";
+
 export const PLUGIN_ID = "librarian";
 
 // Settings that are not owned by any one entity type. The planner layers only
@@ -28,7 +30,7 @@ const DEFAULT_SCENES = {
   defaultPattern: {
     folderPattern: "{studio_hierarchy}",
     filenamePattern: "{studio} - {date} - {title}",
-    sortBy: "alphabetical",
+    sortBy: DEFAULT_SORT_CRITERIA,
     libraryRoot: "",
     stashBoxEndpoint: "",
   },
@@ -42,7 +44,7 @@ const DEFAULT_GALLERIES = {
   defaultPattern: {
     folderPattern: "",
     filenamePattern: "{title}",
-    sortBy: "alphabetical",
+    sortBy: DEFAULT_SORT_CRITERIA,
     libraryRoot: "",
   },
 };
@@ -55,7 +57,7 @@ const DEFAULT_IMAGES = {
   defaultPattern: {
     folderPattern: "",
     filenamePattern: "{title}",
-    sortBy: "alphabetical",
+    sortBy: DEFAULT_SORT_CRITERIA,
     libraryRoot: "",
   },
 };
@@ -75,7 +77,48 @@ function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// sortBy used to be one of three strings and is now an ordered criteria list.
+// This has to run before mergeDefaults: once the default is an array, a stored
+// string is not an array and mergeDefaults would replace it with the default,
+// silently throwing the user's setting away. Rules need doing by hand too,
+// because mergeDefaults passes arrays straight through and never descends
+function migrateSortBy(raw) {
+  if (!isPlainObject(raw)) {
+    return raw;
+  }
+  const withCriteria = (pattern) => {
+    if (!isPlainObject(pattern) || pattern.sortBy === undefined) {
+      return pattern;
+    }
+    if (Array.isArray(pattern.sortBy)) {
+      return pattern;
+    }
+    return Object.assign({}, pattern, {
+      sortBy: normalizeSortCriteria(pattern.sortBy),
+    });
+  };
+
+  const result = Object.assign({}, raw);
+  ENTITY_TYPES.forEach((type) => {
+    const section = result[type];
+    if (!isPlainObject(section)) {
+      return;
+    }
+    const next = Object.assign({}, section);
+    next.defaultPattern = withCriteria(section.defaultPattern);
+    if (Array.isArray(section.rules)) {
+      next.rules = section.rules.map(withCriteria);
+    }
+    result[type] = next;
+  });
+  return result;
+}
+
 function migrateLegacyConfig(raw) {
+  return migrateSortBy(hoistLegacySections(raw));
+}
+
+function hoistLegacySections(raw) {
   if (!isPlainObject(raw)) {
     return raw;
   }
