@@ -8,6 +8,7 @@ import {
   usePreviewMode,
 } from "./scenes-button/preview-context.js";
 import { SettingsLink, SETTINGS_ROUTE } from "./shared/SettingsLink.js";
+import { StashBoxesProvider } from "./shared/StashBoxesContext.js";
 import { SceneFileInfoBlock } from "./scene-file-info/SceneFileInfoBlock.js";
 import { PLUGIN_ID } from "../core/config-schema.js";
 
@@ -40,11 +41,13 @@ try {
     const originalArgs = args.slice(0, -1);
     return (
       <PreviewModeProvider>
-        <div className="librarian-toolbar">
-          <RenameScenesButton />
-          <SettingsLink />
-        </div>
-        {next(...originalArgs)}
+        <StashBoxesProvider>
+          <div className="librarian-toolbar">
+            <RenameScenesButton />
+            <SettingsLink />
+          </div>
+          {next(...originalArgs)}
+        </StashBoxesProvider>
       </PreviewModeProvider>
     );
   });
@@ -80,7 +83,9 @@ try {
     return (
       <>
         {result}
-        <SceneFileInfoBlock scene={props.scene} />
+        <StashBoxesProvider>
+          <SceneFileInfoBlock scene={props.scene} />
+        </StashBoxesProvider>
       </>
     );
   });

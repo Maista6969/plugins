@@ -129,6 +129,9 @@ export function RuleEditModal({
               StashID source{" "}
               <StashBoxSelect
                 value={rule.stashBoxEndpoint}
+                inheritedEndpoint={
+                  config.defaultPattern && config.defaultPattern.stashBoxEndpoint
+                }
                 onChange={(stashBoxEndpoint) =>
                   onChange({ ...rule, stashBoxEndpoint })
                 }

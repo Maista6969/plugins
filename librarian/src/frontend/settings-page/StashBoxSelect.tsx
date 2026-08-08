@@ -7,9 +7,27 @@ const { Form } = PluginApi.libraries.Bootstrap;
 interface StashBoxSelectProps {
   value: string | undefined;
   onChange: (next: string) => void;
+  inheritedEndpoint?: string;
 }
 
-export function StashBoxSelect({ value, onChange }: StashBoxSelectProps) {
+function inheritedPlaceholder(
+  stashBoxes: { name: string; endpoint: string }[],
+  inheritedEndpoint?: string,
+): string {
+  if (!inheritedEndpoint) {
+    return "(none selected)";
+  }
+  const box = stashBoxes.find((b) => b.endpoint === inheritedEndpoint);
+  return (
+    "Default pattern's source (" + (box ? box.name : inheritedEndpoint) + ")"
+  );
+}
+
+export function StashBoxSelect({
+  value,
+  onChange,
+  inheritedEndpoint,
+}: StashBoxSelectProps) {
   const { stashBoxes, loading } = useStashBoxes();
 
   if (loading) {
@@ -35,7 +53,11 @@ export function StashBoxSelect({ value, onChange }: StashBoxSelectProps) {
       value={value || ""}
       onChange={(e: any) => onChange(e.target.value)}
     >
-      {!value && <option value="">(none selected)</option>}
+      {!value && (
+        <option value="">
+          {inheritedPlaceholder(stashBoxes, inheritedEndpoint)}
+        </option>
+      )}
       {stashBoxes.map((box) => (
         <option key={box.endpoint} value={box.endpoint}>
           {box.name}

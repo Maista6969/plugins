@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { configGateFilter } from "../../core/rule-to-filter.js";
 import { useApolloClient } from "@apollo/client";
 import { useManualScenePreview } from "./useManualScenePreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
@@ -32,15 +33,8 @@ export function ConfigPreviewPanel({ config }: ConfigPreviewPanelProps) {
   const [job, setJob] = useState<JobInfo | null>(null);
   const running = !!jobId && (!job || !isTerminalStatus(job.status));
 
-  const sceneFilter: any = {};
-  if (config.onlyOrganized) {
-    sceneFilter.organized = true;
-  }
-  if (config.onlyWithStashId) {
-    sceneFilter.stash_id_count = { modifier: "GREATER_THAN", value: 0 };
-  }
-  const hasFilter = Object.keys(sceneFilter).length > 0;
-  const effectiveFilter = hasFilter ? sceneFilter : null;
+  // shared with the rule preview so the two cannot drift apart
+  const effectiveFilter = configGateFilter(config);
 
   const visible = rows !== null && !closed;
 

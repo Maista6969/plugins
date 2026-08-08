@@ -20,9 +20,13 @@ import { ConfigPreviewPanel } from "./ConfigPreviewPanel.js";
 import { ConditionsEditor } from "./ConditionsEditor.js";
 import { SortBySelect } from "./SortBySelect.js";
 import { StashBoxSelect } from "./StashBoxSelect.js";
+import { StashBoxMultiSelect } from "./StashBoxMultiSelect.js";
 import { SettingsSection } from "./SettingsSection.js";
 import { LibraryPathsProvider } from "../shared/LibraryPathsContext.js";
-import { StashBoxesProvider } from "../shared/StashBoxesContext.js";
+import {
+  StashBoxesProvider,
+  useStashBoxes,
+} from "../shared/StashBoxesContext.js";
 import { TokenizedText } from "../shared/TokenizedText.js";
 import { useLoadSettingsComponents } from "../shared/useLoadSettingsComponents.js";
 import { usePluginPageTitle } from "./usePluginPageTitle.js";
@@ -110,6 +114,7 @@ function SettingsPageContent() {
   const pluginName = usePluginPageTitle();
 
   const loadingSettingsComponents = useLoadSettingsComponents();
+  const { stashBoxes } = useStashBoxes();
   const { BooleanSetting } = PluginApi.components;
 
   const excludeFilter = config
@@ -251,15 +256,36 @@ function SettingsPageContent() {
             updateConfig({ ...config, onlyOrganized: v })
           }
         />
-        <BooleanSetting
-          id="librarian-only-with-stash-id"
-          heading="Only rename scenes with at least one StashID"
-          subHeading="Avoids modifying scenes have not been matched against a stash-box"
-          checked={!!config.onlyWithStashId}
-          onChange={(v: boolean) =>
-            updateConfig({ ...config, onlyWithStashId: v })
-          }
-        />
+        <div className="setting-group">
+          <BooleanSetting
+            id="librarian-only-with-stash-id"
+            heading="Only rename scenes with at least one StashID"
+            subHeading="Avoids modifying scenes have not been matched against a stash-box"
+            checked={!!config.onlyWithStashId}
+            onChange={(v: boolean) =>
+              updateConfig({ ...config, onlyWithStashId: v })
+            }
+          />
+          {/* Only worth choosing between sources when more than one is configured */}
+          {config.onlyWithStashId && stashBoxes.length > 1 && (
+            <div className="setting">
+              <div>
+                <h3>Accepted sources</h3>
+                <div className="sub-heading">
+                  Leave empty to accept a StashID from any stash-box
+                </div>
+              </div>
+              <div>
+                <StashBoxMultiSelect
+                  value={config.stashIdEndpoints}
+                  onChange={(stashIdEndpoints: string[]) =>
+                    updateConfig({ ...config, stashIdEndpoints })
+                  }
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </SettingsSection>
 
       <SettingsSection heading="Exclusions">

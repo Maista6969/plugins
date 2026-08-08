@@ -109,17 +109,49 @@ export function ruleToSceneFilter(rule) {
   return foldFragments(fragments, logic);
 }
 
-export function ruleToPreviewFilter(rule, config) {
-  const ruleFilter = ruleToSceneFilter(rule);
-  if (!ruleFilter) {
-    return null;
+// We can't do an OR-query for multiple endpoints so we fall back to
+// querying by count if the user allows multiple endpoints and then
+// filter it ourselves: we might fetch too much (user wants StashDB or TPDB
+// and scene has FansDB and JavStash) but that's easier than multiple queries
+export function stashIdGate(endpoints) {
+  const wanted = endpoints || [];
+  if (wanted.length === 1) {
+    return {
+      stash_ids_endpoint: { endpoint: wanted[0], modifier: "NOT_NULL" },
+    };
   }
+  return { stash_id_count: { value: 0, modifier: "GREATER_THAN" } };
+}
+
+export function stashIdGateIsApproximate(config) {
+  return !!(
+    config &&
+    config.onlyWithStashId &&
+    (config.stashIdEndpoints || []).length > 1
+  );
+}
+
+export function configGates(config) {
   const gates = [];
   if (config && config.onlyOrganized) {
     gates.push({ organized: true });
   }
   if (config && config.onlyWithStashId) {
-    gates.push({ stash_id_count: { value: 0, modifier: "GREATER_THAN" } });
+    gates.push(stashIdGate(config.stashIdEndpoints));
   }
-  return foldFragments(gates.concat([ruleFilter]), "AND");
+  return gates;
+}
+
+// The gates alone, for previewing what the config does without any rule
+export function configGateFilter(config) {
+  const gates = configGates(config);
+  return gates.length === 0 ? null : foldFragments(gates, "AND");
+}
+
+export function ruleToPreviewFilter(rule, config) {
+  const ruleFilter = ruleToSceneFilter(rule);
+  if (!ruleFilter) {
+    return null;
+  }
+  return foldFragments(configGates(config).concat([ruleFilter]), "AND");
 }

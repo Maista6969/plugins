@@ -4,6 +4,8 @@ export const DEFAULT_CONFIG = {
   autoRename: true,
   onlyOrganized: true,
   onlyWithStashId: false,
+  // which stash-box endpoints satisfy onlyWithStashId; empty means any of them
+  stashIdEndpoints: [],
   rules: [],
   excludeConditions: { conditionLogic: "OR", conditions: [] },
   defaultPattern: {

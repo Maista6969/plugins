@@ -736,8 +736,10 @@ test("findMissingRequiredData flags {stash_id} with a message that distinguishes
   assert.equal(wrongEndpoint.length, 1);
   assert.match(
     wrongEndpoint[0].message,
-    /scene has no StashID from the configured stash-box source/,
+    /scene has no StashID from https:\/\/theporndb\.net\/graphql/,
   );
+  // and carried structurally so the UI can swap in its configured display name
+  assert.equal(wrongEndpoint[0].endpoint, "https://theporndb.net/graphql");
 
   const matching = findMissingRequiredData(["{stash_id}"], view, {
     stashBoxEndpoint: "https://stashdb.org/graphql",
@@ -883,8 +885,14 @@ test("a separator inside a token's value never nests, only the pattern's own sep
   const cfg = { delimiters: {}, sanitize: {} };
   const ids = { performerIds: [], tagIds: [], stashBoxEndpoint: "" };
 
-  assert.equal(renderPath("{tags}", "{title}", view, cfg, ids).folder, "Rock Pop");
-  assert.equal(renderPath("{studio}", "{title}", view, cfg, ids).folder, "Rock Pop");
+  assert.equal(
+    renderPath("{tags}", "{title}", view, cfg, ids).folder,
+    "Rock Pop",
+  );
+  assert.equal(
+    renderPath("{studio}", "{title}", view, cfg, ids).folder,
+    "Rock Pop",
+  );
   // the filename never splits into subfolders either
   assert.equal(
     renderPath("{tags}", "{title}", view, cfg, ids).basenameNoExt,
@@ -906,4 +914,10 @@ test("{studio_hierarchy} still expands to one folder per studio", () => {
     renderPath("{studio_hierarchy}", "{title}", view, cfg, ids).folder,
     "Parent/Acme",
   );
+});
+
+test("the {stash_id} entry carries no endpoint when no source is configured, since there is none to name", () => {
+  const view = sceneView({ stashIds: [] });
+  const missing = findMissingRequiredData(["{stash_id}"], view);
+  assert.equal(missing[0].endpoint, undefined);
 });

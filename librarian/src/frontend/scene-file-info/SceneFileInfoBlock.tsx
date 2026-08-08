@@ -6,6 +6,8 @@ import { getConfiguration, runRenameTask } from "../shared/stash-api.js";
 import { pollJob, isTerminalStatus } from "../shared/job-poll.js";
 import { StatusBadge } from "../shared/StatusBadge.js";
 import { OrganizeButton } from "../shared/OrganizeButton.js";
+import { describeMissingData } from "../shared/describe-missing.js";
+import { useStashBoxes } from "../shared/StashBoxesContext.js";
 import { matchedRuleLabel, skippedText } from "../shared/PlanResultTable.js";
 import { SCENE_FIELDS, STUDIO_FIELDS } from "../shared/scene-query-fields.js";
 import { SETTINGS_ROUTE } from "../shared/SettingsLink.js";
@@ -34,6 +36,7 @@ export function SceneFileInfoBlock({
 }: SceneFileInfoBlockProps) {
   const client = useApolloClient();
   const [config, setConfig] = useState<any | null>(null);
+  const { stashBoxes } = useStashBoxes();
   const [override, setOverride] = useState<any | null>(null);
   const [enrichedStudio, setEnrichedStudio] = useState<any | null>(null);
   const [pending, setPending] = useState(false);
@@ -131,7 +134,7 @@ export function SceneFileInfoBlock({
         )}
         {plan.status === "error" && (
           <p className="librarian-token-hint text-danger">
-            {plan.missingData.map((m: any) => m.message).join(", ")}
+            {describeMissingData(plan.missingData, stashBoxes)}
           </p>
         )}
         {plan.status === "skipped" && (

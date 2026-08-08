@@ -1,6 +1,8 @@
 import React from "react";
 import { StatusBadge } from "./StatusBadge.js";
 import { OrganizeButton } from "./OrganizeButton.js";
+import { describeMissingData } from "./describe-missing.js";
+import { useStashBoxes } from "./StashBoxesContext.js";
 import {
   describePatternPair,
   joinBasename,
@@ -130,6 +132,9 @@ export function PlanResultTable({
   onSceneOrganized,
   rules,
 }: PlanResultTableProps) {
+  // empty outside the settings page, where the message keeps the endpoint URL
+  const { stashBoxes } = useStashBoxes();
+
   return (
     <div className="table-list librarian-plan-table">
       <Table striped bordered>
@@ -156,7 +161,7 @@ export function PlanResultTable({
                     <td className="librarian-message-cell">
                       {plan.status === "error" ? (
                         "Error: " +
-                        plan.missingData.map((m: any) => m.message).join(", ")
+                        describeMissingData(plan.missingData, stashBoxes)
                       ) : plan.reason === "not_organized" ? (
                         <span className="librarian-organize-hint">
                           {skippedText(plan.reason)}{" "}

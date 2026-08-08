@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   ruleToSceneFilter,
   ruleToPreviewFilter,
+  stashIdGate,
+  stashIdGateIsApproximate,
+  configGateFilter,
 } from "../../src/core/rule-to-filter.js";
 
 function rule(overrides) {
@@ -304,4 +307,95 @@ test("ruleToPreviewFilter returns null when the rule itself isn't translatable, 
     onlyOrganized: true,
   });
   assert.equal(filter, null);
+});
+
+test("the StashID gate uses an exact endpoint criterion when exactly one source is chosen", () => {
+  assert.deepEqual(stashIdGate(["https://stashdb.org/graphql"]), {
+    stash_ids_endpoint: {
+      endpoint: "https://stashdb.org/graphql",
+      modifier: "NOT_NULL",
+    },
+  });
+});
+
+test("several sources fall back to a superset, since Stash cannot OR two endpoint criteria", () => {
+  const gate = stashIdGate([
+    "https://stashdb.org/graphql",
+    "https://fansdb.cc/graphql",
+  ]);
+  assert.deepEqual(gate, {
+    stash_id_count: { value: 0, modifier: "GREATER_THAN" },
+  });
+});
+
+test("no chosen source means any source, matching a config from before the setting existed", () => {
+  assert.deepEqual(stashIdGate([]), {
+    stash_id_count: { value: 0, modifier: "GREATER_THAN" },
+  });
+  assert.deepEqual(stashIdGate(undefined), {
+    stash_id_count: { value: 0, modifier: "GREATER_THAN" },
+  });
+});
+
+test("the gate is only approximate when more than one source is chosen", () => {
+  const base = { onlyWithStashId: true };
+  assert.equal(
+    stashIdGateIsApproximate({ ...base, stashIdEndpoints: [] }),
+    false,
+  );
+  assert.equal(
+    stashIdGateIsApproximate({ ...base, stashIdEndpoints: ["a"] }),
+    false,
+  );
+  assert.equal(
+    stashIdGateIsApproximate({ ...base, stashIdEndpoints: ["a", "b"] }),
+    true,
+  );
+  assert.equal(
+    stashIdGateIsApproximate({
+      onlyWithStashId: false,
+      stashIdEndpoints: ["a", "b"],
+    }),
+    false,
+  );
+});
+
+test("the settings-page gate filter honours the chosen StashID sources, not just 'has any'", () => {
+  const config = {
+    onlyOrganized: false,
+    onlyWithStashId: true,
+    stashIdEndpoints: ["https://fansdb.cc/graphql"],
+  };
+  assert.deepEqual(configGateFilter(config), {
+    stash_ids_endpoint: {
+      endpoint: "https://fansdb.cc/graphql",
+      modifier: "NOT_NULL",
+    },
+  });
+});
+
+test("the settings-page gate and the rule preview agree on the gates they apply", () => {
+  const config = {
+    onlyOrganized: true,
+    onlyWithStashId: true,
+    stashIdEndpoints: ["https://fansdb.cc/graphql"],
+  };
+  const rule = {
+    conditionLogic: "AND",
+    conditions: [{ field: "rating", op: "any_of", value: { min: 3, max: 10 } }],
+  };
+  const gatesOnly = configGateFilter(config);
+  const withRule = ruleToPreviewFilter(rule, config);
+
+  // the rule filter is the gates plus the rule, so every gate key survives
+  assert.equal(withRule.organized, gatesOnly.organized);
+  assert.deepEqual(
+    withRule.AND.stash_ids_endpoint,
+    gatesOnly.AND.stash_ids_endpoint,
+  );
+});
+
+test("no gates at all means no filter, rather than an empty object that matches everything oddly", () => {
+  assert.equal(configGateFilter({}), null);
+  assert.equal(configGateFilter(undefined), null);
 });

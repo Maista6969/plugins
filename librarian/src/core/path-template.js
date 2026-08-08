@@ -357,8 +357,11 @@ const TOKEN_REQUIREMENTS = {
     message: (view, matchedIds) => {
       const endpoint = (matchedIds && matchedIds.stashBoxEndpoint) || "";
       return endpoint
-        ? "scene has no StashID from the configured stash-box source"
+        ? "scene has no StashID from " + endpoint
         : "no stash-box source is configured for this rule's {stash_id} token";
+    },
+    endpoint: (view, matchedIds) => {
+      return (matchedIds && matchedIds.stashBoxEndpoint) || "";
     },
   },
 };
@@ -549,7 +552,18 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds) {
             ? requirement.message(sceneView, effectiveMatchedIds)
             : requirement.message;
         if (!seenMessages[message]) {
-          missing.push({ token: tokenName, message: message });
+          const entry = { token: tokenName, message: message };
+          // carried structurally so the UI can resolve a display name for it
+          if (typeof requirement.endpoint === "function") {
+            const endpoint = requirement.endpoint(
+              sceneView,
+              effectiveMatchedIds,
+            );
+            if (endpoint) {
+              entry.endpoint = endpoint;
+            }
+          }
+          missing.push(entry);
           seenMessages[message] = true;
         }
       }

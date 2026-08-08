@@ -947,3 +947,41 @@ test("a library root stored with forward slashes still matches a Windows file pa
   };
   assert.equal(planScene(scene, config).files[0].unchanged, true);
 });
+
+function sceneWithStashIds(endpoints) {
+  return Object.assign({}, normalOrganizedScene, {
+    stash_ids: endpoints.map((e, i) => ({ endpoint: e, stash_id: "id-" + i })),
+  });
+}
+
+test("onlyWithStashId accepts a StashID from any source when no sources are chosen", () => {
+  const config = baseConfig({ onlyWithStashId: true, stashIdEndpoints: [] });
+  assert.equal(planScene(sceneWithStashIds(["https://a/graphql"]), config).status, "ok");
+  assert.equal(planScene(sceneWithStashIds([]), config).status, "skipped");
+});
+
+test("onlyWithStashId requires a StashID from one of the chosen sources", () => {
+  const config = baseConfig({
+    onlyWithStashId: true,
+    stashIdEndpoints: ["https://a/graphql", "https://b/graphql"],
+  });
+  assert.equal(planScene(sceneWithStashIds(["https://a/graphql"]), config).status, "ok");
+  assert.equal(planScene(sceneWithStashIds(["https://b/graphql"]), config).status, "ok");
+  assert.equal(
+    planScene(sceneWithStashIds(["https://a/graphql", "https://c/graphql"]), config).status,
+    "ok",
+  );
+
+  // a StashID only from an unchosen source is not enough
+  const skipped = planScene(sceneWithStashIds(["https://c/graphql"]), config);
+  assert.equal(skipped.status, "skipped");
+  assert.equal(skipped.reason, "no_stash_id");
+});
+
+test("chosen sources are ignored while onlyWithStashId is off", () => {
+  const config = baseConfig({
+    onlyWithStashId: false,
+    stashIdEndpoints: ["https://a/graphql"],
+  });
+  assert.equal(planScene(sceneWithStashIds([]), config).status, "ok");
+});

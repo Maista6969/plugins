@@ -30,6 +30,17 @@ function splitPath(path) {
     : { folder: p.slice(0, idx), basename: p.slice(idx + 1) };
 }
 
+// An empty endpoint list means any source will do
+function hasRequiredStashId(sceneView, endpoints) {
+  const wanted = endpoints || [];
+  if (wanted.length === 0) {
+    return sceneView.hasStashId;
+  }
+  return (sceneView.stashIds || []).some((s) => {
+    return wanted.indexOf(s.endpoint) !== -1;
+  });
+}
+
 function dataError(
   reason,
   sceneId,
@@ -64,7 +75,10 @@ export function planScene(rawScene, config) {
     };
   }
 
-  if (config.onlyWithStashId && !sceneView.hasStashId) {
+  if (
+    config.onlyWithStashId &&
+    !hasRequiredStashId(sceneView, config.stashIdEndpoints)
+  ) {
     return {
       status: "skipped",
       reason: "no_stash_id",

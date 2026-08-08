@@ -306,3 +306,8 @@
   margin: 0.25rem 0 0;
   padding-left: 1.25rem;
 }
+
+.librarian-stash-box-multiselect {
+  min-width: 18rem;
+  text-align: left;
+}
