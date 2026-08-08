@@ -381,3 +381,39 @@ export function gqlFindDeadEntityIds(ids) {
 
   return dead;
 }
+
+const OWNER_OF_PATH_QUERIES = {
+  scenes: `
+    query OwnerOfPath($entity_filter: SceneFilterType) {
+      result: findScenes(scene_filter: $entity_filter, filter: { per_page: 1 }) {
+        items: scenes { id title }
+      }
+    }
+  `,
+  galleries: `
+    query OwnerOfPath($entity_filter: GalleryFilterType) {
+      result: findGalleries(gallery_filter: $entity_filter, filter: { per_page: 1 }) {
+        items: galleries { id title }
+      }
+    }
+  `,
+  images: `
+    query OwnerOfPath($entity_filter: ImageFilterType) {
+      result: findImages(image_filter: $entity_filter, filter: { per_page: 1 }) {
+        items: images { id title }
+      }
+    }
+  `,
+};
+
+export function gqlFindOwnerOfPath(entityType, path) {
+  const query = OWNER_OF_PATH_QUERIES[entityType];
+  if (!query) {
+    return null;
+  }
+  const result = doQuery(query, {
+    entity_filter: { path: { value: path, modifier: "EQUALS" } },
+  });
+  const items = result && result.result && result.result.items;
+  return items && items.length > 0 ? items[0] : null;
+}
