@@ -6,7 +6,12 @@ import {
   findDeadEntityIds,
   fetchLibraryPaths,
 } from "../shared/stash-api.js";
-import { normalizeConfig, resetFormatting } from "../../core/config-schema.js";
+import {
+  normalizeConfig,
+  resetFormatting,
+  availableEntityTypes,
+  resolveActiveType,
+} from "../../core/config-schema.js";
 import {
   collectEntityIdsAll,
   pruneDeadEntitiesAll,
@@ -24,7 +29,7 @@ import {
 import { TokenizedText } from "../shared/TokenizedText.js";
 import { useLoadSettingsComponents } from "../shared/useLoadSettingsComponents.js";
 import { usePluginPageTitle } from "./usePluginPageTitle.js";
-import { ENTITY_TYPES } from "../../core/config-schema.js";
+import { useEntityCounts } from "./useEntityCounts.js";
 import { adapterFor } from "../../core/entity-adapter.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -86,6 +91,10 @@ function SettingsPageContent() {
   const [config, setConfig] = useState<any | null>(null);
   const [pendingConfig, setPendingConfig] = useState<any>(undefined);
   const [entityType, setEntityType] = useState<string>("scenes");
+  const { counts, loading: countsLoading } = useEntityCounts();
+
+  const availableTypes = availableEntityTypes(counts);
+  const activeType = resolveActiveType(availableTypes, entityType);
   const [updateSuccess, setUpdateSuccess] = useState<boolean | undefined>(
     undefined,
   );
@@ -172,7 +181,7 @@ function SettingsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingConfig, client]);
 
-  if (!config || loadingSettingsComponents) {
+  if (!config || loadingSettingsComponents || countsLoading) {
     return <div className="librarian-settings-page">Loading...</div>;
   }
 
@@ -212,29 +221,44 @@ function SettingsPageContent() {
     return null;
   }
 
+  if (availableTypes.length === 0) {
+    return (
+      <div className="librarian-settings-page">
+        <h2>{pluginName || "Settings"}</h2>
+        <p className="librarian-token-hint text-muted">
+          There are no scenes, galleries or images in your library yet, so there
+          is nothing for Librarian to rename. Scan some in and these settings
+          will appear.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="librarian-settings-page">
       {renderLoadingIndicator()}
       <h2>{pluginName || "Settings"}</h2>
 
       <div className="librarian-entity-tabs">
-        <Nav
-          variant="tabs"
-          activeKey={entityType}
-          onSelect={(k: string | null) => k && setEntityType(k)}
-        >
-          {ENTITY_TYPES.map((type) => (
-            <Nav.Item key={type}>
-              <Nav.Link eventKey={type}>{adapterFor(type).label}</Nav.Link>
-            </Nav.Item>
-          ))}
-        </Nav>
+        {availableTypes.length > 1 && (
+          <Nav
+            variant="tabs"
+            activeKey={activeType}
+            onSelect={(k: string | null) => k && setEntityType(k)}
+          >
+            {availableTypes.map((type) => (
+              <Nav.Item key={type}>
+                <Nav.Link eventKey={type}>{adapterFor(type).label}</Nav.Link>
+              </Nav.Item>
+            ))}
+          </Nav>
+        )}
         <div className="librarian-entity-tab-panel">
           {/* keyed so switching tabs remounts the panel: no per-tab component
               state (open modals, drag state, preview toggles) can leak across */}
           <EntitySettingsPanel
-            key={entityType}
-            entityType={entityType}
+            key={activeType}
+            entityType={activeType}
             config={config}
             onChange={updateSection}
             onReplaceConfig={updateConfig}
@@ -311,17 +335,17 @@ function SettingsPageContent() {
       </div>
 
       <div className="setting-section librarian-config-preview-section">
-        <h1>Preview {adapterFor(entityType).label.toLowerCase()}</h1>
+        <h1>Preview {adapterFor(activeType).label.toLowerCase()}</h1>
         <p className="librarian-token-hint text-muted">
           Shows what the current rules would do to a sample of recent{" "}
-          {adapterFor(entityType).plural}
+          {adapterFor(activeType).plural}
         </p>
         {/* keyed like the settings panel so switching tabs cannot leave rows
             from another entity type on screen */}
         <ConfigPreviewPanel
-          key={entityType}
+          key={activeType}
           config={config}
-          entityType={entityType}
+          entityType={activeType}
         />
       </div>
     </div>

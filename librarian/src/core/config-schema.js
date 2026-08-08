@@ -169,3 +169,17 @@ export function resetFormatting(config) {
   });
   return next;
 }
+
+export function availableEntityTypes(counts) {
+  if (!counts) {
+    return ENTITY_TYPES.slice();
+  }
+  return ENTITY_TYPES.filter((type) => {
+    return (counts[type] || 0) > 0;
+  });
+}
+
+export function resolveActiveType(available, remembered) {
+  const list = available || [];
+  return list.indexOf(remembered) === -1 ? list[0] : remembered;
+}

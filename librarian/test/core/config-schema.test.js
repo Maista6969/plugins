@@ -5,6 +5,8 @@ import {
   DEFAULT_CONFIG,
   resetSection,
   resetFormatting,
+  availableEntityTypes,
+  resolveActiveType,
 } from "../../src/core/config-schema.js";
 
 test("a fresh config (no raw at all) returns DEFAULT_CONFIG's own shape", () => {
@@ -261,4 +263,51 @@ test("the two resets are complementary: neither touches the other's settings", (
   assert.equal(resetSection(config, "scenes").delimiters.performers, " & ");
   // resetting formatting leaves the section alone
   assert.equal(resetFormatting(config).scenes.autoRename, false);
+});
+
+test("a type with no entities gets no tab, whichever type it is", () => {
+  assert.deepEqual(
+    availableEntityTypes({ scenes: 7, galleries: 8, images: 22 }),
+    ["scenes", "galleries", "images"],
+  );
+  assert.deepEqual(
+    availableEntityTypes({ scenes: 7, galleries: 0, images: 0 }),
+    ["scenes"],
+  );
+  // an image-only Stash hides scenes too
+  assert.deepEqual(
+    availableEntityTypes({ scenes: 0, galleries: 0, images: 5 }),
+    ["images"],
+  );
+  assert.deepEqual(
+    availableEntityTypes({ scenes: 0, galleries: 0, images: 0 }),
+    [],
+  );
+});
+
+test("unknown counts show every tab, rather than hiding settings", () => {
+  // the stats query failing must not lock the user out of their own config
+  assert.deepEqual(availableEntityTypes(null), [
+    "scenes",
+    "galleries",
+    "images",
+  ]);
+  assert.deepEqual(availableEntityTypes(undefined), [
+    "scenes",
+    "galleries",
+    "images",
+  ]);
+});
+
+test("a missing count is treated as none, not as unknown", () => {
+  assert.deepEqual(availableEntityTypes({ scenes: 3 }), ["scenes"]);
+});
+
+test("the active tab falls back when the remembered one is no longer available", () => {
+  assert.equal(resolveActiveType(["scenes", "images"], "images"), "images");
+  // remembered galleries, but they have all gone
+  assert.equal(resolveActiveType(["scenes", "images"], "galleries"), "scenes");
+  // image-only library, remembered default of scenes
+  assert.equal(resolveActiveType(["images"], "scenes"), "images");
+  assert.equal(resolveActiveType([], "scenes"), undefined);
 });
