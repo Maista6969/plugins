@@ -27,6 +27,30 @@ importers:
         specifier: ^8.66.0
         version: 8.66.0(eslint@10.8.1)(typescript@5.9.3)
 
+  doppelganger:
+    devDependencies:
+      '@apollo/client':
+        specifier: ^3.9.0
+        version: 3.14.1(@types/react@18.3.31)(graphql@16.14.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.3.7(@types/react@18.3.31)
+      esbuild:
+        specifier: ^0.21.0
+        version: 0.21.5
+      graphql:
+        specifier: ^16.8.0
+        version: 16.14.2
+      react-router-dom:
+        specifier: ^6.22.0
+        version: 6.30.4(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   librarian:
     devDependencies:
       '@apollo/client':

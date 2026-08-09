@@ -1,0 +1,22 @@
+{
+  "name": "doppelganger",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "description": "Stash plugin that finds scenes, performers, and studios duplicated via a shared stash-box match.",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/core/*.test.js"
+  },
+  "devDependencies": {
+    "@apollo/client": "^3.9.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "esbuild": "^0.21.0",
+    "graphql": "^16.8.0",
+    "react-router-dom": "^6.22.0",
+    "typescript": "^5.4.0"
+  }
+}

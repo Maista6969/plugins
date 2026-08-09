@@ -1,0 +1,9 @@
+name: Doppelganger
+description: Finds scenes, performers, and studios that were scraped/matched to the same stash-box entry more than once, and lets you merge scenes and performers directly.
+# version: injected from package.json at build time
+url: https://github.com/example/doppelganger
+ui:
+  javascript:
+    - doppelganger-ui.js
+  css:
+    - doppelganger-ui.css

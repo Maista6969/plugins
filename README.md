@@ -3,6 +3,7 @@
 Currently hosts:
 
 - **[librarian](./librarian/README.md)** - renames scene files based on your own rules and metadata
+- **[doppelganger](./doppelganger/README.md)** - finds and merges duplicate scenes and performers by their StashID
 
 ## Installing a plugin from this repo
 
