@@ -108,6 +108,29 @@ test("path condition passes through non-default modifiers unchanged (EXCLUDES, M
   });
 });
 
+test("a NOT_MATCHES_REGEX path condition also gates on having a file, unlike the other modifiers", () => {
+  const notRegex = ruleToSceneFilter(
+    rule({
+      conditions: [
+        { field: "path", op: "NOT_MATCHES_REGEX", value: "^/data/keep/" },
+      ],
+    }),
+  );
+  assert.deepEqual(notRegex, {
+    path: { value: "^/data/keep/", modifier: "NOT_MATCHES_REGEX" },
+    file_count: { value: 0, modifier: "GREATER_THAN" },
+  });
+
+  const notEquals = ruleToSceneFilter(
+    rule({
+      conditions: [{ field: "path", op: "NOT_EQUALS", value: "/data/x.mp4" }],
+    }),
+  );
+  assert.deepEqual(notEquals, {
+    path: { value: "/data/x.mp4", modifier: "NOT_EQUALS" },
+  });
+});
+
 test("a path condition with no value typed yet is not translatable", () => {
   assert.equal(
     ruleToSceneFilter(

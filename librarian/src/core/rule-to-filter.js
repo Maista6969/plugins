@@ -54,9 +54,13 @@ function ratingFilter(value) {
 
 function pathFilter(condition) {
   if (!condition.value) return null;
-  return {
-    path: { value: condition.value, modifier: condition.op || "INCLUDES" },
-  };
+  const op = condition.op || "INCLUDES";
+  const filter = { path: { value: condition.value, modifier: op } };
+  // Stash returns fileless scenes for this modifier but we can skip those
+  if (op === "NOT_MATCHES_REGEX") {
+    filter.file_count = { value: 0, modifier: "GREATER_THAN" };
+  }
+  return filter;
 }
 
 function conditionToFilter(condition) {
