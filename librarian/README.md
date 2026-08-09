@@ -37,7 +37,7 @@ I recommend making frequent backups of your database and your config where the p
   marked Organized (or, for scenes, that have a StashID), configure any exclusions for the files you know you'll
   never want to rename, and optionally [configure your own rules](#rule) for subsets of your collection that need
   their own naming scheme. Everything that does not have its own rule will be renamed according to that tab's
-  default pattern. Formatting settings are shared across all three.
+  default pattern. Formatting settings are shared across all three
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-settings.png">
@@ -57,10 +57,10 @@ I recommend making frequent backups of your database and your config where the p
 
 - **Automatically rename files as you update**: Librarian will rename the files for a scene, gallery or image as soon
   as it's updated with new metadata, as long as it meets the criteria you've configured for that type. Each tab has its
-  own "Automatic renaming" switch at the top of its Options section; it starts **on for scenes and off for galleries and
-  images**, so those only ever rename via their manual task until you turn it on.
+  own "Automatic renaming" switch at the top of its Options section; all default to off so that you can verify that your
+  rules and patterns look good before you enable them
 
-- **Scene page, File Info tab** (scenes only): See exactly which rule would apply to any scene in the File Info tab.
+- **Scene page, File Info tab** (scenes only): See exactly which rule would apply to any scene in the File Info tab
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-fileinfo-tab-integration.png">
@@ -73,32 +73,18 @@ I recommend making frequent backups of your database and your config where the p
 
 ## What can be renamed
 
-Scenes, galleries and images each get their own tab in the settings, and each is renamed through Stash's
-`moveFiles` mutation just like scenes always were. Two things Stash itself cannot do set the limits, so
-Librarian skips those cases explicitly rather than half-doing them:
+Scenes, galleries and images each get their own tab in the settings.
+Two things Stash itself cannot do set the limits, so Librarian skips those cases explicitly rather than half-doing them:
 
-|                         | Renamed    | Why not                                                                                                                                                                                                                                                                                                                  |
-| ----------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Scenes                  | ✅         |                                                                                                                                                                                                                                                                                                                          |
-| **Zip** galleries       | ✅         | The images inside follow the zip automatically                                                                                                                                                                                                                                                                           |
-| **Folder** galleries    | ❌ skipped | A folder gallery has no file to move, only a folder. Stash has no mutation for moving one, and no way to repoint a gallery at a different folder. Moving the images out individually would strand the gallery, and its title, date, rating and tags, on the old folder while a new empty gallery appeared at the new one |
-| Loose images            | ✅         |                                                                                                                                                                                                                                                                                                                          |
-| Images **inside a zip** | ❌ skipped | Stash refuses to move or rename anything contained in a zip, even to change only the filename. Rename the gallery instead                                                                                                                                                                                                |
+|                     | Renamed    | Why not                                                                                                                                                                                                                                                                                                                  |
+| ------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scenes              | ✅         |                                                                                                                                                                                                                                                                                                                          |
+| Zip galleries       | ✅         | The images inside follow the zip automatically                                                                                                                                                                                                                                                                           |
+| Folder galleries    | ❌ skipped | A folder gallery has no file to move, only a folder. Stash has no mutation for moving one, and no way to repoint a gallery at a different folder. Moving the images out individually would strand the gallery, and its title, date, rating and tags, on the old folder while a new empty gallery appeared at the new one |
+| Loose images        | ✅         |                                                                                                                                                                                                                                                                                                                          |
+| Images inside a zip | ❌ skipped | Stash refuses to move or rename anything contained in a zip, even to change only the filename. Rename the gallery instead                                                                                                                                                                                                |
 
 Both skips are reported per item in the preview and in the logs, with the reason, so nothing fails silently.
-
-Galleries and images ship with **automatic renaming off** and a **blank folder pattern**, meaning files keep the
-folder they are already in. Nothing moves until you opt in.
-
-**Tokens differ by type**, because the underlying data does. All three share the metadata tokens (`{title}`,
-`{studio}`, `{performers}`, `{tags}`, `{date}`, `{rating}` and so on). Only scenes have `{stash_id}`, since Stash
-records StashIDs for scenes alone. Only scenes have the file-metadata tokens (`{resolution}`, `{video_codec}`,
-`{bitrate}` …): a zip gallery's file reports no dimensions at all, and an image's several files can only ever be
-byte-identical duplicates, so no file token could tell them apart. The pattern editor offers each type only the
-tokens it can actually fill.
-
-**Library roots are per type too.** A Stash library path can exclude video or images independently, so a
-video-only library is never offered as a destination for galleries or images.
 
 ## Rule
 
@@ -126,17 +112,13 @@ that defines a subset, such as having a particular set of tags or performers, be
   each bracket collapsing independently. A required token inside `<...>` normally never triggers a collapse, because it is
   guaranteed to have data (if it didn't, the scene would be reported as missing data instead of rendered). The one exception
   is a **list token a filter emptied** — `{performers|gender=female}` on a scene with no female performers, or
-  `{performers_not_in_title}` when every performer is named in the title. Those really can be required _and_ empty, so they
-  collapse the bracket rather than leaving you with a bare `[]`. A scene with no performers **at all** is still missing data;
-  an unknown/misspelled token counts as real content and also never triggers one, so a typo stays visible rather than silently vanishing.
+  `{performers_not_in_title}` when every performer is named in the title.
 - `<a|b|c>`: split a bracket on `|` to try alternatives in order, using each one's own collapse rule as the test. The first
   alternative that doesn't collapse wins: any literal-only or required-token alternative always qualifies; an optional-token
   alternative qualifies only once that token actually has data. For example `<{date?}|missing-date>` renders the date if it has one, or else the literal `missing-date`.
   Each alternative can carry its own literal text, e.g. `< ({code?})| [{date?}]>` includes the parentheses
   only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
-  A `|` inside a token's own braces belongs to that token's modifiers, so `<{performers|gender=female}|nobody>` is two
-  alternatives, not three.
 
 **Token modifiers**: `gender` keeps only the performers of the gender(s) you name, on any of `{performers}`,
 `{performers_not_in_title}` and `{matched_performers}`. Several are separated by commas, e.g. `{performers|gender=female,trans_female}`.
@@ -203,7 +185,7 @@ _Scene metadata_
 | `{tags}`                                      | All tags on the scene                                                                                                                                                                                                      |
 | `{matched_tags}`                              | Only the tag(s) that satisfied this rule's own `tag` condition                                                                                                                                                             |
 | `{rating}`                                    | 0-10 decimal scale, regardless of which rating system this Stash instance is configured to display                                                                                                                         |
-| `{stash_id}`                                  | StashID from one stash-box source, named inline as `{stash_id                                                                                                                                                              | from=StashDB}`; see below |
+| `{stash_id}`                                  | StashID from one stash-box source, can be specified as `{stash_id\|from=StashDB}`; see below                                                                                                                               |
 
 _File metadata_
 
@@ -224,7 +206,7 @@ token has to say which one it means. Name it inline with `|from=`:
 {stash_id|from=StashDB}-{stash_id|from=ThePornDB}
 ```
 
-That is the main reason to use `|from=`: **one pattern can carry StashIDs from several sources**,
+That is the main reason to use `|from=`: one pattern can carry StashIDs from several sources,
 which a single picker could never express. Names are matched against the sources configured in
 Stash's own settings (Settings > Metadata Providers), ignoring case, and the first match wins if you
 have given two sources the same name.
@@ -242,7 +224,7 @@ If a scene has no StashID from the resolved source, that is missing data too, an
 source so you can tell the two cases apart.
 
 > **`|from=` uses a name, and names can be edited.** Renaming a source in Stash breaks every pattern
-> that referred to it by the old name — Librarian refuses to rename rather than producing a wrong
+> that referred to it by the old name: Librarian refuses to rename rather than producing a wrong
 > filename, but you will have to update your patterns. If you would rather be immune to that, give the
 > full endpoint URL instead: `{stash_id|from=https://stashdb.org/graphql}`. A URL is also accepted when
 > no configured source uses it any more, so scenes keep working after you remove a stash-box.
@@ -264,15 +246,6 @@ both, in that order, means "favourited performers first, best-rated first among 
 which combined with `{performers:1}` gives you a folder named after the favourite you rate highest.
 Unrated performers sort last. `{tags}`/`{matched_tags}` always sort alphabetically.
 
-Alphabetical is not just the default but the permanent final tiebreak, so two performers can never
-come out in an arbitrary order — if they could, `{performers:1}` might pick differently on the next
-run and shuffle the file back and forth forever.
-
-> **These sorts depend on data you can change.** A path built from `{performers:1}` with a
-> favourites/rating sort will change if you later favourite someone else or adjust a rating, and
-> Librarian will happily move the file again to match. Prefer a plain alphabetical sort if you want
-> paths that only change when the performer line-up does.
-
 **When a matched rule's pattern references a required token the scene doesn't have data for**, that
 scene is treated as an error which is shown both in the preview and Stash logs rather than silently
 ending up with placeholder text.
@@ -290,7 +263,7 @@ Folder
 Filename:
 
 ```
-{studio} - {date} - {title}< - {performers?}>
+{studio} - {date} - {title}< - {performers|gender=female,trans_fem?}>
 ```
 
 The `< - {performers?}>` group drops away as a whole (leading " - " included) rather than leaving
