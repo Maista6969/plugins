@@ -117,10 +117,17 @@ that defines a subset, such as having a particular set of tags or performers, be
 - `{token?}`: optional. Renders empty instead of erroring when the scene has no data for it.
 - `{token:N}`: list tokens only (`performers`, `performers_not_in_title`, `matched_performers`, `tags`, `matched_tags`). Joins at most the first N values so `{performers:3}` includes at most three names.
 - `{token:N?}`: both of the above combined, e.g. `{performers_not_in_title:2?}`.
+- `{token|name=value}`: a modifier. `gender` on the performer tokens, e.g. `{performers|gender=female}`, and `from` on `{stash_id}`, e.g. `{stash_id|from=StashDB}`.
+  Modifiers go after any `:N` and before the `?`, so the fullest form is `{performers:1|gender=female?}`.
+  A mistyped modifier is refused outright rather than quietly renaming to something wrong.
 - `<...>`: wraps literal text and/or tokens as one optional-segment unit. The whole span, literal text included,
   is dropped if it contains at least one optional token and every one of them rendered empty for that scene.
   For example `{studio}<, {date?}>< - {title?}>` renders `Studio, 2024 - Title` when both are present, or just `Studio` when both are missing,
-  each bracket collapsing independently. A required token inside `<...>` never triggers a collapse (it's guaranteed to have data already);
+  each bracket collapsing independently. A required token inside `<...>` normally never triggers a collapse, because it is
+  guaranteed to have data (if it didn't, the scene would be reported as missing data instead of rendered). The one exception
+  is a **list token a filter emptied** — `{performers|gender=female}` on a scene with no female performers, or
+  `{performers_not_in_title}` when every performer is named in the title. Those really can be required _and_ empty, so they
+  collapse the bracket rather than leaving you with a bare `[]`. A scene with no performers **at all** is still missing data;
   an unknown/misspelled token counts as real content and also never triggers one, so a typo stays visible rather than silently vanishing.
 - `<a|b|c>`: split a bracket on `|` to try alternatives in order, using each one's own collapse rule as the test. The first
   alternative that doesn't collapse wins: any literal-only or required-token alternative always qualifies; an optional-token
@@ -128,6 +135,22 @@ that defines a subset, such as having a particular set of tags or performers, be
   Each alternative can carry its own literal text, e.g. `< ({code?})| [{date?}]>` includes the parentheses
   only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
+  A `|` inside a token's own braces belongs to that token's modifiers, so `<{performers|gender=female}|nobody>` is two
+  alternatives, not three.
+
+**Token modifiers**: `gender` keeps only the performers of the gender(s) you name, on any of `{performers}`,
+`{performers_not_in_title}` and `{matched_performers}`. Several are separated by commas, e.g. `{performers|gender=female,trans_female}`.
+The filtering happens before `:N`, so `{performers:1|gender=female}` is "the first female performer" rather than
+"the first performer, if she happens to be female".
+
+Valid values are `female`, `male`, `trans_female`, `trans_male`, `intersex`, `non_binary` and `unknown`
+(`transgender_female`, `transgender_male` and `nonbinary` also work if you prefer them spelled out).
+
+> **Gender has to actually be set in Stash.** `unknown` means "no gender recorded", and it is deliberately _not_
+> matched by `gender=female` — so on a library where performers have not been tagged, `{performers|gender=female}`
+> will quietly leave them out. Like `{performers_not_in_title}`, a filter that matches nobody renders empty rather
+> than reporting missing data; use `{performers|gender=female?}` or `<{performers|gender=female}|Unsorted>` if you
+> want to handle that case explicitly.
 
 **Folder pattern**: the folder pattern accepts the same syntax as the filename pattern, and additionally
 treats three cases specially:
@@ -180,7 +203,7 @@ _Scene metadata_
 | `{tags}`                                      | All tags on the scene                                                                                                                                                                                                      |
 | `{matched_tags}`                              | Only the tag(s) that satisfied this rule's own `tag` condition                                                                                                                                                             |
 | `{rating}`                                    | 0-10 decimal scale, regardless of which rating system this Stash instance is configured to display                                                                                                                         |
-| `{stash_id}`                                  | StashID from one specific, rule-configured stash-box source like StashDB or ThePornDB; see below                                                                                                                           |
+| `{stash_id}`                                  | StashID from one stash-box source, named inline as `{stash_id                                                                                                                                                              | from=StashDB}`; see below |
 
 _File metadata_
 
@@ -194,13 +217,38 @@ _File metadata_
 | `{phash}`       | Perceptual hash fingerprint                         |
 | `{oshash}`      | OpenSubtitles hash fingerprint                      |
 
-**`{stash_id}`**: a scene can have StashIDs from several different stash-box sources at once, and
-those sources are user-named in Stash's own settings (Settings > Metadata Providers), so there's no
-fixed name like "StashDB" this plugin could assume. Once a pattern uses `{stash_id}`, a "StashID
-source" picker appears on that rule (or the default pattern) showing your currently configured
-stash-box sources by name; pick one, and the token resolves to whichever StashID this scene actually
-has from that specific source. If a scene has no StashID from the chosen source, `{stash_id}` is
-missing data like any other token, an error unless written `{stash_id?}`.
+**`{stash_id}`**: a scene can have StashIDs from several different stash-box sources at once, so the
+token has to say which one it means. Name it inline with `|from=`:
+
+```
+{stash_id|from=StashDB}-{stash_id|from=ThePornDB}
+```
+
+That is the main reason to use `|from=`: **one pattern can carry StashIDs from several sources**,
+which a single picker could never express. Names are matched against the sources configured in
+Stash's own settings (Settings > Metadata Providers), ignoring case, and the first match wins if you
+have given two sources the same name.
+
+A source is worked out in this order:
+
+1. `|from=` on the token itself.
+2. otherwise the **Default StashID source** picker, which appears on a rule (or the default pattern)
+   as soon as some `{stash_id}` in it does _not_ say `|from=`.
+3. otherwise, if you have exactly **one** stash-box configured, that one — there is nothing to choose
+   between, so `{stash_id}` just works.
+4. otherwise it is missing data, an error unless written `{stash_id?}`.
+
+If a scene has no StashID from the resolved source, that is missing data too, and the error names the
+source so you can tell the two cases apart.
+
+> **`|from=` uses a name, and names can be edited.** Renaming a source in Stash breaks every pattern
+> that referred to it by the old name — Librarian refuses to rename rather than producing a wrong
+> filename, but you will have to update your patterns. If you would rather be immune to that, give the
+> full endpoint URL instead: `{stash_id|from=https://stashdb.org/graphql}`. A URL is also accepted when
+> no configured source uses it any more, so scenes keep working after you remove a stash-box.
+
+Two spelling quirks worth knowing: a source whose name ends in `?` cannot be written directly (the `?`
+is read as the optional marker), and neither can one containing `|`.
 
 `{resolution}`/`{video_codec}`/`{audio_codec}`/`{bitrate}`/`{fps}`/`{phash}` describe the specific file
 being renamed, not the scene as a whole: a scene with both a 1080p copy and a 4K remux renders each
@@ -210,10 +258,20 @@ render to the identical folder+filename get the usual `Name.mp4`, `Name (2).mp4`
 
 **Sort order for `{performers}`/`{performers_not_in_title}`/`{matched_performers}`**: each rule (and
 the default pattern) has its own performer sort order, only shown when the pattern actually
-references one of those tokens: `alphabetical` (default), `favorite_first` (favorites first,
-alphabetical within each group), or `rating` (highest first, unrated last). Combine with
-`{performers:N}` for e.g. "the top 3 favorited performers." `{tags}`/`{matched_tags}` always sort
-alphabetically.
+references one of those tokens. Pick any combination of **Favourites first** and **Highest rated**,
+in the order you click them; whatever is left over is broken alphabetically, always. So choosing
+both, in that order, means "favourited performers first, best-rated first among those, then A→Z",
+which combined with `{performers:1}` gives you a folder named after the favourite you rate highest.
+Unrated performers sort last. `{tags}`/`{matched_tags}` always sort alphabetically.
+
+Alphabetical is not just the default but the permanent final tiebreak, so two performers can never
+come out in an arbitrary order — if they could, `{performers:1}` might pick differently on the next
+run and shuffle the file back and forth forever.
+
+> **These sorts depend on data you can change.** A path built from `{performers:1}` with a
+> favourites/rating sort will change if you later favourite someone else or adjust a rating, and
+> Librarian will happily move the file again to match. Prefer a plain alphabetical sort if you want
+> paths that only change when the performer line-up does.
 
 **When a matched rule's pattern references a required token the scene doesn't have data for**, that
 scene is treated as an error which is shown both in the preview and Stash logs rather than silently
