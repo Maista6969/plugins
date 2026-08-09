@@ -22,6 +22,7 @@ import {
   patternsNeedStashIdDefault,
   PERFORMER_SORT_TOKENS,
   folderPatternMode,
+  filenamePatternMode,
 } from "../../core/path-template.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -100,6 +101,10 @@ export function EntitySettingsPanel({
   // has no effect. Hide the picker rather than letting it be set and ignored.
   const keepsInPlace =
     folderPatternMode(defaultPattern.folderPattern) === "keep";
+  // Blank on both sides is a no-op the planner reports as skipped, which is only
+  // obvious once you have run it. Say so here instead
+  const keepsName =
+    filenamePatternMode(defaultPattern.filenamePattern) === "keep";
 
   // only when some {stash_id} still has no |from= of its own, so a pattern that
   // names every source itself does not show a picker nothing would consult
@@ -279,13 +284,21 @@ export function EntitySettingsPanel({
           <PatternInput
             label="Filename pattern"
             entityType={entityType}
-            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”"
+            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”. Leave blank to keep each file's current name and only move it"
             value={defaultPattern.filenamePattern}
             onChange={(filenamePattern: string) =>
               updateDefaultPattern({ filenamePattern })
             }
             validate={(v) => !hasUnsafeOptionalOnlyBasename(v)}
           />
+
+          {keepsInPlace && keepsName && (
+            <p className="librarian-token-hint text-warning">
+              Both patterns are blank, so nothing would happen: every {noun}{" "}
+              would keep the folder and the name it already has, and be reported
+              as skipped. Give one of the two a value to activate this rule
+            </p>
+          )}
 
           {usesPerformerSort && (
             <div>

@@ -9,6 +9,7 @@ import {
   normalizePathForCompare,
   joinBasename,
   folderPatternMode,
+  filenamePatternMode,
   findUnknownTokens,
   findPatternProblems,
   findMissingRequiredData,
@@ -1282,6 +1283,17 @@ test("folderPatternMode reads intent off the raw pattern, which renderPath would
   assert.equal(folderPatternMode("{studio}"), "render");
   assert.equal(folderPatternMode("{studio?}"), "render");
   assert.equal(folderPatternMode("literal"), "render");
+});
+
+test("filenamePatternMode reads the same intent, but has no root case: a filename never splits into folders", () => {
+  assert.equal(filenamePatternMode(""), "keep");
+  assert.equal(filenamePatternMode("   "), "keep");
+  assert.equal(filenamePatternMode(undefined), "keep");
+  assert.equal(filenamePatternMode(null), "keep");
+  assert.equal(filenamePatternMode("/"), "render");
+  assert.equal(filenamePatternMode("{title}"), "render");
+  assert.equal(filenamePatternMode("{title?}"), "render");
+  assert.equal(filenamePatternMode("literal"), "render");
 });
 
 const BOXES = [

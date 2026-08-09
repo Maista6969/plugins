@@ -1125,6 +1125,148 @@ test("whitespace-only folder patterns keep files put rather than creating a fold
   assert.equal(result.files[0].folder, "/data/old");
 });
 
+test("a blank filename pattern keeps each file's own name while the folder pattern still moves it", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data/Leaf Studio");
+  assert.equal(result.files[0].basename, "old.mp4");
+  assert.equal(result.files[0].unchanged, false);
+});
+
+test("whitespace-only filename patterns keep the current name rather than renaming to _", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "   " },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.files[0].basename, "old.mp4");
+});
+
+test("a kept filename skips sanitization, which would otherwise rename the very file a blank pattern spares", () => {
+  const scene = {
+    id: "504",
+    title: "Spaced Scene",
+    organized: true,
+    studio: { id: "s-leaf", name: "Leaf Studio", parent_studio: null },
+    performers: [],
+    tags: [],
+    files: [{ id: "50", path: "/data/old/my file.mp4" }],
+  };
+  const kept = planScene(
+    scene,
+    baseConfig({
+      sanitize: { spaceReplacement: "." },
+      defaultPattern: { folderPattern: "{studio}", filenamePattern: "" },
+    }),
+  );
+  assert.equal(kept.files[0].basename, "my file.mp4");
+  // the same setting does still apply to a name the pattern renders
+  const rendered = planScene(
+    scene,
+    baseConfig({
+      sanitize: { spaceReplacement: "." },
+      defaultPattern: { folderPattern: "{studio}", filenamePattern: "{title}" },
+    }),
+  );
+  assert.equal(rendered.files[0].basename, "Spaced.Scene.mp4");
+});
+
+test("a blank filename pattern does not trip the guards that only judge a rendered name", () => {
+  const scene = {
+    id: "503",
+    title: "",
+    organized: true,
+    studio: null,
+    performers: [],
+    tags: [],
+    files: [{ id: "40", path: "/data/old/untitled.mp4" }],
+  };
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "/", filenamePattern: "" },
+  });
+  const result = planScene(scene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data");
+  assert.equal(result.files[0].basename, "untitled.mp4");
+});
+
+test("kept names converging on one folder from different folders are still suffixed", () => {
+  const scene = {
+    id: "502",
+    title: "Converging Scene",
+    organized: true,
+    studio: { id: "s-leaf", name: "Leaf Studio", parent_studio: null },
+    performers: [],
+    tags: [],
+    files: [
+      { id: "30", path: "/data/a/clip.mp4" },
+      { id: "31", path: "/data/b/clip.mp4" },
+    ],
+  };
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "" },
+  });
+  const byId = Object.fromEntries(
+    planScene(scene, config).files.map((f) => [f.fileId, f.basename]),
+  );
+  assert.equal(byId["30"], "clip.mp4");
+  assert.equal(byId["31"], "clip (2).mp4");
+});
+
+test("kept names that differ only by extension are left alone, since they never actually collide", () => {
+  const scene = {
+    id: "505",
+    title: "Two Formats Scene",
+    organized: true,
+    studio: { id: "s-leaf", name: "Leaf Studio", parent_studio: null },
+    performers: [],
+    tags: [],
+    files: [
+      { id: "60", path: "/data/a/clip.mp4" },
+      { id: "61", path: "/data/b/clip.mkv" },
+    ],
+  };
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "" },
+  });
+  const byId = Object.fromEntries(
+    planScene(scene, config).files.map((f) => [f.fileId, f.basename]),
+  );
+  assert.equal(byId["60"], "clip.mp4");
+  assert.equal(byId["61"], "clip.mkv");
+});
+
+test("blank folder AND filename patterns are skipped rather than planned as a no-op", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "", filenamePattern: "" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "skipped");
+  assert.equal(result.reason, "nothing_to_change");
+  assert.deepEqual(result.files, []);
+});
+
+test("an all-blank rule holds its matches back from the default pattern, which is what makes it an escape hatch", () => {
+  const config = baseConfig({
+    rules: [
+      {
+        id: "leave-alone",
+        enabled: true,
+        conditionLogic: "AND",
+        conditions: [{ field: "tag", op: "any_of", value: ["t1"] }],
+        folderPattern: "",
+        filenamePattern: "",
+      },
+    ],
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "{title}" },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "skipped");
+  assert.equal(result.reason, "nothing_to_change");
+});
+
 test("re-planning the same raw scene with a changed config yields the new result, which is what the preview's local re-plan relies on", () => {
   const raw = JSON.parse(JSON.stringify(normalOrganizedScene));
   const before = planScene(raw, baseConfig());

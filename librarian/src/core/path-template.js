@@ -900,6 +900,11 @@ export function folderPatternMode(folderPattern) {
   return "render";
 }
 
+export function filenamePatternMode(filenamePattern) {
+  const raw = (filenamePattern == null ? "" : String(filenamePattern)).trim();
+  return raw === "" ? "keep" : "render";
+}
+
 function filenameHasContentWithout(
   filenamePattern,
   tokens,

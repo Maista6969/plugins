@@ -15,6 +15,7 @@ import {
   patternsUseStashIdSource,
   describePatternPair,
   folderPatternMode,
+  filenamePatternMode,
 } from "./path-template.js";
 import { assignSuffixes } from "./file-ordering.js";
 import { deriveFileTech } from "./file-tech.js";
@@ -27,6 +28,11 @@ import { GLOBAL_SETTING_KEYS } from "./config-schema.js";
 function getExtension(basename) {
   const dotIndex = (basename || "").lastIndexOf(".");
   return dotIndex === -1 ? "" : basename.slice(dotIndex);
+}
+
+function stripExtension(basename) {
+  const name = basename || "";
+  return name.slice(0, name.length - getExtension(name).length);
 }
 
 function splitPath(path) {
@@ -232,6 +238,20 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
   }
 
   const folderMode = folderPatternMode(folderPattern);
+  const filenameMode = filenamePatternMode(filenamePattern);
+
+  if (folderMode === "keep" && filenameMode === "keep") {
+    return {
+      status: "skipped",
+      reason: "nothing_to_change",
+      message:
+        "both the folder and filename patterns are blank, so this " +
+        adapter.noun +
+        " keeps the path it already has",
+      sceneId: sceneView.id,
+      files: [],
+    };
+  }
 
   const libraryRoot = matchedRule
     ? matchedRule.libraryRoot
@@ -288,6 +308,8 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       );
     }
 
+    const current = splitPath(file.path);
+
     const rendered = renderPath(
       folderPattern,
       filenamePattern,
@@ -296,7 +318,9 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       matchedIds,
     );
 
-    if (!rendered.basenameHasContent) {
+    // Both guards ask whether the pattern produced a usable name. Neither means
+    // anything when the file is keeping the name it already has
+    if (filenameMode === "render" && !rendered.basenameHasContent) {
       return dataError(
         "empty_filename",
         sceneView.id,
@@ -313,7 +337,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       );
     }
 
-    if (!rendered.basenameHasMetadataContent) {
+    if (filenameMode === "render" && !rendered.basenameHasMetadataContent) {
       return dataError(
         "no_identifying_metadata",
         sceneView.id,
@@ -330,7 +354,13 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       );
     }
 
-    const current = splitPath(file.path);
+    // Deliberately not run through sanitizeSegment: the name is already on disk,
+    // so it is legal there, and sanitizing would rename the very file the blank
+    // pattern promised to leave alone (spaceReplacement being the obvious way)
+    const basenameNoExt =
+      filenameMode === "keep"
+        ? stripExtension(current.basename)
+        : rendered.basenameNoExt;
 
     if (folderMode === "render" && !rendered.folder) {
       return dataError(
@@ -383,7 +413,13 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
           ? file.parent_folder.id
           : null,
       folder: targetFolder,
-      basenameNoExt: rendered.basenameNoExt,
+      basenameNoExt: basenameNoExt,
+      // Kept names only really collide when the whole name matches, extension
+      // included, and suffixing one that does not would be the rename a blank
+      // pattern promises never to make. A rendered name is shared by every file
+      // of the entity, so there the extension must stay out of the key
+      groupExtension:
+        filenameMode === "keep" ? getExtension(current.basename) : "",
     });
   }
 
@@ -391,7 +427,8 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
   const groupKeys = [];
   perFile.forEach((entry) => {
     // NUL byte will never appear in filenames and is a safe joiner here
-    const key = entry.folder + "\0" + entry.basenameNoExt;
+    const key =
+      entry.folder + "\0" + entry.basenameNoExt + "\0" + entry.groupExtension;
     if (!groups[key]) {
       groups[key] = [];
       groupKeys.push(key);

@@ -155,6 +155,24 @@ pattern blank to keep those files where they are.
 > which flattened manually-organised folder hierarchies. It now means "leave files where they are".
 > If you were relying on the old behaviour, change your folder pattern to `/`.
 
+**Blank filename pattern**: the mirror image of a blank folder pattern. It will **keep the name each file already
+has**, extension included, and only move it to wherever the folder pattern points. This is the option to use
+when your filenames are already how you want them and it is only the folder structure you want maintained.
+
+A kept name is never sanitised. It is a name your filesystem has already accepted, so settings like the
+space replacement leave it alone; sanitising it would be a rename, which is the one thing a blank pattern
+promises not to do. Names are still de-duplicated, though: if two files of the same scene land in the same
+destination folder under the same name, the second becomes `name (2).ext`. Two files that differ only in
+their extension are not a collision and both keep their names.
+
+Leaving both patterns blank is a no-op, and Librarian reports those files as skipped. On a rule that is a
+useful escape hatch: because the first matching rule wins, an all-blank rule marks everything it matches
+as off-limits to every rule below it and to the default pattern.
+
+> ⚠️ **Behaviour change in version 0.6**: a blank filename pattern used to be an error, so a half-finished
+> rule that had a folder pattern but no filename pattern quietly did nothing. It now moves files while
+> keeping their names. Check any rule you left with a blank filename pattern.
+
 **Nesting**: a folder pattern may contain `/` or `\` to nest folders, so `{studio}/{date_year}` and
 `{studio}\{date_year}` are equivalent and both produce two levels. Whichever you write, the finished
 path uses your library's own separator, so a Windows library ends up with backslashes throughout

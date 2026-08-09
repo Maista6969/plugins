@@ -18,6 +18,7 @@ import {
   patternsNeedStashIdDefault,
   PERFORMER_SORT_TOKENS,
   folderPatternMode,
+  filenamePatternMode,
 } from "../../core/path-template.js";
 import type { Rule } from "./RuleEditor.js";
 
@@ -74,6 +75,7 @@ export function RuleEditModal({
   const adapter = adapterFor(type);
   // same reasoning as the default pattern: a keep-in-place rule ignores its root
   const keepsInPlace = folderPatternMode(rule.folderPattern) === "keep";
+  const keepsName = filenamePatternMode(rule.filenamePattern) === "keep";
   // With several StashID sources accepted, Stash cannot filter on all of them
   // at once, so the query over-selects and the count is only an upper bound
   const gateApproximate = stashIdGateIsApproximate(config[type]);
@@ -135,7 +137,7 @@ export function RuleEditModal({
             label="Filename pattern"
             entityType={entityType}
             subHeading={
-              'The file name without the extension. Cannot contain < > : " / \\ | ? * (stripped automatically if present)'
+              "The file name without the extension. Cannot contain < > : \" / \\ | ? * (stripped automatically if present). Leave blank to keep each file's current name and only move it"
             }
             value={rule.filenamePattern}
             onChange={(filenamePattern) =>
@@ -143,6 +145,17 @@ export function RuleEditModal({
             }
             validate={(v) => !hasUnsafeOptionalOnlyBasename(v)}
           />
+
+          {/* Not an error: the first matching rule wins, so an all-blank rule is
+              a deliberate way to hold matches back from every later rule */}
+          {keepsInPlace && keepsName && (
+            <p className="librarian-token-hint text-muted">
+              Both patterns are blank, so matching {adapter.plural} are left
+              exactly as they are, and no later rule or the default pattern gets
+              to claim them. Give one of the two a value if you meant this rule
+              to rename or move something.
+            </p>
+          )}
 
           {(patternUsesAnyToken(rule.folderPattern, PERFORMER_SORT_TOKENS) ||
             patternUsesAnyToken(
