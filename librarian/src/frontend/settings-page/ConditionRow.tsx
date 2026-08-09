@@ -68,11 +68,34 @@ const SELECT_COMPONENT_BY_FIELD: Record<string, string> = {
   tag: "TagIDSelect",
 };
 
+const PHRASE_HINT =
+  ' Several words are matched separately, so "The Reunion" also matches' +
+  ' "Friends Reunion". Wrap the value in double quotes to match it as one' +
+  " phrase. “%” matches any run of characters and “_” any single one";
+
 const PATH_MODIFIERS = [
-  { value: "INCLUDES", label: "contains" },
-  { value: "EXCLUDES", label: "doesn't contain" },
-  { value: "EQUALS", label: "is" },
-  { value: "NOT_EQUALS", label: "is not" },
+  {
+    value: "INCLUDES",
+    label: "contains",
+    title: "Matches if the path contains this." + PHRASE_HINT,
+  },
+  {
+    value: "EXCLUDES",
+    label: "doesn't contain",
+    title: "Matches only if the path contains none of this." + PHRASE_HINT,
+  },
+  {
+    value: "EQUALS",
+    label: "is",
+    title:
+      "Matches only if the whole path is exactly this, folders included." +
+      " Words are not split and quotes are not special here",
+  },
+  {
+    value: "NOT_EQUALS",
+    label: "is not",
+    title: "Matches unless the whole path is exactly this, folders included",
+  },
   { value: "MATCHES_REGEX", label: "matches regex" },
   { value: "NOT_MATCHES_REGEX", label: "doesn't match regex" },
 ];
@@ -191,11 +214,12 @@ function PathValueEditor({
       <Form.Control
         as="select"
         className="librarian-inline-select input-control"
+        title={PATH_MODIFIERS.find((m) => m.value === op)?.title}
         value={op}
         onChange={(e: any) => onChangeOp(e.target.value)}
       >
         {PATH_MODIFIERS.map((m) => (
-          <option key={m.value} value={m.value}>
+          <option key={m.value} value={m.value} title={m.title}>
             {m.label}
           </option>
         ))}
