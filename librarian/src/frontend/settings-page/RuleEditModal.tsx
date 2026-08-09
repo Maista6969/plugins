@@ -15,6 +15,7 @@ import { adapterFor } from "../../core/entity-adapter.js";
 import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
+  patternsNeedStashIdDefault,
   PERFORMER_SORT_TOKENS,
   folderPatternMode,
 } from "../../core/path-template.js";
@@ -158,10 +159,12 @@ export function RuleEditModal({
           )}
 
           {type === "scenes" &&
-            (patternUsesAnyToken(rule.folderPattern, ["stash_id"]) ||
-              patternUsesAnyToken(rule.filenamePattern, ["stash_id"])) && (
+            patternsNeedStashIdDefault([
+              rule.folderPattern,
+              rule.filenamePattern,
+            ]) && (
               <div>
-                StashID source{" "}
+                Default StashID source{" "}
                 <StashBoxSelect
                   value={rule.stashBoxEndpoint}
                   inheritedEndpoint={

@@ -39,8 +39,8 @@ function explainMoveError(entityType, error) {
   );
 }
 
-export function renameEntity(rawEntity, config, entityType) {
-  const plan = planEntity(rawEntity, config, entityType);
+export function renameEntity(rawEntity, config, entityType, stashBoxes) {
+  const plan = planEntity(rawEntity, config, entityType, stashBoxes);
 
   if (plan.status !== "ok") {
     return plan;
@@ -76,6 +76,6 @@ export function renameEntity(rawEntity, config, entityType) {
   });
 }
 
-export function renameScene(rawScene, config) {
-  return renameEntity(rawScene, config, "scenes");
+export function renameScene(rawScene, config, stashBoxes) {
+  return renameEntity(rawScene, config, "scenes", stashBoxes);
 }

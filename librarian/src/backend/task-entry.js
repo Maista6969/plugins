@@ -3,11 +3,13 @@ import {
   gqlFindEntity,
   gqlGetConfig,
   gqlGetLibraryPaths,
+  gqlGetStashBoxes,
   gqlConfigurePlugin,
   gqlCountEntities,
   gqlFindDeadEntityIds,
 } from "./gql.js";
 import { normalizeConfig } from "../core/config-schema.js";
+import { configNeedsStashBoxes } from "../core/plan-scene.js";
 import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
 import {
   collectEntityIds,
@@ -32,12 +34,12 @@ function logError(noun, sceneId, message) {
   }
 }
 
-function processScene(scene, config, summary, entityType) {
+function processScene(scene, config, summary, entityType, stashBoxes) {
   const noun = adapterFor(entityType).noun;
   summary.processed++;
   let outcome;
   try {
-    outcome = renameEntity(scene, config, entityType);
+    outcome = renameEntity(scene, config, entityType, stashBoxes);
   } catch (e) {
     summary.errors.push({ sceneId: scene.id, error: String(e) });
     logError(noun, scene.id, String(e));
@@ -151,6 +153,17 @@ function runSweep(args) {
     // silently skipped
   }
 
+  // After the prune blocks above, which can disable rules and so change whether
+  // any pattern still resolves a stash-box. Once per sweep, never per entity
+  let stashBoxes = null;
+  if (configNeedsStashBoxes(config, entityType)) {
+    try {
+      stashBoxes = gqlGetStashBoxes();
+    } catch (e) {
+      // silently skipped
+    }
+  }
+
   const summary = {
     processed: 0,
     changed: 0,
@@ -177,7 +190,7 @@ function runSweep(args) {
         logError(adapter.noun, id, adapter.noun + " not found");
         return;
       }
-      processScene(scene, config, summary, entityType);
+      processScene(scene, config, summary, entityType, stashBoxes);
     });
     const text = summaryText(
       "librarian: processed " +
@@ -229,7 +242,7 @@ function runSweep(args) {
     }
 
     scenes.forEach((scene) => {
-      processScene(scene, config, summary, entityType);
+      processScene(scene, config, summary, entityType, stashBoxes);
     });
 
     logProgress(total > 0 ? Math.min(1, summary.processed / total) : 1);

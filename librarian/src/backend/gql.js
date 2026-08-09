@@ -164,6 +164,19 @@ const CONFIGURATION_QUERY = `
   }
 `;
 
+const STASH_BOXES_QUERY = `
+  query GetStashBoxes {
+    configuration {
+      general {
+        stashBoxes {
+          name
+          endpoint
+        }
+      }
+    }
+  }
+`;
+
 const LIBRARY_PATHS_QUERY = `
   query GetLibraryPaths {
     configuration {
@@ -312,6 +325,16 @@ export function gqlGetLibraryPaths() {
     galleries: pathsFor("excludeImage"),
     images: pathsFor("excludeImage"),
   };
+}
+
+export function gqlGetStashBoxes() {
+  const result = doQuery(STASH_BOXES_QUERY, {});
+  return (
+    (result.configuration &&
+      result.configuration.general &&
+      result.configuration.general.stashBoxes) ||
+    []
+  );
 }
 
 export function gqlConfigurePlugin(config) {

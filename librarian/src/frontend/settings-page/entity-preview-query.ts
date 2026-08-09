@@ -110,6 +110,7 @@ export function fetchPreviewRows(
   config: any,
   sort?: PreviewSort,
   entityType: string = "scenes",
+  stashBoxes?: any[] | null,
 ) {
   return client
     .query({
@@ -121,7 +122,7 @@ export function fetchPreviewRows(
       const items = (data && data.result && data.result.items) || [];
       return items.map((entity: any) => ({
         scene: entity,
-        plan: planEntity(entity, config, entityType),
+        plan: planEntity(entity, config, entityType, stashBoxes),
       }));
     });
 }
@@ -137,6 +138,7 @@ export async function fetchScopedPreviewRows(
   sort: PreviewSort | undefined,
   isStolen: (plan: any) => boolean,
   entityType: string = "scenes",
+  stashBoxes?: any[] | null,
 ) {
   const collected: { scene: any; plan: any }[] = [];
   let page = 1;
@@ -154,7 +156,7 @@ export async function fetchScopedPreviewRows(
       break;
     }
     for (const entity of items) {
-      const plan = planEntity(entity, config, entityType);
+      const plan = planEntity(entity, config, entityType, stashBoxes);
       if (!isStolen(plan)) {
         collected.push({ scene: entity, plan });
         if (collected.length >= SAMPLE_SIZE) {

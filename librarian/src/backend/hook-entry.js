@@ -2,9 +2,11 @@ import {
   gqlFindEntity,
   gqlGetConfig,
   gqlGetLibraryPaths,
+  gqlGetStashBoxes,
   gqlConfigurePlugin,
 } from "./gql.js";
 import { normalizeConfig } from "../core/config-schema.js";
+import { configNeedsStashBoxes } from "../core/plan-scene.js";
 import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
 import { describePatternPair, joinBasename } from "../core/path-template.js";
 import { renameEntity } from "./core-runner.js";
@@ -67,7 +69,17 @@ export function run(args) {
       };
     }
 
-    const outcome = renameEntity(scene, config, entityType);
+    // Only run when the pattern requires it so it stays cheap for most users
+    let stashBoxes = null;
+    if (configNeedsStashBoxes(config, entityType)) {
+      try {
+        stashBoxes = gqlGetStashBoxes();
+      } catch (e) {
+        // silently skipped
+      }
+    }
+
+    const outcome = renameEntity(scene, config, entityType, stashBoxes);
     if (outcome.status === "error") {
       const messages = outcome.missingData
         .map((m) => {

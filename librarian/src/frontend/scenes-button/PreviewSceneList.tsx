@@ -3,6 +3,7 @@ import { useApolloClient, gql } from "@apollo/client";
 import { usePreviewMode, buildPreviewRows } from "./preview-context.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { STUDIO_FIELDS } from "../shared/scene-query-fields.js";
+import { useStashBoxes } from "../shared/StashBoxesContext.js";
 
 const ENRICH_STUDIOS_QUERY = gql(`
   query LibrarianEnrichStudios($ids: [ID!]) {
@@ -77,6 +78,8 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
     setSceneOverride,
   } = usePreviewMode();
   const client = useApolloClient();
+  // must stay above the early returns below: hooks cannot be called conditionally
+  const { stashBoxes, loading: boxesLoading } = useStashBoxes();
   const [enrichedStudiosById, setEnrichedStudiosById] = useState<
     Record<string, any>
   >({});
@@ -192,7 +195,12 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
     };
   });
 
-  const rows = buildPreviewRows(effectiveScenes, config, sceneOverrides);
+  const rows = buildPreviewRows(
+    effectiveScenes,
+    config,
+    sceneOverrides,
+    boxesLoading ? null : stashBoxes,
+  );
   const { willMove, unchanged, skipped, errors } = summarize(rows);
 
   return (

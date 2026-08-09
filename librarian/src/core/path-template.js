@@ -4,6 +4,9 @@ import {
   splitTopLevel,
   applyEntityModifiers,
   applyTextModifiers,
+  modifierValue,
+  MODIFIERS,
+  knownModifierNames,
 } from "./token-grammar.js";
 
 export const KNOWN_TOKENS = [
@@ -38,6 +41,7 @@ const EMPTY_MATCHED_IDS = {
   performerIds: [],
   tagIds: [],
   stashBoxEndpoint: "",
+  stashBoxes: null,
 };
 
 export const PERFORMER_SORT_TOKENS = [
@@ -150,15 +154,15 @@ function entitiesForIds(entities, idsToKeep) {
   });
 }
 
-// Multi-value tokens carry their entities rather than a pre-joined string, so a
-// modifier can filter on fields other than the name. A marker property rather
-// than a class keeps this Goja-safe
-function listValue(entities, delimiter) {
-  return { __list: true, entities: entities, delimiter: delimiter };
+function listValue(entities, delimiter, sourceCount) {
+  return {
+    __list: true,
+    entities: entities,
+    delimiter: delimiter,
+    sourceCount: sourceCount === undefined ? entities.length : sourceCount,
+  };
 }
 
-// The one place a token turns into text. Order is fixed: filter, then limit,
-// then sanitize each name, then join, then rewrite the result
 function renderTokenValue(value, parsed) {
   if (value && value.__list) {
     let entities = applyEntityModifiers(value.entities, parsed);
@@ -168,10 +172,88 @@ function renderTokenValue(value, parsed) {
     const names = entities.map((e) => {
       return sanitizeTokenValue(e.name);
     });
-    return applyTextModifiers(names.join(value.delimiter), parsed);
+    const text = applyTextModifiers(names.join(value.delimiter), parsed);
+    return { text: text, filteredEmpty: text === "" && value.sourceCount > 0 };
+  }
+  if (value && value.__stashId) {
+    const source = resolveStashIdSource(parsed, value.matchedIds);
+    const hit = source.endpoint
+      ? value.stashIds.filter((s) => {
+          return s.endpoint === source.endpoint;
+        })
+      : [];
+    const id = hit.length > 0 ? hit[0].stash_id : "";
+    return {
+      text: applyTextModifiers(sanitizeTokenValue(id), parsed),
+      filteredEmpty: false,
+    };
   }
   // plain strings, and the probe maps filenameHasContentWithout builds
-  return applyTextModifiers(String(value), parsed);
+  return {
+    text: applyTextModifiers(String(value), parsed),
+    filteredEmpty: false,
+  };
+}
+
+function looksLikeEndpoint(value) {
+  return value.indexOf("://") !== -1;
+}
+
+// The only place we resolve stash-boxes
+// shared by the Goja backend so it must stay compatible
+export function resolveStashIdSource(parsed, matchedIds) {
+  const matched = matchedIds || EMPTY_MATCHED_IDS;
+  const boxes = matched.stashBoxes;
+  const listKnown = !!boxes;
+  const requested = (modifierValue(parsed, "from") || "").trim();
+
+  if (requested) {
+    if (looksLikeEndpoint(requested)) {
+      return {
+        endpoint: requested,
+        requested: requested,
+        listKnown: listKnown,
+      };
+    }
+    const wanted = requested.toLowerCase();
+    const hit = (boxes || []).filter((b) => {
+      return (
+        b &&
+        String(b.name || "")
+          .trim()
+          .toLowerCase() === wanted
+      );
+    });
+    return {
+      // first match wins; duplicate names are the user's problem
+      endpoint: hit.length > 0 ? hit[0].endpoint || "" : "",
+      requested: requested,
+      listKnown: listKnown,
+    };
+  }
+
+  const stored = matched.stashBoxEndpoint || "";
+  if (stored) {
+    return { endpoint: stored, requested: "", listKnown: listKnown };
+  }
+
+  if (listKnown && boxes.length === 1) {
+    return {
+      endpoint: boxes[0].endpoint || "",
+      requested: "",
+      listKnown: listKnown,
+    };
+  }
+
+  return { endpoint: "", requested: "", listKnown: listKnown };
+}
+
+function stashIdValue(stashIds, matchedIds) {
+  return {
+    __stashId: true,
+    stashIds: stashIds || [],
+    matchedIds: matchedIds,
+  };
 }
 
 const YEAR_RE = /^(\d{4})/;
@@ -213,13 +295,6 @@ export function buildTokens(sceneView, config, matchedIds) {
   );
   const matchedTags = entitiesForIds(sortedTags, matched.tagIds);
 
-  const stashBoxEndpoint = matched.stashBoxEndpoint || "";
-  const stashIdEntry = stashBoxEndpoint
-    ? (sceneView.stashIds || []).find((s) => {
-        return s.endpoint === stashBoxEndpoint;
-      })
-    : null;
-
   return {
     studio: sanitizeTokenValue(studio),
     studio_root: sanitizeTokenValue(studioRoot),
@@ -229,6 +304,7 @@ export function buildTokens(sceneView, config, matchedIds) {
     performers_not_in_title: listValue(
       performersNotInTitle,
       delimiters.performers || ", ",
+      sortedPerformers.length,
     ),
     matched_performers: listValue(
       matchedPerformers,
@@ -254,7 +330,7 @@ export function buildTokens(sceneView, config, matchedIds) {
     oshash: sanitizeTokenValue(sceneView.oshash || ""),
     rating:
       sceneView.rating100 != null ? (sceneView.rating100 / 10).toFixed(1) : "",
-    stash_id: sanitizeTokenValue(stashIdEntry ? stashIdEntry.stash_id : ""),
+    stash_id: stashIdValue(sceneView.stashIds, matched),
   };
 }
 
@@ -350,24 +426,32 @@ const TOKEN_REQUIREMENTS = {
     isMissing: (view) => view.rating100 == null,
     message: "{noun} has no rating",
   },
+  // all three hooks go through resolveStashIdSource so the reported reason can
+  // never describe a different source than the one that was rendered
   stash_id: {
-    isMissing: (view, matchedIds) => {
-      const endpoint = (matchedIds && matchedIds.stashBoxEndpoint) || "";
-      if (!endpoint) {
+    isMissing: (view, matchedIds, parsed) => {
+      const source = resolveStashIdSource(parsed, matchedIds);
+      if (!source.endpoint) {
         return true;
       }
       return !(view.stashIds || []).some((s) => {
-        return s.endpoint === endpoint;
+        return s.endpoint === source.endpoint;
       });
     },
-    message: (view, matchedIds) => {
-      const endpoint = (matchedIds && matchedIds.stashBoxEndpoint) || "";
-      return endpoint
-        ? "{noun} has no StashID from " + endpoint
-        : "no stash-box source is configured for this rule's {stash_id} token";
+    message: (view, matchedIds, parsed) => {
+      const source = resolveStashIdSource(parsed, matchedIds);
+      if (source.endpoint) {
+        return "{noun} has no StashID from " + source.endpoint;
+      }
+      if (source.requested) {
+        return (
+          'no stash-box source named "' + source.requested + '" is configured'
+        );
+      }
+      return "no stash-box source is configured for this rule's {stash_id} token";
     },
-    endpoint: (view, matchedIds) => {
-      return (matchedIds && matchedIds.stashBoxEndpoint) || "";
+    endpoint: (view, matchedIds, parsed) => {
+      return resolveStashIdSource(parsed, matchedIds).endpoint;
     },
   },
 };
@@ -428,8 +512,7 @@ function renderParts(parts, tokens) {
 
     // A malformed body ("{studio bogus}") renders as the literal text the user
     // typed, which is what an unknown token has always done. The scanner is
-    // looser than the grammar so it can *report* these; it must not start
-    // rendering them as if the junk were not there
+    // looser than the grammar so it can report these
     if (
       part.errors.length > 0 ||
       !Object.prototype.hasOwnProperty.call(tokens, part.name)
@@ -441,11 +524,16 @@ function renderParts(parts, tokens) {
     const rendered = renderTokenValue(tokens[part.name], part);
     if (part.optional) {
       optionalTokenCount++;
-      if (rendered !== "") {
+      if (rendered.text !== "") {
         nonEmptyOptionalCount++;
       }
+    } else if (rendered.filteredEmpty) {
+      // a required list token that a filter emptied counts toward the collapse
+      // test exactly like an empty optional one, so "< [{performers|gender=female}]>"
+      // drops the brackets instead of rendering "[]"
+      optionalTokenCount++;
     }
-    output += rendered;
+    output += rendered.text;
   });
 
   return {
@@ -457,7 +545,8 @@ function renderParts(parts, tokens) {
 
 function renderBracketAlternatives(text, tokens) {
   // "|" separates alternatives, but it also separates a token's modifiers, so
-  // the split has to ignore any pipe inside braces
+  // the split has to ignore any pipe inside braces:
+  // <{performers|gender=female}|no women> is two alternatives, not three
   const alternatives = splitTopLevel(text, "|");
   for (let i = 0; i < alternatives.length; i++) {
     const parts = parseParts(alternatives[i]);
@@ -493,6 +582,198 @@ export function patternUsesAnyToken(pattern, tokenNames) {
   });
 }
 
+// Which tokens hold a list of entities, and of what kind. Everything absent
+// from here is plain text: no :N, no entity modifiers
+const TOKEN_ENTITY_KINDS = {
+  performers: "performer",
+  performers_not_in_title: "performer",
+  matched_performers: "performer",
+  tags: "tag",
+  matched_tags: "tag",
+};
+
+const LIST_TOKEN_NAMES = Object.keys(TOKEN_ENTITY_KINDS);
+
+// Kinds that exist purely so a modifier can say what it applies to
+const NON_LIST_TOKEN_KINDS = { stash_id: "stash_id" };
+
+function modifierKindOf(tokenName) {
+  return (
+    TOKEN_ENTITY_KINDS[tokenName] || NON_LIST_TOKEN_KINDS[tokenName] || null
+  );
+}
+
+export function patternsNeedStashIdDefault(patterns) {
+  return (patterns || []).some((pattern) => {
+    return scanPattern(pattern).some((token) => {
+      return token.name === "stash_id" && !modifierValue(token, "from");
+    });
+  });
+}
+
+export function patternsUseStashIdSource(patterns) {
+  return (patterns || []).some((pattern) => {
+    return scanPattern(pattern).some((token) => {
+      return token.name === "stash_id" && !!modifierValue(token, "from");
+    });
+  });
+}
+
+// Everything wrong with a pattern, in the order it appears
+// Since a modifier that matches nothing renders empty rather than
+// reporting missing data this is the only thing standing between
+// a typo and a silently wrong filename, so we need to be clear
+export function findPatternProblems(pattern, allowedTokens, options) {
+  const allowed = allowedTokens || KNOWN_TOKENS;
+
+  const stashBoxes = (options && options.stashBoxes) || null;
+  const problems = [];
+  const add = (raw, message, blocking) => {
+    problems.push({ raw: raw, message: message, blocking: !!blocking });
+  };
+
+  scanPattern(pattern).forEach((token) => {
+    token.errors.forEach((message) => {
+      add(token.raw, message, token.raw.indexOf("|") !== -1);
+    });
+    if (token.errors.length > 0) {
+      return;
+    }
+
+    if (allowed.indexOf(token.name) === -1) {
+      add(token.raw, "there is no {" + token.name + "} token", false);
+      return;
+    }
+
+    const entityKind = TOKEN_ENTITY_KINDS[token.name];
+    if (token.limit != null && !entityKind) {
+      add(
+        token.raw,
+        "a limit only means something on a list token (" +
+          LIST_TOKEN_NAMES.join(", ") +
+          ")",
+        false,
+      );
+    }
+
+    const seen = {};
+    token.modifiers.forEach((modifier) => {
+      if (seen[modifier.name]) {
+        add(token.raw, "sets " + modifier.name + " more than once", true);
+        return;
+      }
+      seen[modifier.name] = true;
+
+      const spec = MODIFIERS[modifier.name];
+      if (!spec) {
+        add(
+          token.raw,
+          'there is no "' +
+            modifier.name +
+            '" modifier. Available: ' +
+            knownModifierNames().join(", "),
+          true,
+        );
+        return;
+      }
+      if (
+        spec.appliesTo.indexOf("*") === -1 &&
+        spec.appliesTo.indexOf(modifierKindOf(token.name)) === -1
+      ) {
+        add(
+          token.raw,
+          modifier.name +
+            " only works on " +
+            spec.appliesTo.join("/") +
+            " tokens, and {" +
+            token.name +
+            "} is not one",
+          true,
+        );
+        return;
+      }
+      if (spec.requiresValue && modifier.value == null) {
+        add(
+          token.raw,
+          modifier.name +
+            " needs a value, as in {" +
+            token.name +
+            "|" +
+            modifier.name +
+            "=...}",
+          true,
+        );
+        return;
+      }
+      const parsed = spec.parseValue(modifier.value);
+      if (!parsed.ok) {
+        add(token.raw, parsed.message, true);
+        return;
+      }
+      if (modifier.name === "from") {
+        addStashBoxProblems(add, token, parsed.value, stashBoxes);
+      }
+    });
+  });
+
+  return problems;
+}
+
+function addStashBoxProblems(add, token, value, stashBoxes) {
+  if (!stashBoxes) {
+    return;
+  }
+  if (looksLikeEndpoint(value)) {
+    const known = stashBoxes.some((b) => {
+      return b && b.endpoint === value;
+    });
+    if (!known) {
+      add(
+        token.raw,
+        "no stash-box source configured in Stash uses that URL. It will still" +
+          " work if your " +
+          token.name.replace("_", " ") +
+          "s carry IDs from it",
+        false,
+      );
+    }
+    return;
+  }
+  const wanted = value.toLowerCase();
+  const hit = stashBoxes.some((b) => {
+    return (
+      b &&
+      String(b.name || "")
+        .trim()
+        .toLowerCase() === wanted
+    );
+  });
+  if (hit) {
+    return;
+  }
+  if (stashBoxes.length === 0) {
+    add(
+      token.raw,
+      "there are no stash-box sources configured in Stash yet. Add one under" +
+        " Settings > Metadata Providers first",
+      true,
+    );
+    return;
+  }
+  add(
+    token.raw,
+    'there is no stash-box source named "' +
+      value +
+      '". Configured: ' +
+      stashBoxes
+        .map((b) => {
+          return b.name;
+        })
+        .join(", "),
+    true,
+  );
+}
+
 export function findUnknownTokens(pattern, allowedTokens) {
   const allowed = allowedTokens || KNOWN_TOKENS;
   const unknown = [];
@@ -526,6 +807,18 @@ export function hasUnsafeOptionalOnlyBasename(filenamePattern) {
   );
 }
 
+function tokenSignature(token) {
+  return (
+    token.name +
+    " " +
+    (token.modifiers || [])
+      .map((m) => {
+        return m.raw;
+      })
+      .join(" ")
+  );
+}
+
 export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
   const subject = noun || "scene";
   const missing = [];
@@ -533,29 +826,30 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
   const seenMessages = {};
   patterns.forEach((pattern) => {
     scanPattern(pattern).forEach((token) => {
-      const tokenName = token.name;
-      if (token.optional || seen[tokenName]) {
+      const signature = tokenSignature(token);
+      if (token.optional || seen[signature]) {
         return;
       }
-      const requirement = TOKEN_REQUIREMENTS[tokenName];
+      const requirement = TOKEN_REQUIREMENTS[token.name];
       const effectiveMatchedIds = matchedIds || EMPTY_MATCHED_IDS;
       if (
         requirement &&
-        requirement.isMissing(sceneView, effectiveMatchedIds)
+        requirement.isMissing(sceneView, effectiveMatchedIds, token)
       ) {
-        seen[tokenName] = true;
+        seen[signature] = true;
         const message = (
           typeof requirement.message === "function"
-            ? requirement.message(sceneView, effectiveMatchedIds)
+            ? requirement.message(sceneView, effectiveMatchedIds, token)
             : requirement.message
         ).replace(/\{noun\}/g, subject);
         if (!seenMessages[message]) {
-          const entry = { token: tokenName, message: message };
+          const entry = { token: token.name, message: message };
           // carried structurally so the UI can resolve a display name for it
           if (typeof requirement.endpoint === "function") {
             const endpoint = requirement.endpoint(
               sceneView,
               effectiveMatchedIds,
+              token,
             );
             if (endpoint) {
               entry.endpoint = endpoint;

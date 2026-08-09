@@ -1,34 +1,120 @@
-// The token grammar, in one place.
+// The token grammar (so far)
 //
 //   { name ( ":" digits )? ( "|" modifier )* "?"? }
 //   modifier := key ( "=" value )?
 //
-// e.g. {title}  {performers:2}  {title?}  {performers:2?}
+// e.g. {title}  {performers:2}  {title?}  {performers:1|gender=female?}
 //
 // ":N" is the original spelling of the limit and stays supported; "?" is still
-// always the last character before the closing brace.
+// always the last character before the closing brace
 //
 // Deliberately parsed in two stages rather than by one big regex: a modifier
-// value can legitimately contain ":", "|" and "?", which a monolithic pattern
-// cannot disambiguate
+// value can legitimately contain ":", "|" and "?" (a future regex= or
+// truncate= modifier certainly will), which a monolithic pattern cannot
+// disambiguate
 
-// Looser than the grammar on purpose, so that "{foo bar}" is *seen* and can be
-// reported as malformed instead of being silently invisible. Callers must
-// render tokens carrying errors literally, exactly as unknown tokens render
+import {
+  parseGenderValue,
+  genderOf,
+  GENDER_VALUES,
+  UNKNOWN_GENDER,
+} from "./gender.js";
+
+// Looser than the grammar on purpose, so that "{foo bar}" is seen and can be
+// reported as malformed instead of being silently invisible
+// promise we'll never support nested tokens lol
 export const TOKEN_SCAN = /\{(\w+)([^{}]*)\}/;
 
-// Modifiers, keyed by name.
+// Modifiers, keyed by name
 //   stage      "entity" filters the underlying list, "text" rewrites the
-//              rendered string. Application order is fixed by stage, never by
+//              rendered string, "source" picks which value the token resolves
+//              to at all. Application order is fixed by stage, never by
 //              the order they were written: otherwise
-//              {performers|limit=1|something} would quietly mean something
-//              different from {performers|something|limit=1}
+//              {performers|limit=1|gender=female} would quietly mean something
+//              different from {performers|gender=female|limit=1}
+//              A "source" modifier is consumed by the token's own resolution,
+//              so neither applyEntityModifiers nor applyTextModifiers touches
+//              it; both skip unknown stages already
 //   appliesTo  entity kinds the modifier is meaningful for ("*" for any), which
-//              is what makes a modifier on the wrong token an error, not a no-op
-//   parseValue turns the written value into whatever apply wants, or explains
-//              why it can't. Its message is the only documentation most users
-//              will ever see for the valid values
-export const MODIFIERS = {};
+//              is what makes {title|gender=female} an error and not a no-op
+//   parseValue turns the written value into whatever filter/apply wants, or
+//              explains why it can't. Its message is the only documentation
+//              most users will ever see for the valid values
+export const MODIFIERS = {
+  gender: {
+    stage: "entity",
+    appliesTo: ["performer"],
+    requiresValue: true,
+    parseValue: function (raw) {
+      const wanted = [];
+      const invalid = [];
+      String(raw == null ? "" : raw)
+        .split(",")
+        .forEach((part) => {
+          const text = part.trim();
+          if (!text) {
+            return;
+          }
+          const value = parseGenderValue(text);
+          if (!value) {
+            invalid.push(text);
+          } else if (wanted.indexOf(value) === -1) {
+            wanted.push(value);
+          }
+        });
+      if (invalid.length > 0) {
+        return {
+          ok: false,
+          message:
+            (invalid.length === 1
+              ? "there is no gender "
+              : "there are no genders ") +
+            invalid
+              .map((v) => {
+                return '"' + v + '"';
+              })
+              .join(", ") +
+            ". Use one or more of: " +
+            GENDER_VALUES.join(", ") +
+            ' ("' +
+            UNKNOWN_GENDER +
+            '" being performers with no gender set)',
+        };
+      }
+      if (wanted.length === 0) {
+        return { ok: false, message: "gender= needs at least one gender" };
+      }
+      return { ok: true, value: wanted };
+    },
+    apply: function (entities, raw) {
+      const parsed = MODIFIERS.gender.parseValue(raw);
+      if (!parsed.ok) {
+        return entities;
+      }
+      return entities.filter((e) => {
+        return parsed.value.indexOf(genderOf(e)) !== -1;
+      });
+    },
+  },
+  from: {
+    stage: "source",
+    appliesTo: ["stash_id"],
+    requiresValue: true,
+    // Only the shape can be checked here: whether a name actually exists is a
+    // question about the user's Stash config, which the registry never sees
+    // findPatternProblems does that part
+    parseValue: function (raw) {
+      const text = String(raw == null ? "" : raw).trim();
+      if (!text) {
+        return {
+          ok: false,
+          message: "from= needs a stash-box name, like {stash_id|from=StashDB}",
+        };
+      }
+      return { ok: true, value: text };
+    },
+  },
+};
 
 // "limit" belongs to the grammar rather than the registry: it is the named
 // spelling of the original ":N", and is folded into token.limit while parsing
@@ -36,6 +122,15 @@ export const GRAMMAR_MODIFIER_NAMES = ["limit"];
 
 export function knownModifierNames() {
   return Object.keys(MODIFIERS).concat(GRAMMAR_MODIFIER_NAMES).sort();
+}
+
+// The value written for a modifier, or null when the token does not carry it
+// Keeps callers off parsed.modifiers internals
+export function modifierValue(parsed, name) {
+  const found = ((parsed && parsed.modifiers) || []).filter((m) => {
+    return m.name === name;
+  });
+  return found.length > 0 ? found[0].value : null;
 }
 
 export function splitTopLevel(text, separator) {

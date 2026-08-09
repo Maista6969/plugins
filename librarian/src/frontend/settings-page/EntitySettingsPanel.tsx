@@ -19,6 +19,7 @@ import { resetSection } from "../../core/config-schema.js";
 import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
+  patternsNeedStashIdDefault,
   PERFORMER_SORT_TOKENS,
   folderPatternMode,
 } from "../../core/path-template.js";
@@ -100,9 +101,12 @@ export function EntitySettingsPanel({
   const keepsInPlace =
     folderPatternMode(defaultPattern.folderPattern) === "keep";
 
-  const usesStashId =
-    patternUsesAnyToken(defaultPattern.folderPattern, ["stash_id"]) ||
-    patternUsesAnyToken(defaultPattern.filenamePattern, ["stash_id"]);
+  // only when some {stash_id} still has no |from= of its own, so a pattern that
+  // names every source itself does not show a picker nothing would consult
+  const usesStashId = patternsNeedStashIdDefault([
+    defaultPattern.folderPattern,
+    defaultPattern.filenamePattern,
+  ]);
   const usesPerformerSort =
     patternUsesAnyToken(defaultPattern.folderPattern, PERFORMER_SORT_TOKENS) ||
     patternUsesAnyToken(defaultPattern.filenamePattern, PERFORMER_SORT_TOKENS);
@@ -297,7 +301,7 @@ export function EntitySettingsPanel({
 
           {entityType === "scenes" && usesStashId && (
             <div>
-              StashID source{" "}
+              Default StashID source{" "}
               <StashBoxSelect
                 value={defaultPattern.stashBoxEndpoint}
                 onChange={(stashBoxEndpoint: string) =>

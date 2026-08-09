@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
-import { findUnknownTokens } from "../../core/path-template.js";
+import { findPatternProblems } from "../../core/path-template.js";
 import { adapterFor } from "../../core/entity-adapter.js";
+import { useStashBoxes } from "../shared/StashBoxesContext.js";
 import { TextSettingModal } from "./TextSettingModal.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -13,7 +14,7 @@ const TOKEN_DESCRIPTIONS: Record<string, string> = {
   studio_hierarchy:
     "The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)",
   performers:
-    "All performers on the {noun}, sorted per this rule's “Sort performers by” setting, joined with a comma. Add :N to limit the count, e.g. {performers:3}",
+    "All performers on the {noun}, sorted per this rule's “Sort performers by” setting, joined with a comma. Add :N to limit the count, e.g. {performers:3}, or |gender=female to keep only performers of a given gender",
   performers_not_in_title:
     "Performers not already named in the {noun}'s title. It would not include “Joy” if the title is “A Day in the Park with Joy”",
   matched_performers:
@@ -44,7 +45,7 @@ const TOKEN_DESCRIPTIONS: Record<string, string> = {
     "The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file {noun}",
   rating: "The {noun}'s rating on a 0-10 scale (one decimal place)",
   stash_id:
-    "The {noun}'s StashID from this rule's own configured stash-box source (set via the “StashID source” picker below once this token is used)",
+    "The {noun}'s StashID. Add |from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below. Several sources can appear in one pattern",
 };
 
 interface PatternModalFieldProps {
@@ -69,9 +70,16 @@ function PatternModalField({
   const metadataTokens: string[] = adapter.tokens.filter(
     (t: string) => fileTechTokens.indexOf(t) === -1,
   );
+  const { stashBoxes, loading: boxesLoading } = useStashBoxes();
   const inputRef = useRef<HTMLInputElement>(null);
   const pattern = value || "";
-  const unknownTokens = findUnknownTokens(pattern, adapter.tokens);
+  // null while loading, so a from= value is never flagged against a list we
+  // have not received yet: a blocking problem refuses the rename outright
+  const problems: { raw: string; message: string }[] = findPatternProblems(
+    pattern,
+    adapter.tokens,
+    { stashBoxes: boxesLoading ? null : stashBoxes },
+  );
   const unsafeBasename = !!validate && !validate(pattern);
 
   function insertToken(token: string) {
@@ -101,17 +109,16 @@ function PatternModalField({
         type="text"
         autoFocus
         className="input-control"
-        isInvalid={unknownTokens.length > 0 || unsafeBasename}
+        isInvalid={problems.length > 0 || unsafeBasename}
         value={pattern}
         onChange={(e: any) => setValue(e.target.value)}
         placeholder="{studio_parent}/{studio}/{studio} - {date} - {title}"
       />
-      {unknownTokens.length > 0 && (
-        <div className="librarian-token-hint text-danger">
-          Unknown token{unknownTokens.length > 1 ? "s" : ""}:{" "}
-          {unknownTokens.map((t) => "{" + t + "}").join(", ")}
+      {problems.map((problem, i) => (
+        <div key={i} className="librarian-token-hint text-danger">
+          <code>{problem.raw}</code> {problem.message}
         </div>
-      )}
+      ))}
       {unsafeBasename && (
         <div className="librarian-token-hint text-danger">
           This filename only has optional tokens: if none of them have data for
@@ -153,8 +160,28 @@ function PatternModalField({
           <samp className="text-success">
             First Performer, Second Performer
           </samp>{" "}
-          if there are two or more performers
+          if there are two or more performers. A performer token can also take{" "}
+          <code>|gender=female</code> to keep only performers of that gender,
+          e.g. <code>{"{performers:1|gender=female}"}</code>
         </p>
+        {adapter.tokens.indexOf("stash_id") !== -1 && (
+          <p>
+            <code>{"{stash_id}"}</code> takes <code>|from=</code> to say which
+            stash-box it means, so{" "}
+            <code>{"{stash_id|from=StashDB}-{stash_id|from=ThePornDB}"}</code>{" "}
+            puts both in one name. Without <code>|from=</code> the default
+            source below is used
+            {!boxesLoading && stashBoxes.length > 0 && (
+              <>
+                {" "}
+                Your sources:{" "}
+                <samp className="text-success">
+                  {stashBoxes.map((b: any) => b.name).join(", ")}
+                </samp>
+              </>
+            )}
+          </p>
+        )}
         <p>
           Wrap optional text in <code>&lt;...&gt;</code> to drop it as a whole
           (literal text included) when the optional token(s) inside are empty,

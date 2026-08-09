@@ -189,9 +189,13 @@ export function buildPreviewRows(
   scenes: any[],
   config: any,
   sceneOverrides: Record<string, any>,
+  stashBoxes?: any[] | null,
 ) {
   return scenes.map((scene) => {
     const effectiveScene = sceneOverrides[scene.id] || scene;
-    return { scene: effectiveScene, plan: planScene(effectiveScene, config) };
+    return {
+      scene: effectiveScene,
+      plan: planScene(effectiveScene, config, stashBoxes),
+    };
   });
 }

@@ -10,6 +10,7 @@ import {
   joinBasename,
   folderPatternMode,
   findUnknownTokens,
+  findPatternProblems,
   findMissingRequiredData,
   hasUnsafeOptionalOnlyBasename,
   joinPath,
@@ -48,6 +49,25 @@ function sceneView(overrides) {
     });
   }
   return merged;
+}
+
+// pairs of [name, gender]; gender null means the performer has none set
+function genderView(pairs, overrides) {
+  return sceneView(
+    Object.assign(
+      {
+        performerNames: pairs.map((p) => p[0]),
+        performers: pairs.map((p) => ({
+          id: "p-" + p[0],
+          name: p[0],
+          gender: p[1],
+          favorite: false,
+          rating100: null,
+        })),
+      },
+      overrides,
+    ),
+  );
 }
 
 function render(pattern, view, configOverrides, matchedIds) {
@@ -501,6 +521,22 @@ test("findMissingRequiredData does not flag performers_not_in_title just because
   );
 });
 
+test("findMissingRequiredData does not flag a gender filter that happens to match nobody", () => {
+  const menOnly = genderView([["Marcus", "male"]]);
+  assert.deepEqual(
+    findMissingRequiredData(["{performers|gender=female}"], menOnly),
+    [],
+  );
+  // No performers at all IS still missing data, reported the usual way
+  const nobody = sceneView({ performerNames: [] });
+  assert.deepEqual(
+    findMissingRequiredData(["{performers|gender=female}"], nobody).map(
+      (m) => m.token,
+    ),
+    ["performers"],
+  );
+});
+
 test("{field?} suppresses the missing-data error for that occurrence only", () => {
   const view = sceneView({ studioNames: [] });
   assert.deepEqual(findMissingRequiredData(["{studio?}/{title}"], view), []);
@@ -645,6 +681,317 @@ test("a bracket with no '|' behaves exactly as a single-alternative chain", () =
     sceneView({ performerNames: [] }),
   );
   assert.equal(result, "Leaf");
+});
+
+// "|" separates bracket alternatives AND a token's modifiers. Splitting a
+// bracket naively tears "{performers|gender=female}" into two halves and
+// renders garbage, so the split has to ignore pipes inside braces.
+test("a '|' inside a token's modifiers does not start a new bracket alternative", () => {
+  const view = sceneView({ performerNames: ["Amy", "Zed"] });
+  // the modifier is a no-op here; what matters is that the brace stays intact
+  assert.equal(
+    render("<{performers|limit=9}|no performers>", view),
+    "Amy, Zed",
+  );
+  assert.equal(
+    render(
+      "<{performers|limit=9?}|no performers>",
+      sceneView({ performerNames: [] }),
+    ),
+    "no performers",
+  );
+});
+
+test("the ? has to come last, and says so instead of being ignored", () => {
+  const view = sceneView();
+  // easy mistake when adding a modifier to a token that was already optional
+  assert.equal(render("{performers?|limit=9}", view), "{performers?|limit=9}");
+  assert.equal(render("{performers|limit=9?}", view), "Amy, Zed");
+});
+
+test("the documented <a|b|c> alternatives still split on their pipes", () => {
+  // regression guard for the brace-aware split: these have no braces nested
+  // around a pipe, so every one of them must behave exactly as before
+  assert.equal(
+    render("<{date?}|missing-date>", sceneView({ date: "" })),
+    "missing-date",
+  );
+  assert.equal(
+    render("<{date?}|missing-date>", sceneView({ date: "2024-03-05" })),
+    "2024-03-05",
+  );
+});
+
+// Locks in rendering for the patterns the README teaches, so the grammar
+// refactor cannot quietly change what an existing user's pattern produces.
+test("README example patterns render exactly as documented", () => {
+  const view = sceneView({
+    title: "My Title",
+    code: "v1234",
+    date: "2024-03-05",
+    studioNames: ["OnlyFans"],
+    performerNames: ["Ava Kensington", "Marcus Chen"],
+    rating100: 85,
+  });
+  assert.equal(render("{studio_hierarchy}", view), "OnlyFans");
+  assert.equal(
+    render("{studio} - {date} - {title}", view),
+    "OnlyFans - 2024-03-05 - My Title",
+  );
+  assert.equal(
+    render("{studio}<, {date?}>< - {title?}>", view),
+    "OnlyFans, 2024-03-05 - My Title",
+  );
+  assert.equal(
+    render("<{code?}|{date?}|xxx> - {performers}", view),
+    "v1234 - Ava Kensington, Marcus Chen",
+  );
+  assert.equal(
+    render(
+      "<{code?}|{date?}|xxx> - {performers}",
+      Object.assign({}, view, { code: "" }),
+    ),
+    "2024-03-05 - Ava Kensington, Marcus Chen",
+  );
+  assert.equal(
+    render(
+      "<{code?}|{date?}|xxx> - {performers}",
+      Object.assign({}, view, { code: "", date: "" }),
+    ),
+    "xxx - Ava Kensington, Marcus Chen",
+  );
+  assert.equal(
+    render("{performers_not_in_title:2?}", view),
+    "Ava Kensington, Marcus Chen",
+  );
+  assert.equal(render("< ({code?})| [{date?}]>", view), " (v1234)");
+  assert.equal(
+    render("< ({code?})| [{date?}]>", Object.assign({}, view, { code: "" })),
+    " [2024-03-05]",
+  );
+});
+
+// The scanner is looser than the grammar so malformed bodies can be reported.
+// It must not start rendering them: "{studio bogus}" is not a studio token.
+test("a token with a malformed body renders literally, like an unknown token", () => {
+  const view = sceneView();
+  assert.equal(render("{studio bogus}", view), "{studio bogus}");
+  assert.equal(render("{performers:x}", view), "{performers:x}");
+  assert.equal(render("{nonsense}", view), "{nonsense}");
+});
+
+test("|gender= keeps only performers of the named gender(s)", () => {
+  const view = genderView([
+    ["Ava", "female"],
+    ["Marcus", "male"],
+    ["Robin", "non_binary"],
+    ["Unset", null],
+  ]);
+  assert.equal(render("{performers}", view), "Ava, Marcus, Robin, Unset");
+  assert.equal(render("{performers|gender=female}", view), "Ava");
+  assert.equal(render("{performers|gender=male}", view), "Marcus");
+  assert.equal(
+    render("{performers|gender=female,non_binary}", view),
+    "Ava, Robin",
+  );
+  // a performer with no gender set is addressable, and is NOT swept up by
+  // asking for a specific gender
+  assert.equal(render("{performers|gender=unknown}", view), "Unset");
+  assert.equal(
+    render("{performers|gender=female}", view).includes("Unset"),
+    false,
+  );
+});
+
+test("|gender= accepts the longer spellings and ignores surrounding spaces", () => {
+  const view = genderView([
+    ["Tess", "trans_female"],
+    ["Marcus", "male"],
+  ]);
+  assert.equal(render("{performers|gender=trans_female}", view), "Tess");
+  assert.equal(render("{performers|gender=transgender_female}", view), "Tess");
+  // the surviving performers keep their sort order; listing genders in a
+  // different order does not reorder them
+  assert.equal(
+    render("{performers|gender=trans_female, male}", view),
+    "Marcus, Tess",
+  );
+  assert.equal(
+    render("{performers|gender=male,trans_female}", view),
+    "Marcus, Tess",
+  );
+});
+
+test("the gender filter runs before the limit, not after", () => {
+  // Marcus sorts first alphabetically, so a limit applied first would take him
+  // and leave nothing for gender=female to match
+  const view = genderView([
+    ["Marcus", "male"],
+    ["Zara", "female"],
+  ]);
+  assert.equal(render("{performers:1}", view), "Marcus");
+  assert.equal(render("{performers:1|gender=female}", view), "Zara");
+  assert.equal(render("{performers|gender=female|limit=1}", view), "Zara");
+});
+
+test("a gender filter applies per token, so the same list can be filtered in one place and not another", () => {
+  const view = genderView([
+    ["Ava", "female"],
+    ["Marcus", "male"],
+  ]);
+  assert.equal(
+    render("{performers|gender=female}/{performers}", view),
+    "Ava/Ava, Marcus",
+  );
+  const matchedIds = { performerIds: ["p-Ava", "p-Marcus"], tagIds: [] };
+  assert.equal(
+    render("{matched_performers|gender=female}", view, null, matchedIds),
+    "Ava",
+  );
+  assert.equal(
+    render("{matched_performers}", view, null, matchedIds),
+    "Ava, Marcus",
+  );
+});
+
+test("a gender filter matching nobody renders empty rather than erroring", () => {
+  const menOnly = genderView([["Marcus", "male"]]);
+  assert.equal(render("{performers|gender=female}", menOnly), "");
+  // and an empty segment is dropped rather than leaving a "//" in the path
+  const rendered = renderPath(
+    "{studio}/{performers|gender=female}",
+    "{title}",
+    menOnly,
+    normalizeConfig({}),
+    null,
+  );
+  assert.equal(rendered.folder, "Leaf");
+});
+
+// <...> normally only collapses around {token?}, on the premise that a required
+// token always has data (it errors as missing data otherwise). A filter breaks
+// that premise: the token IS required, the scene DOES have performers, and it
+// still renders empty. Without this the bracket renders a bare "[]".
+test("<...> collapses around a required list token that a filter emptied", () => {
+  const menOnly = genderView([["Marcus", "male"]]);
+  assert.equal(
+    render("{title}< [{performers|gender=female}]>", menOnly),
+    "My Title",
+  );
+  // still renders normally when the filter does match somebody
+  const mixed = genderView([
+    ["Ava", "female"],
+    ["Marcus", "male"],
+  ]);
+  assert.equal(
+    render("{title}< [{performers|gender=female}]>", mixed),
+    "My Title [Ava]",
+  );
+  // and a filtered-empty alternative now falls through to the next one
+  assert.equal(
+    render("{title}< [{performers|gender=female}]|-nobody>", menOnly),
+    "My Title-nobody",
+  );
+});
+
+test("the same collapse applies to performers_not_in_title, which filters too", () => {
+  const allInTitle = sceneView({
+    title: "Amy Solo",
+    performerNames: ["Amy"],
+  });
+  assert.equal(
+    render("{title}< [{performers_not_in_title}]>", allInTitle),
+    "Amy Solo",
+  );
+});
+
+// The distinction that keeps {token?} meaningful: "filtered to nothing" is not
+// the same as "no data at all", and only the former collapses silently.
+test("an empty base list is still missing data rather than a silent collapse", () => {
+  const nobody = sceneView({ performerNames: [] });
+  assert.deepEqual(
+    findMissingRequiredData(
+      ["{title}< [{performers|gender=female}]>"],
+      nobody,
+    ).map((m) => m.token),
+    ["performers"],
+  );
+  // adding ? opts out of that error, as it always has
+  assert.deepEqual(
+    findMissingRequiredData(
+      ["{title}< [{performers|gender=female?}]>"],
+      nobody,
+    ),
+    [],
+  );
+});
+
+test("a required non-list token that is merely empty still does not collapse a bracket", () => {
+  // guards against widening the collapse rule beyond filtered lists: an empty
+  // {studio} is missing data, reported as such, not quietly dropped
+  assert.equal(
+    renderTemplate("{title}< [{studio}]>", { title: "T", studio: "" }),
+    "T []",
+  );
+});
+
+test("findPatternProblems explains every way a modifier can be wrong", () => {
+  const messageFor = (pattern) =>
+    findPatternProblems(pattern)
+      .map((p) => p.message)
+      .join(" | ");
+
+  const badValue = messageFor("{performers|gender=femal}");
+  assert.match(badValue, /no gender "femal"/);
+  assert.match(badValue, /female/);
+  assert.match(badValue, /trans_female/);
+  assert.match(badValue, /unknown/);
+
+  assert.match(messageFor("{performers|bogus=1}"), /no "bogus" modifier/);
+  assert.match(messageFor("{performers|bogus=1}"), /gender/);
+  assert.match(messageFor("{title|gender=female}"), /only works on performer/);
+  assert.match(messageFor("{tags|gender=female}"), /only works on performer/);
+  assert.match(messageFor("{performers|gender}"), /needs a value/);
+  assert.match(
+    messageFor("{performers|gender=female|gender=male}"),
+    /more than once/,
+  );
+  assert.match(messageFor("{title:2}"), /only means something on a list token/);
+  assert.match(messageFor("{nonsense}"), /no \{nonsense\} token/);
+  assert.deepEqual(findPatternProblems("{performers:1|gender=female?}"), []);
+});
+
+test("only modifier mistakes block a rename; unknown tokens stay lenient", () => {
+  const blocking = (pattern) =>
+    findPatternProblems(pattern)
+      .filter((p) => p.blocking)
+      .map((p) => p.message);
+  assert.equal(blocking("{performers|gender=femal}").length, 1);
+  assert.equal(blocking("{performers|bogus=1}").length, 1);
+  // these have always rendered literally, and must keep doing so
+  assert.deepEqual(blocking("{nonsense}"), []);
+  assert.deepEqual(blocking("{studio bogus}"), []);
+  assert.deepEqual(blocking("{title:2}"), []);
+});
+
+test("patternUsesAnyToken and hasUnsafeOptionalOnlyBasename see through modifiers", () => {
+  assert.equal(
+    patternUsesAnyToken("{performers|gender=female}", PERFORMER_SORT_TOKENS),
+    true,
+  );
+  assert.equal(
+    patternUsesAnyToken("{performers:1|gender=female?}", PERFORMER_SORT_TOKENS),
+    true,
+  );
+  assert.equal(patternUsesAnyToken("{title}", PERFORMER_SORT_TOKENS), false);
+  assert.equal(
+    hasUnsafeOptionalOnlyBasename("{performers|gender=female?}"),
+    true,
+  );
+  assert.equal(
+    hasUnsafeOptionalOnlyBasename("{performers|gender=female}"),
+    false,
+  );
 });
 
 test("{matched_performers}/{matched_tags} render only the ids a rule condition actually matched, not every performer/tag on the scene", () => {
@@ -937,116 +1284,187 @@ test("folderPatternMode reads intent off the raw pattern, which renderPath would
   assert.equal(folderPatternMode("literal"), "render");
 });
 
-// "|" separates bracket alternatives AND a token's modifiers. Splitting a
-// bracket naively tears "{performers|thing=value}" into two halves and renders
-// garbage, so the split has to ignore pipes inside braces
-test("a '|' inside a token's modifiers does not start a new bracket alternative", () => {
-  const view = sceneView({ performerNames: ["Amy", "Zed"] });
-  assert.equal(
-    render("<{performers|limit=9}|no performers>", view),
-    "Amy, Zed",
-  );
-  assert.equal(
-    render(
-      "<{performers|limit=9?}|no performers>",
-      sceneView({ performerNames: [] }),
-    ),
-    "no performers",
-  );
-});
+const BOXES = [
+  { name: "StashDB", endpoint: "https://stashdb.org/graphql" },
+  { name: "ThePornDB", endpoint: "https://theporndb.net/graphql" },
+  { name: "FansDB", endpoint: "https://fansdb.cc/graphql" },
+];
 
-test("the ? has to come last, and says so instead of being ignored", () => {
-  const view = sceneView();
-  // easy mistake when adding a modifier to a token that was already optional
-  assert.equal(render("{performers?|limit=9}", view), "{performers?|limit=9}");
-  assert.equal(render("{performers|limit=9?}", view), "Amy, Zed");
-});
-
-test("the documented <a|b|c> alternatives still split on their pipes", () => {
-  assert.equal(
-    render("<{date?}|missing-date>", sceneView({ date: "" })),
-    "missing-date",
-  );
-  assert.equal(
-    render("<{date?}|missing-date>", sceneView({ date: "2024-03-05" })),
-    "2024-03-05",
-  );
-});
-
-// Locks in rendering for the patterns the README teaches, so the grammar
-// refactor cannot quietly change what an existing user's pattern produces
-test("README example patterns render exactly as documented", () => {
-  const view = sceneView({
-    title: "My Title",
-    code: "v1234",
-    date: "2024-03-05",
-    studioNames: ["OnlyFans"],
-    performerNames: ["Ava Kensington", "Marcus Chen"],
-    rating100: 85,
+function twoSourceView() {
+  return sceneView({
+    stashIds: [
+      { endpoint: "https://stashdb.org/graphql", stash_id: "aaa-111" },
+      { endpoint: "https://theporndb.net/graphql", stash_id: "bbb-222" },
+    ],
   });
-  assert.equal(render("{studio_hierarchy}", view), "OnlyFans");
-  assert.equal(
-    render("{studio} - {date} - {title}", view),
-    "OnlyFans - 2024-03-05 - My Title",
-  );
-  assert.equal(
-    render("{studio}<, {date?}>< - {title?}>", view),
-    "OnlyFans, 2024-03-05 - My Title",
-  );
-  assert.equal(
-    render("<{code?}|{date?}|xxx> - {performers}", view),
-    "v1234 - Ava Kensington, Marcus Chen",
-  );
-  assert.equal(
-    render(
-      "<{code?}|{date?}|xxx> - {performers}",
-      Object.assign({}, view, { code: "" }),
-    ),
-    "2024-03-05 - Ava Kensington, Marcus Chen",
-  );
+}
+
+test("|from= picks a stash-box by name, case-insensitively", () => {
+  const view = twoSourceView();
+  const ids = { stashBoxes: BOXES };
+  assert.equal(render("{stash_id|from=StashDB}", view, null, ids), "aaa-111");
+  assert.equal(render("{stash_id|from=stashdb}", view, null, ids), "aaa-111");
+  assert.equal(render("{stash_id|from=STASHDB}", view, null, ids), "aaa-111");
+  assert.equal(render("{stash_id|from=ThePornDB}", view, null, ids), "bbb-222");
+});
+
+// the whole point of the feature: one pattern, several sources
+test("several {stash_id} tokens with different sources all render in one pattern", () => {
   assert.equal(
     render(
-      "<{code?}|{date?}|xxx> - {performers}",
-      Object.assign({}, view, { code: "", date: "" }),
+      "{stash_id|from=StashDB}-{stash_id|from=ThePornDB}",
+      twoSourceView(),
+      null,
+      {
+        stashBoxes: BOXES,
+      },
     ),
-    "xxx - Ava Kensington, Marcus Chen",
-  );
-  assert.equal(
-    render("{performers_not_in_title:2?}", view),
-    "Ava Kensington, Marcus Chen",
-  );
-  assert.equal(render("< ({code?})| [{date?}]>", view), " (v1234)");
-  assert.equal(
-    render("< ({code?})| [{date?}]>", Object.assign({}, view, { code: "" })),
-    " [2024-03-05]",
+    "aaa-111-bbb-222",
   );
 });
 
-// The scanner is looser than the grammar so malformed bodies can be reported.
-// It must not start rendering them: "{studio bogus}" is not a studio token
-test("a token with a malformed body renders literally, like an unknown token", () => {
-  const view = sceneView();
-  assert.equal(render("{studio bogus}", view), "{studio bogus}");
-  assert.equal(render("{performers:x}", view), "{performers:x}");
-  assert.equal(render("{nonsense}", view), "{nonsense}");
+test("|from= wins over the pattern's stored stashBoxEndpoint", () => {
+  assert.equal(
+    render("{stash_id|from=StashDB}", twoSourceView(), null, {
+      stashBoxEndpoint: "https://theporndb.net/graphql",
+      stashBoxes: BOXES,
+    }),
+    "aaa-111",
+  );
 });
 
-test("patternUsesAnyToken and hasUnsafeOptionalOnlyBasename see through modifiers", () => {
+// a user can delete a stash-box from Stash while their scenes keep its ids
+test("a from= value that is a URL resolves even when no configured box uses it", () => {
+  const view = sceneView({
+    stashIds: [
+      { endpoint: "https://gone.example/graphql", stash_id: "ghost-1" },
+    ],
+  });
   assert.equal(
-    patternUsesAnyToken("{performers|thing=value}", PERFORMER_SORT_TOKENS),
-    true,
+    render("{stash_id|from=https://gone.example/graphql}", view, null, {
+      stashBoxes: BOXES,
+    }),
+    "ghost-1",
   );
+});
+
+test("with exactly one configured stash-box, {stash_id} needs no source at all", () => {
+  const view = sceneView({
+    stashIds: [
+      { endpoint: "https://stashdb.org/graphql", stash_id: "aaa-111" },
+    ],
+  });
+  const only = [BOXES[0]];
   assert.equal(
-    patternUsesAnyToken("{performers:1|thing=value?}", PERFORMER_SORT_TOKENS),
-    true,
+    render("{stash_id}", view, null, { stashBoxes: only }),
+    "aaa-111",
   );
-  assert.equal(patternUsesAnyToken("{title}", PERFORMER_SORT_TOKENS), false);
-  assert.equal(
-    hasUnsafeOptionalOnlyBasename("{performers|thing=value?}"),
-    true,
+  // two boxes is ambiguous, so it stays unresolved
+  assert.equal(render("{stash_id?}", view, null, { stashBoxes: BOXES }), "");
+});
+
+// null means "we could not find out", which must never be treated as knowledge
+test("an unknown stash-box list never triggers the single-box default", () => {
+  const view = sceneView({
+    stashIds: [
+      { endpoint: "https://stashdb.org/graphql", stash_id: "aaa-111" },
+    ],
+  });
+  assert.equal(render("{stash_id?}", view, null, { stashBoxes: null }), "");
+  assert.equal(render("{stash_id?}", view, null, {}), "");
+});
+
+test("two unresolved sources are reported separately, each naming its own", () => {
+  const view = sceneView({ stashIds: [] });
+  const missing = findMissingRequiredData(
+    ["{stash_id|from=StashDB}-{stash_id|from=ThePornDB}"],
+    view,
+    { stashBoxes: BOXES },
   );
-  assert.equal(
-    hasUnsafeOptionalOnlyBasename("{performers|thing=value}"),
-    false,
+  assert.equal(missing.length, 2);
+  assert.deepEqual(
+    missing.map((m) => m.endpoint),
+    ["https://stashdb.org/graphql", "https://theporndb.net/graphql"],
   );
+});
+
+test("two spellings of the SAME source collapse to one report", () => {
+  const view = sceneView({ stashIds: [] });
+  const missing = findMissingRequiredData(
+    ["{stash_id|from=StashDB}-{stash_id|from=https://stashdb.org/graphql}"],
+    view,
+    { stashBoxes: BOXES },
+  );
+  assert.equal(missing.length, 1);
+});
+
+test("an unresolvable source name is reported the way the user typed it, with no endpoint to name", () => {
+  const view = sceneView({ stashIds: [] });
+  const missing = findMissingRequiredData(["{stash_id|from=Nope}"], view, {
+    stashBoxes: BOXES,
+  });
+  assert.equal(missing.length, 1);
+  assert.match(missing[0].message, /no stash-box source named "Nope"/);
+  assert.equal(missing[0].endpoint, undefined);
+});
+
+test("findPatternProblems checks from= against the configured stash-boxes", () => {
+  const problems = (pattern, stashBoxes) =>
+    findPatternProblems(pattern, null, { stashBoxes });
+
+  const bogus = problems("{stash_id|from=Bogus}", BOXES);
+  assert.equal(bogus.length, 1);
+  assert.equal(bogus[0].blocking, true);
+  assert.match(bogus[0].message, /no stash-box source named "Bogus"/);
+  // the message is the only place the valid names appear
+  assert.match(bogus[0].message, /StashDB, ThePornDB, FansDB/);
+
+  assert.deepEqual(problems("{stash_id|from=stashdb}", BOXES), []);
+
+  const none = problems("{stash_id|from=StashDB}", []);
+  assert.equal(none.length, 1);
+  assert.equal(none[0].blocking, true);
+  assert.match(none[0].message, /no stash-box sources configured/);
+
+  // an unrecognised URL is a hint, not a refusal: the scene may still carry ids
+  const urlHint = problems(
+    "{stash_id|from=https://gone.example/graphql}",
+    BOXES,
+  );
+  assert.equal(urlHint.length, 1);
+  assert.equal(urlHint[0].blocking, false);
+});
+
+// a blocking problem refuses the rename, so guessing while the list is merely
+// unavailable would turn a transient gap into "nothing renames at all"
+test("an unknown stash-box list produces no from= problems whatsoever", () => {
+  assert.deepEqual(findPatternProblems("{stash_id|from=Bogus}"), []);
+  assert.deepEqual(
+    findPatternProblems("{stash_id|from=Bogus}", null, { stashBoxes: null }),
+    [],
+  );
+});
+
+test("from= is rejected on tokens that have no stash-box source", () => {
+  const messages = (p) =>
+    findPatternProblems(p)
+      .map((x) => x.message)
+      .join(" | ");
+  assert.match(messages("{title|from=StashDB}"), /only works on stash_id/);
+  assert.match(messages("{performers|from=StashDB}"), /only works on stash_id/);
+  assert.match(
+    messages("{stash_id|from=A|from=B}"),
+    /sets from more than once/,
+  );
+  assert.match(messages("{stash_id|from=}"), /from= needs a stash-box name/);
+});
+
+// TOKEN_ENTITY_KINDS doubles as the list-token enumeration in this message, so
+// registering stash_id for modifier targeting must not leak into it
+test("the limit message still names exactly the list tokens, never stash_id", () => {
+  const message = findPatternProblems("{title:2}")[0].message;
+  assert.match(message, /performers, performers_not_in_title/);
+  assert.equal(message.includes("stash_id"), false);
+  // and a limit on stash_id is still reported as meaningless
+  assert.match(findPatternProblems("{stash_id:2}")[0].message, /list token/);
 });

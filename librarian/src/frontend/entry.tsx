@@ -97,7 +97,11 @@ try {
   PluginApi.patch.instead("SceneList", (...args: any[]) => {
     const next = args[args.length - 1];
     const props = args[0] || {};
-    return <ScenesPreviewSwitch props={props} next={next} />;
+    return (
+      <StashBoxesProvider>
+        <ScenesPreviewSwitch props={props} next={next} />
+      </StashBoxesProvider>
+    );
   });
 } catch (e) {
   console.error(LOG_PREFIX, "patch.instead(SceneList) threw", e);

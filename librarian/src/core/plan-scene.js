@@ -10,6 +10,9 @@ import {
   joinPath,
   normalizePathForCompare,
   findMissingRequiredData,
+  findPatternProblems,
+  patternsNeedStashIdDefault,
+  patternsUseStashIdSource,
   describePatternPair,
   folderPatternMode,
 } from "./path-template.js";
@@ -69,8 +72,16 @@ function dataError(
 
 // Used in both the frontend and in the Goja backend so it needs to
 // stay compatible with the limited JS environment the VM provides
-export function planScene(rawScene, config) {
-  return planEntity(rawScene, config, "scenes");
+export function planScene(rawScene, config, stashBoxes) {
+  return planEntity(rawScene, config, "scenes", stashBoxes);
+}
+
+export function storedStashBoxEndpoint(settings, matchedRule) {
+  return (
+    (matchedRule && matchedRule.stashBoxEndpoint) ||
+    (settings.defaultPattern && settings.defaultPattern.stashBoxEndpoint) ||
+    ""
+  );
 }
 
 export function entitySettings(config, entityType) {
@@ -84,7 +95,39 @@ export function entitySettings(config, entityType) {
   return Object.assign(globals, cfg[entityType] || {});
 }
 
-export function planEntity(rawScene, config, entityType) {
+export function configNeedsStashBoxes(config, entityType) {
+  const adapter = adapterFor(entityType);
+  if (adapter.tokens.indexOf("stash_id") === -1) {
+    return false;
+  }
+  const settings = entitySettings(config, entityType);
+
+  const candidates = [{ pattern: settings.defaultPattern, rule: null }];
+  (settings.rules || []).forEach((rule) => {
+    if (rule && rule.enabled !== false) {
+      candidates.push({ pattern: rule, rule: rule });
+    }
+  });
+
+  return candidates.some((candidate) => {
+    if (!candidate.pattern) {
+      return false;
+    }
+    const patterns = [
+      candidate.pattern.folderPattern,
+      candidate.pattern.filenamePattern,
+    ];
+    if (patternsUseStashIdSource(patterns)) {
+      return true;
+    }
+    return (
+      patternsNeedStashIdDefault(patterns) &&
+      !storedStashBoxEndpoint(settings, candidate.rule)
+    );
+  });
+}
+
+export function planEntity(rawScene, config, entityType, stashBoxes) {
   const settings = entitySettings(config, entityType);
   const adapter = adapterFor(entityType);
   const sceneView = normalizeScene(rawScene, entityType);
@@ -166,6 +209,28 @@ export function planEntity(rawScene, config, entityType) {
     "alphabetical";
   const renderConfig = Object.assign({}, settings, { sortBy: sortBy });
 
+  const patternOptions = { stashBoxes: stashBoxes || null };
+  const patternProblems = []
+    .concat(findPatternProblems(folderPattern, adapter.tokens, patternOptions))
+    .concat(
+      findPatternProblems(filenamePattern, adapter.tokens, patternOptions),
+    )
+    .filter((problem) => {
+      return problem.blocking;
+    });
+  if (patternProblems.length > 0) {
+    return dataError(
+      "invalid_pattern",
+      sceneView.id,
+      matchedRule,
+      folderPattern,
+      filenamePattern,
+      patternProblems.map((problem) => {
+        return { token: null, message: problem.raw + ": " + problem.message };
+      }),
+    );
+  }
+
   const folderMode = folderPatternMode(folderPattern);
 
   const libraryRoot = matchedRule
@@ -191,14 +256,11 @@ export function planEntity(rawScene, config, entityType) {
     );
   }
 
-  const stashBoxEndpoint =
-    (matchedRule && matchedRule.stashBoxEndpoint) ||
-    (settings.defaultPattern && settings.defaultPattern.stashBoxEndpoint) ||
-    "";
   const matchedIds = {
     performerIds: getMatchedEntityIds(sceneView, matchedRule, "performer"),
     tagIds: getMatchedEntityIds(sceneView, matchedRule, "tag"),
-    stashBoxEndpoint: stashBoxEndpoint,
+    stashBoxEndpoint: storedStashBoxEndpoint(settings, matchedRule),
+    stashBoxes: stashBoxes || null,
   };
 
   // We trust Stash's ordering of files: primary file will be first

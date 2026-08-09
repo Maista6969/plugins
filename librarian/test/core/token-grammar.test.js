@@ -48,18 +48,25 @@ test("parses every spelling of the token grammar", () => {
     modifiers: [],
     errors: 0,
   });
-  assert.deepEqual(shape("{performers|thing=value}"), {
+  assert.deepEqual(shape("{performers|gender=female}"), {
     name: "performers",
     limit: null,
     optional: false,
-    modifiers: ["thing=value"],
+    modifiers: ["gender=female"],
     errors: 0,
   });
-  assert.deepEqual(shape("{performers:1|thing=value?}"), {
+  assert.deepEqual(shape("{performers:1|gender=female?}"), {
     name: "performers",
     limit: 1,
     optional: true,
-    modifiers: ["thing=value"],
+    modifiers: ["gender=female"],
+    errors: 0,
+  });
+  assert.deepEqual(shape("{performers|gender=female,trans_female}"), {
+    name: "performers",
+    limit: null,
+    optional: false,
+    modifiers: ["gender=female,trans_female"],
     errors: 0,
   });
 });
@@ -71,10 +78,10 @@ test(":N and |limit=N are the same thing", () => {
   assert.equal(only("{performers|limit=2}").limit, 2);
   assert.deepEqual(only("{performers|limit=2}").modifiers, []);
   assert.deepEqual(
-    only("{performers|thing=value|limit=2}").modifiers.map((m) => m.name),
-    ["thing"],
+    only("{performers|gender=female|limit=2}").modifiers.map((m) => m.name),
+    ["gender"],
   );
-  assert.equal(only("{performers|thing=value|limit=2}").limit, 2);
+  assert.equal(only("{performers|gender=female|limit=2}").limit, 2);
 });
 
 test("a limit that is not a whole number, or set twice, is an error", () => {
@@ -104,14 +111,14 @@ test("malformed token bodies produce errors rather than throwing", () => {
   assert.ok(only("{performers|}").errors.length > 0);
   assert.ok(only("{performers:x}").errors.length > 0);
   // the ? has to come last; flagging it is better than silently ignoring it
-  assert.ok(only("{performers?|thing=value}").errors.length > 0);
+  assert.ok(only("{performers?|gender=female}").errors.length > 0);
 });
 
 test("a bare modifier with no value parses, leaving the value null", () => {
-  const token = only("{performers|thing}");
+  const token = only("{performers|gender}");
   assert.equal(token.errors.length, 0);
   assert.deepEqual(token.modifiers, [
-    { name: "thing", value: null, raw: "thing" },
+    { name: "gender", value: null, raw: "gender" },
   ]);
 });
 
@@ -123,8 +130,8 @@ test("text with no tokens scans to nothing", () => {
 
 test("splitTopLevel ignores separators nested inside braces", () => {
   // the whole reason the modifier separator can coexist with <a|b> alternatives
-  assert.deepEqual(splitTopLevel("{performers|thing=value}|no women", "|"), [
-    "{performers|thing=value}",
+  assert.deepEqual(splitTopLevel("{performers|gender=female}|no women", "|"), [
+    "{performers|gender=female}",
     "no women",
   ]);
   assert.deepEqual(splitTopLevel("{code?}|{date?}|xxx", "|"), [

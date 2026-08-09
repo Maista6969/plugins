@@ -36,7 +36,7 @@ export function SceneFileInfoBlock({
 }: SceneFileInfoBlockProps) {
   const client = useApolloClient();
   const [config, setConfig] = useState<any | null>(null);
-  const { stashBoxes } = useStashBoxes();
+  const { stashBoxes, loading: boxesLoading } = useStashBoxes();
   const [override, setOverride] = useState<any | null>(null);
   const [enrichedStudio, setEnrichedStudio] = useState<any | null>(null);
   const [pending, setPending] = useState(false);
@@ -85,7 +85,13 @@ export function SceneFileInfoBlock({
     !override && enrichedStudio && enrichedStudio.id === studioId
       ? { ...baseScene, studio: enrichedStudio }
       : baseScene;
-  const plan: any = planScene(effectiveScene, config);
+  // null while loading, so {stash_id|from=} resolves nothing rather than
+  // resolving against a list we have not actually received yet
+  const plan: any = planScene(
+    effectiveScene,
+    config,
+    boxesLoading ? null : stashBoxes,
+  );
 
   async function handleMoveOne(sceneId: string) {
     setPending(true);

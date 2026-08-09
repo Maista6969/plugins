@@ -4,6 +4,7 @@ import {
   planScene,
   planEntity,
   entitySettings,
+  configNeedsStashBoxes,
 } from "../../src/core/plan-scene.js";
 import { normalizeConfig } from "../../src/core/config-schema.js";
 import {
@@ -796,8 +797,8 @@ test("a rule's own sortBy controls {performers} ordering for ITS pattern, indepe
     "Bo, Wendy, Zed.mp4",
   );
 
-  // the composable form, and the combination the legacy strings could not
-  // express: Wendy is the only favourite, then the rest by rating
+  // the composable form, and the combination the legacy strings could not express:
+  // Wendy is the only favourite, then the rest by rating
   assert.equal(
     planWithSortBy(["favorite", "rating"]).files[0].basename,
     "Wendy, Zed, Bo.mp4",
@@ -845,6 +846,7 @@ test("a rule's sort criteria win over the default pattern's", () => {
   });
   assert.equal(planScene(scene, config).files[0].basename, "Wendy, Zed.mp4");
 
+  // with no rule matching, the default pattern's criteria apply instead
   const noMatch = Object.assign({}, scene, { tags: [] });
   assert.equal(planScene(noMatch, config).files[0].basename, "Zed, Wendy.mp4");
 });
@@ -1215,4 +1217,190 @@ test("missing-data messages name the entity type, not always 'scene'", () => {
     planScene(noStudioScene, baseConfig()).missingData[0].message,
     "scene has no studio assigned",
   );
+});
+
+test("a mistyped modifier refuses to rename instead of silently filtering to nothing", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{performers|gender=femal}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "error");
+  assert.equal(result.reason, "invalid_pattern");
+  assert.match(result.missingData[0].message, /no gender "femal"/);
+  // and the message names the valid ones, since nothing else will
+  assert.match(result.missingData[0].message, /trans_female/);
+});
+
+test("an unknown modifier is caught in the folder pattern too", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers|bogus=1}",
+      filenamePattern: "{title}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.reason, "invalid_pattern");
+});
+
+// The gate is deliberately narrow: these have always rendered literally and
+// must keep working, or an existing user's typo would start failing renames.
+test("an unknown or malformed token still renders literally rather than blocking", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{title} {nonsense} {studio bogus}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+  assert.match(result.files[0].basename, /\{nonsense\}/);
+  assert.match(result.files[0].basename, /\{studio bogus\}/);
+});
+
+test("a valid gender filter plans normally", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{performers|gender=female?}-{title}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "ok");
+});
+
+const STASH_BOXES = [
+  { name: "StashDB", endpoint: "https://stashdb.org/graphql" },
+  { name: "ThePornDB", endpoint: "https://theporndb.net/graphql" },
+];
+
+function twoIdScene() {
+  return Object.assign({}, normalOrganizedScene, {
+    stash_ids: [
+      { endpoint: "https://stashdb.org/graphql", stash_id: "aaa-111" },
+      { endpoint: "https://theporndb.net/graphql", stash_id: "bbb-222" },
+    ],
+  });
+}
+
+test("a pattern can carry StashIDs from several sources at once", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{stash_id|from=StashDB}-{stash_id|from=ThePornDB}",
+    },
+  });
+  const result = planScene(twoIdScene(), config, STASH_BOXES);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].basename, "aaa-111-bbb-222.mp4");
+});
+
+test("a from= naming no configured stash-box refuses to rename", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{stash_id|from=Bogus}",
+    },
+  });
+  const result = planScene(twoIdScene(), config, STASH_BOXES);
+  assert.equal(result.status, "error");
+  assert.equal(result.reason, "invalid_pattern");
+});
+
+test("omitting the stash-box list fails safe rather than renaming", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{stash_id|from=StashDB}",
+    },
+  });
+  const result = planScene(twoIdScene(), config);
+  assert.notEqual(result.status, "ok");
+  assert.equal(result.reason, "missing_data");
+});
+
+test("with a single configured stash-box, {stash_id} works with nothing configured", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "", filenamePattern: "{stash_id}" },
+  });
+  const oneBox = [STASH_BOXES[0]];
+  assert.equal(
+    planScene(twoIdScene(), config, oneBox).files[0].basename,
+    "aaa-111.mp4",
+  );
+  // two boxes is ambiguous, so it stays an error rather than picking one
+  assert.equal(planScene(twoIdScene(), config, STASH_BOXES).status, "error");
+});
+
+test("configNeedsStashBoxes only asks for the list when it could matter", () => {
+  const needs = (overrides) =>
+    configNeedsStashBoxes(baseConfig(overrides), "scenes");
+
+  // no stash_id anywhere: never worth a query
+  assert.equal(
+    needs({ defaultPattern: { filenamePattern: "{title}" } }),
+    false,
+  );
+  // a stored source answers it without the list
+  assert.equal(
+    needs({
+      defaultPattern: {
+        filenamePattern: "{stash_id}",
+        stashBoxEndpoint: "https://stashdb.org/graphql",
+      },
+    }),
+    false,
+  );
+  // from= always needs it
+  assert.equal(
+    needs({ defaultPattern: { filenamePattern: "{stash_id|from=StashDB}" } }),
+    true,
+  );
+  assert.equal(
+    needs({ defaultPattern: { filenamePattern: "{stash_id}" } }),
+    true,
+  );
+  // a disabled rule cannot contribute
+  assert.equal(
+    needs({
+      defaultPattern: {
+        filenamePattern: "{title}",
+        stashBoxEndpoint: "https://stashdb.org/graphql",
+      },
+      rules: [
+        {
+          id: "r1",
+          enabled: false,
+          filenamePattern: "{stash_id|from=StashDB}",
+          conditions: [],
+        },
+      ],
+    }),
+    false,
+  );
+  // a rule inheriting a default that also has no source still needs it
+  assert.equal(
+    needs({
+      defaultPattern: { filenamePattern: "{title}" },
+      rules: [
+        {
+          id: "r1",
+          enabled: true,
+          filenamePattern: "{stash_id}",
+          conditions: [],
+        },
+      ],
+    }),
+    true,
+  );
+});
+
+test("galleries and images never need the stash-box list, having no {stash_id}", () => {
+  const config = baseConfig({
+    defaultPattern: { filenamePattern: "{stash_id|from=StashDB}" },
+  });
+  assert.equal(configNeedsStashBoxes(config, "galleries"), false);
+  assert.equal(configNeedsStashBoxes(config, "images"), false);
 });
