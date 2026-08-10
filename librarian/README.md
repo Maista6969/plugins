@@ -40,7 +40,7 @@ I recommend making frequent backups of your database and your config where the p
   default pattern. Formatting settings are shared across all three
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-settings.png">
+  <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-settings.png">
     <img src="images/stash-librarian-settings.png" width="800" alt="Settings page: Options, Exclusions, and the ordered Rules list">
   </a>
 </p>
@@ -50,7 +50,7 @@ I recommend making frequent backups of your database and your config where the p
   view will apply to every scene that matches the filter and not just the current page!
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-scene-list-view.png">
+  <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-scene-list-view.png">
     <img src="images/stash-librarian-scene-list-view.png" width="800" alt="Scenes page filtered rename preview: old/new path comparison table">
   </a>
 </p>
@@ -63,7 +63,7 @@ I recommend making frequent backups of your database and your config where the p
 - **Scene page, File Info tab** (scenes only): See exactly which rule would apply to any scene in the File Info tab
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-fileinfo-tab-integration.png">
+  <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-fileinfo-tab-integration.png">
     <img src="images/stash-librarian-fileinfo-tab-integration.png" width="800" alt="Scene File Info tab: Librarian's own block appended below Stash's native file details">
   </a>
 </p>
@@ -92,7 +92,7 @@ Rules let you define new folder and filename patterns for a subset of your colle
 that defines a subset, such as having a particular set of tags or performers, belonging to a set of studios, or having a certain rating.
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-rule-editor.png">
+  <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-rule-editor.png">
     <img src="images/stash-librarian-rule-editor.png" width="800" alt="Rule editor modal: conditions, folder/filename patterns, and a live preview of matching scenes">
   </a>
 </p>
