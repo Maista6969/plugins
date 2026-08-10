@@ -41,7 +41,7 @@ test("performer condition: any_of -> INCLUDES, all_of -> INCLUDES_ALL", () => {
   });
 });
 
-test("tag condition always uses depth:0 — our own tag matching is flat, never expanding to child tags", () => {
+test("tag condition always uses depth:0 - our own tag matching is flat, never expanding to child tags", () => {
   const filter = ruleToSceneFilter(
     rule({ conditions: [{ field: "tag", op: "all_of", value: ["t1", "t2"] }] }),
   );

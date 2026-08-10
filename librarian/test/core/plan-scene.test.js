@@ -477,8 +477,6 @@ test("excludeConditions: a scene matching an excluded tag is always skipped, eve
 });
 
 test("excludeConditions: all_of requires every excluded tag to be present, not just one", () => {
-  // normalOrganizedScene only has tag t1 ("Rock") — requiring BOTH t1 and a
-  // tag it doesn't have means this scene is NOT excluded.
   const config = baseConfig({
     excludeConditions: {
       conditionLogic: "OR",

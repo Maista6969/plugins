@@ -296,7 +296,7 @@ test("spaceReplacement runs BEFORE the reserved-device-name check, so a replacem
   assert.equal(sanitizeSegment("CON 1", {}), "CON 1");
 });
 
-test("renderPath flags basenameHasContent false when every token is optional and none has data — the dangerous 'generic _ placeholder' case", () => {
+test("renderPath flags basenameHasContent false when every token is optional and none has data", () => {
   const config = normalizeConfig({});
   const view = sceneView({
     title: "",
@@ -587,9 +587,6 @@ test("<...> drops a trailing segment when the token inside is empty", () => {
 test("literal text OUTSIDE any <...> is never auto-collapsed, even if it looks separator-like", () => {
   const view = sceneView({ studioNames: [] });
   const result = render("pre-release {studio?}", view);
-  // No brackets at all here: the literal "pre-release " stays exactly as
-  // written regardless of what {studio?} does, and the empty token simply
-  // contributes nothing — nothing "smart" happens without an explicit <...>.
   assert.equal(result, "pre-release ");
 });
 

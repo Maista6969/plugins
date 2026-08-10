@@ -81,7 +81,7 @@ test("a rule already disabled with a dead libraryRoot is left alone (nothing new
   assert.equal(result.disabledRules, 0);
 });
 
-test("a rule with NO libraryRoot set at all is left alone — that's a rule still being configured, not one broken by deletion", () => {
+test("a rule with NO libraryRoot set at all is left alone - that's a rule still being configured, not one broken by deletion", () => {
   const cfg = config({ rules: [rule({ libraryRoot: "" })] });
   const result = pruneDeadLibraryRoots(cfg, ["/data/main"]);
   assert.equal(result.config, cfg);
