@@ -2,10 +2,11 @@ import { sortEntities } from "./entity-sort.js";
 import {
   scanPattern,
   splitTopLevel,
-  applyEntityModifiers,
-  applyTextModifiers,
+  applyListModifiers,
+  applyValueModifiers,
   modifierValue,
   MODIFIERS,
+  MODIFIER_GROUPS,
   knownModifierNames,
 } from "./token-grammar.js";
 
@@ -165,14 +166,14 @@ function listValue(entities, delimiter, sourceCount) {
 
 function renderTokenValue(value, parsed) {
   if (value && value.__list) {
-    let entities = applyEntityModifiers(value.entities, parsed);
-    if (parsed.limit != null) {
-      entities = entities.slice(0, parsed.limit);
-    }
-    const names = entities.map((e) => {
-      return sanitizeTokenValue(e.name);
+    const pairs = value.entities.map((e) => {
+      return { entity: e, name: sanitizeTokenValue(e.name) };
     });
-    const text = applyTextModifiers(names.join(value.delimiter), parsed);
+    const text = applyListModifiers(pairs, parsed)
+      .map((pair) => {
+        return pair.name;
+      })
+      .join(value.delimiter);
     return { text: text, filteredEmpty: text === "" && value.sourceCount > 0 };
   }
   if (value && value.__stashId) {
@@ -184,13 +185,13 @@ function renderTokenValue(value, parsed) {
       : [];
     const id = hit.length > 0 ? hit[0].stash_id : "";
     return {
-      text: applyTextModifiers(sanitizeTokenValue(id), parsed),
+      text: applyValueModifiers(sanitizeTokenValue(id), parsed),
       filteredEmpty: false,
     };
   }
   // plain strings, and the probe maps filenameHasContentWithout builds
   return {
-    text: applyTextModifiers(String(value), parsed),
+    text: applyValueModifiers(String(value), parsed),
     filteredEmpty: false,
   };
 }
@@ -645,18 +646,8 @@ export function findPatternProblems(pattern, allowedTokens, options) {
       return;
     }
 
-    const entityKind = TOKEN_ENTITY_KINDS[token.name];
-    if (token.limit != null && !entityKind) {
-      add(
-        token.raw,
-        "a limit only means something on a list token (" +
-          LIST_TOKEN_NAMES.join(", ") +
-          ")",
-        false,
-      );
-    }
-
     const seen = {};
+    const seenGroups = {};
     token.modifiers.forEach((modifier) => {
       if (seen[modifier.name]) {
         add(token.raw, "sets " + modifier.name + " more than once", true);
@@ -682,17 +673,40 @@ export function findPatternProblems(pattern, allowedTokens, options) {
       ) {
         add(
           token.raw,
-          modifier.name +
-            " only works on " +
-            spec.appliesTo.join("/") +
-            " tokens, and {" +
-            token.name +
-            "} is not one",
-          true,
+          spec.targetsAllLists
+            ? "a " +
+                modifier.name +
+                " only means something on a list token (" +
+                LIST_TOKEN_NAMES.join(", ") +
+                ")"
+            : modifier.name +
+                " only works on " +
+                spec.appliesTo.join("/") +
+                " tokens, and {" +
+                token.name +
+                "} is not one",
+          spec.misuseBlocks !== false,
         );
         return;
       }
-      if (spec.requiresValue && modifier.value == null) {
+      if (spec.group) {
+        const already = seenGroups[spec.group];
+        if (already) {
+          add(
+            token.raw,
+            "a token can only set its " +
+              MODIFIER_GROUPS[spec.group] +
+              " once, but this one uses both " +
+              already +
+              " and " +
+              modifier.name,
+            true,
+          );
+          return;
+        }
+        seenGroups[spec.group] = modifier.name;
+      }
+      if (spec.takesValue === "required" && modifier.value == null) {
         add(
           token.raw,
           modifier.name +
@@ -705,7 +719,22 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         );
         return;
       }
-      const parsed = spec.parseValue(modifier.value);
+      if (spec.takesValue === "none" && modifier.value != null) {
+        add(
+          token.raw,
+          modifier.name +
+            " takes no value, write {" +
+            token.name +
+            "|" +
+            modifier.name +
+            "}",
+          true,
+        );
+        return;
+      }
+      const parsed = spec.parseValue
+        ? spec.parseValue(modifier.value)
+        : { ok: true, value: modifier.value };
       if (!parsed.ok) {
         add(token.raw, parsed.message, true);
         return;
@@ -713,6 +742,10 @@ export function findPatternProblems(pattern, allowedTokens, options) {
       if (modifier.name === "from") {
         addStashBoxProblems(add, token, parsed.value, stashBoxes);
       }
+    });
+
+    token.warnings.forEach((message) => {
+      add(token.raw, message, false);
     });
   });
 

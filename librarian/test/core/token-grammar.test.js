@@ -12,7 +12,6 @@ function shape(pattern) {
   const t = only(pattern);
   return {
     name: t.name,
-    limit: t.limit,
     optional: t.optional,
     modifiers: t.modifiers.map((m) => m.name + "=" + m.value),
     errors: t.errors.length,
@@ -22,72 +21,95 @@ function shape(pattern) {
 test("parses every spelling of the token grammar", () => {
   assert.deepEqual(shape("{title}"), {
     name: "title",
-    limit: null,
-    optional: false,
-    modifiers: [],
-    errors: 0,
-  });
-  assert.deepEqual(shape("{performers:2}"), {
-    name: "performers",
-    limit: 2,
     optional: false,
     modifiers: [],
     errors: 0,
   });
   assert.deepEqual(shape("{title?}"), {
     name: "title",
-    limit: null,
     optional: true,
     modifiers: [],
     errors: 0,
   });
-  assert.deepEqual(shape("{performers:2?}"), {
+  assert.deepEqual(shape("{performers|limit=2}"), {
     name: "performers",
-    limit: 2,
+    optional: false,
+    modifiers: ["limit=2"],
+    errors: 0,
+  });
+  assert.deepEqual(shape("{performers|limit=2?}"), {
+    name: "performers",
     optional: true,
-    modifiers: [],
+    modifiers: ["limit=2"],
     errors: 0,
   });
   assert.deepEqual(shape("{performers|gender=female}"), {
     name: "performers",
-    limit: null,
     optional: false,
     modifiers: ["gender=female"],
     errors: 0,
   });
-  assert.deepEqual(shape("{performers:1|gender=female?}"), {
+  assert.deepEqual(shape("{performers|gender=female|limit=1?}"), {
     name: "performers",
-    limit: 1,
     optional: true,
-    modifiers: ["gender=female"],
+    modifiers: ["gender=female", "limit=1"],
     errors: 0,
   });
   assert.deepEqual(shape("{performers|gender=female,trans_female}"), {
     name: "performers",
-    limit: null,
     optional: false,
     modifiers: ["gender=female,trans_female"],
     errors: 0,
   });
+  assert.deepEqual(shape("{title|uppercase}"), {
+    name: "title",
+    optional: false,
+    modifiers: ["uppercase=null"],
+    errors: 0,
+  });
 });
 
-// limit is the named spelling of the original :N, so it is folded into
-// token.limit rather than left as a registry modifier
-test(":N and |limit=N are the same thing", () => {
-  assert.equal(only("{performers:2}").limit, 2);
-  assert.equal(only("{performers|limit=2}").limit, 2);
-  assert.deepEqual(only("{performers|limit=2}").modifiers, []);
+// ":N" sits at the front of the token, and the front is where a left-to-right
+// limit runs, so the sugar is exactly a leading |limit=N
+test(":N desugars to a leading limit modifier, with a deprecation warning", () => {
+  assert.deepEqual(only("{performers:2}").modifiers, [
+    { name: "limit", value: "2", raw: ":2" },
+  ]);
+  assert.deepEqual(
+    only("{performers:1|gender=female}").modifiers.map((m) => m.name),
+    ["limit", "gender"],
+  );
+  const warnings = only("{performers:1|gender=female}").warnings;
+  assert.equal(warnings.length, 1);
+  // the warning has to print the rewrite, including the rest of the modifiers
+  assert.match(warnings[0], /\{performers\|limit=1\|gender=female\}/);
+  assert.equal(only("{performers|limit=2}").warnings.length, 0);
+});
+
+test("modifiers keep the order they were written", () => {
+  assert.deepEqual(
+    only("{performers|limit=2|gender=female}").modifiers.map((m) => m.name),
+    ["limit", "gender"],
+  );
   assert.deepEqual(
     only("{performers|gender=female|limit=2}").modifiers.map((m) => m.name),
-    ["gender"],
+    ["gender", "limit"],
   );
-  assert.equal(only("{performers|gender=female|limit=2}").limit, 2);
+  assert.deepEqual(
+    only("{title|compact|lowercase}").modifiers.map((m) => m.name),
+    ["compact", "lowercase"],
+  );
 });
 
-test("a limit that is not a whole number, or set twice, is an error", () => {
-  assert.ok(only("{performers|limit=abc}").errors.length > 0);
-  assert.ok(only("{performers|limit}").errors.length > 0);
-  assert.ok(only("{performers:2|limit=3}").errors.length > 0);
+// these used to be grammar errors when limit was folded in while parsing; they
+// are ordinary modifier problems now, and findPatternProblems reports them
+test("a bad limit is no longer a parse error, just a modifier", () => {
+  assert.deepEqual(only("{performers|limit=abc}").errors, []);
+  assert.deepEqual(only("{performers:2|limit=3}").errors, []);
+  assert.deepEqual(
+    only("{performers:2|limit=3}").modifiers.map((m) => m.name),
+    ["limit", "limit"],
+  );
 });
 
 test("scans several tokens and reports where each one starts", () => {

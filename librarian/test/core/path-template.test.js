@@ -823,16 +823,58 @@ test("|gender= accepts the longer spellings and ignores surrounding spaces", () 
   );
 });
 
-test("the gender filter runs before the limit, not after", () => {
-  // Marcus sorts first alphabetically, so a limit applied first would take him
-  // and leave nothing for gender=female to match
+test("modifiers apply in the order they are written", () => {
   const view = genderView([
     ["Marcus", "male"],
     ["Zara", "female"],
   ]);
-  assert.equal(render("{performers:1}", view), "Marcus");
-  assert.equal(render("{performers:1|gender=female}", view), "Zara");
+  assert.equal(render("{performers|limit=1}", view), "Marcus");
   assert.equal(render("{performers|gender=female|limit=1}", view), "Zara");
+  assert.equal(render("{performers|limit=1|gender=female}", view), "");
+  assert.equal(render("{performers:1|gender=female}", view), "");
+});
+
+test("value modifiers rewrite the text of any token", () => {
+  const view = sceneView({ title: "My Long Title" });
+  assert.equal(render("{title|uppercase}", view), "MY LONG TITLE");
+  assert.equal(render("{title|lowercase}", view), "my long title");
+  assert.equal(render("{title|compact}", view), "MyLongTitle");
+  assert.equal(render("{titlecheck}", view), "{titlecheck}");
+  assert.equal(
+    render("{title|lowercase|titlecase}", sceneView({ title: "THE BIG ONE" })),
+    "The Big One",
+  );
+  assert.equal(render("{studio|uppercase}", view), "LEAF");
+  assert.equal(render("{date|compact}", view), "2024-03-05");
+});
+
+test("value modifiers map over a list rather than hitting the joined string", () => {
+  const view = sceneView({ performerNames: ["Amy Adams", "Zed Zane"] });
+  assert.equal(render("{performers|compact}", view), "AmyAdams, ZedZane");
+  assert.equal(render("{performers|uppercase}", view), "AMY ADAMS, ZED ZANE");
+  // the delimiter survives even when it is made of letters
+  assert.equal(
+    render("{performers|uppercase}", view, {
+      delimiters: { performers: " and " },
+    }),
+    "AMY ADAMS and ZED ZANE",
+  );
+});
+
+test("a list filter still works after a value modifier has rewritten the names", () => {
+  const view = genderView([
+    ["Marcus", "male"],
+    ["Zara", "female"],
+  ]);
+  assert.equal(render("{performers|uppercase|gender=female}", view), "ZARA");
+  assert.equal(render("{performers|gender=female|uppercase}", view), "ZARA");
+});
+
+test("titlecase runs before compact, if that is the order written", () => {
+  const view = sceneView({ title: "ava kensington" });
+  assert.equal(render("{title|titlecase|compact}", view), "AvaKensington");
+  // and the other way round it cannot see the word boundary any more
+  assert.equal(render("{title|compact|titlecase}", view), "Avakensington");
 });
 
 test("a gender filter applies per token, so the same list can be filtered in one place and not another", () => {
@@ -959,7 +1001,16 @@ test("findPatternProblems explains every way a modifier can be wrong", () => {
   );
   assert.match(messageFor("{title:2}"), /only means something on a list token/);
   assert.match(messageFor("{nonsense}"), /no \{nonsense\} token/);
-  assert.deepEqual(findPatternProblems("{performers:1|gender=female?}"), []);
+  assert.match(messageFor("{title|uppercase=yes}"), /uppercase takes no value/);
+  assert.match(
+    messageFor("{title|uppercase|lowercase}"),
+    /only set its capitalisation once/,
+  );
+  assert.deepEqual(
+    findPatternProblems("{performers|limit=1|gender=female?}"),
+    [],
+  );
+  assert.deepEqual(findPatternProblems("{title|compact|uppercase}"), []);
 });
 
 test("only modifier mistakes block a rename; unknown tokens stay lenient", () => {
@@ -973,6 +1024,22 @@ test("only modifier mistakes block a rename; unknown tokens stay lenient", () =>
   assert.deepEqual(blocking("{nonsense}"), []);
   assert.deepEqual(blocking("{studio bogus}"), []);
   assert.deepEqual(blocking("{title:2}"), []);
+  // :N still renames, it just says what to write instead
+  assert.deepEqual(blocking("{performers:2}"), []);
+});
+
+test(":N is reported as deprecated without blocking the rename", () => {
+  const problems = findPatternProblems("{performers:2}");
+  assert.equal(problems.length, 1);
+  assert.equal(problems[0].blocking, false);
+  assert.match(problems[0].message, /deprecated/);
+  assert.match(problems[0].message, /\{performers\|limit=2\}/);
+  assert.deepEqual(findPatternProblems("{performers|limit=2}"), []);
+  // a real mistake on the same token is still listed first
+  assert.match(
+    findPatternProblems("{performers:2|bogus=1}")[0].message,
+    /no "bogus" modifier/,
+  );
 });
 
 test("patternUsesAnyToken and hasUnsafeOptionalOnlyBasename see through modifiers", () => {

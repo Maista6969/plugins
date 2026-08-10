@@ -5,7 +5,7 @@
 // matter what order they arrived in, for any criteria list. That is why "name"
 // and then "id" are always appended as final tiebreakers, whether or not the
 // user picked them. Renames have to be idempotent and a sort that leaves two
-// entities in arbitrary relative order would let {performers:1}  choose
+// entities in arbitrary relative order would let {performers|limit=1} choose
 // differently between two runs and shuffle files back and forth forever
 
 export const SORT_CRITERIA = ["favorite", "rating", "name"];

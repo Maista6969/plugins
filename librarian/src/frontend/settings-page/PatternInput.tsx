@@ -14,7 +14,7 @@ const TOKEN_DESCRIPTIONS: Record<string, string> = {
   studio_hierarchy:
     "The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)",
   performers:
-    "All performers on the {noun}, sorted per this rule's “Sort performers by” setting, joined with a comma. Add :N to limit the count, e.g. {performers:3}, or |gender=female to keep only performers of a given gender",
+    "All performers on the {noun}, sorted per this rule's “Sort performers by” setting, joined with a comma. Add |limit=N to cap the count, e.g. {performers|limit=3}, or |gender=female to keep only performers of a given gender",
   performers_not_in_title:
     "Performers not already named in the {noun}'s title. It would not include “Joy” if the title is “A Day in the Park with Joy”",
   matched_performers:
@@ -75,11 +75,11 @@ function PatternModalField({
   const pattern = value || "";
   // null while loading, so a from= value is never flagged against a list we
   // have not received yet: a blocking problem refuses the rename outright
-  const problems: { raw: string; message: string }[] = findPatternProblems(
-    pattern,
-    adapter.tokens,
-    { stashBoxes: boxesLoading ? null : stashBoxes },
-  );
+  const problems: { raw: string; message: string; blocking: boolean }[] =
+    findPatternProblems(pattern, adapter.tokens, {
+      stashBoxes: boxesLoading ? null : stashBoxes,
+    });
+  const blockingCount = problems.filter((p) => p.blocking).length;
   const unsafeBasename = !!validate && !validate(pattern);
 
   function insertToken(token: string) {
@@ -109,13 +109,19 @@ function PatternModalField({
         type="text"
         autoFocus
         className="input-control"
-        isInvalid={problems.length > 0 || unsafeBasename}
+        isInvalid={blockingCount > 0 || unsafeBasename}
         value={pattern}
         onChange={(e: any) => setValue(e.target.value)}
         placeholder="{studio_parent}/{studio}/{studio} - {date} - {title}"
       />
       {problems.map((problem, i) => (
-        <div key={i} className="librarian-token-hint text-danger">
+        <div
+          key={i}
+          className={
+            "librarian-token-hint " +
+            (problem.blocking ? "text-danger" : "text-warning")
+          }
+        >
           <code>{problem.raw}</code> {problem.message}
         </div>
       ))}
@@ -161,16 +167,32 @@ function PatternModalField({
         )}
       <div className="librarian-token-hint text-muted">
         <p>
-          Add <code>?</code> to make a token optional, or <code>:N</code> on a
-          list token to limit its count, e.g. <code>{"{performers:2}"}</code>{" "}
-          will either be <samp className="text-success">First Performer</samp>{" "}
-          if there's one performer or{" "}
+          Add <code>?</code> to make a token optional, or <code>|limit=N</code>{" "}
+          on a list token to cap how many values it joins, e.g.{" "}
+          <code>{"{performers|limit=2}"}</code> will either be{" "}
+          <samp className="text-success">First Performer</samp> if there's one
+          performer or{" "}
           <samp className="text-success">
             First Performer, Second Performer
           </samp>{" "}
           if there are two or more performers. A performer token can also take{" "}
-          <code>|gender=female</code> to keep only performers of that gender,
-          e.g. <code>{"{performers:1|gender=female}"}</code>
+          <code>|gender=female</code> to keep only performers of that gender.
+        </p>
+        <p>
+          Any token takes <code>|uppercase</code>, <code>|lowercase</code>,{" "}
+          <code>|titlecase</code> and <code>|compact</code> (removes spaces), so{" "}
+          <code>{"{performers|limit=1|compact}"}</code> gives{" "}
+          <samp className="text-success">FirstPerformer</samp>. On a list these
+          apply to each value, leaving the separator alone.
+        </p>
+        <p>
+          <strong>Modifiers apply left to right</strong>, so{" "}
+          <code>{"{performers|gender=female|limit=1}"}</code> is the first
+          female performer, while{" "}
+          <code>{"{performers|limit=1|gender=female}"}</code> takes the first
+          performer and then keeps her only if she is female. The older{" "}
+          <code>:N</code> spelling still works but is deprecated: write{" "}
+          <code>|limit=N</code> instead.
         </p>
         {adapter.tokens.indexOf("stash_id") !== -1 && (
           <p>

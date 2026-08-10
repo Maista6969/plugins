@@ -101,10 +101,8 @@ that defines a subset, such as having a particular set of tags or performers, be
 
 - `{token}`: required. Errors if the scene has no data for it.
 - `{token?}`: optional. Renders empty instead of erroring when the scene has no data for it.
-- `{token:N}`: list tokens only (`performers`, `performers_not_in_title`, `matched_performers`, `tags`, `matched_tags`). Joins at most the first N values so `{performers:3}` includes at most three names.
-- `{token:N?}`: both of the above combined, e.g. `{performers_not_in_title:2?}`.
-- `{token|name=value}`: a modifier. `gender` on the performer tokens, e.g. `{performers|gender=female}`, and `from` on `{stash_id}`, e.g. `{stash_id|from=StashDB}`.
-  Modifiers go after any `:N` and before the `?`, so the fullest form is `{performers:1|gender=female?}`.
+- `{token|modifier}`: a modifier, described below. Several can be chained, e.g. `{performers|gender=female|limit=1|uppercase}`.
+  Modifiers always come before the `?`, so the fullest form is `{performers|gender=female|limit=1?}`
   A mistyped modifier is refused outright rather than quietly renaming to something wrong.
 - `<...>`: wraps literal text and/or tokens as one optional-segment unit. The whole span, literal text included,
   is dropped if it contains at least one optional token and every one of them rendered empty for that scene.
@@ -120,13 +118,46 @@ that defines a subset, such as having a particular set of tags or performers, be
   only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
 
-**Token modifiers**: `gender` keeps only the performers of the gender(s) you name, on any of `{performers}`,
-`{performers_not_in_title}` and `{matched_performers}`. Several are separated by commas, e.g. `{performers|gender=female,trans_female}`.
-The filtering happens before `:N`, so `{performers:1|gender=female}` is "the first female performer" rather than
-"the first performer, if she happens to be female".
+**Token modifiers**
 
-Valid values are `female`, `male`, `trans_female`, `trans_male`, `intersex`, `non_binary` and `unknown`
-(`transgender_female`, `transgender_male` and `nonbinary` also work if you prefer them spelled out).
+| Modifier    | Works on                                                            | Effect                                                |
+| ----------- | ------------------------------------------------------------------- | ----------------------------------------------------- |
+| `limit=N`   | list tokens                                                         | Join at most the first N values                       |
+| `gender=`   | `{performers}`, `{performers_not_in_title}`, `{matched_performers}` | Keep only performers of the gender(s) named           |
+| `uppercase` | any token                                                           | `AVA KENSINGTON`                                      |
+| `lowercase` | any token                                                           | `ava kensington`                                      |
+| `titlecase` | any token                                                           | `Ava Kensington`                                      |
+| `compact`   | any token                                                           | Removes spaces: `AvaKensington`                       |
+| `from=`     | `{stash_id}`                                                        | Which stash-box source to take the ID from; see below |
+
+The list tokens are `performers`, `performers_not_in_title`, `matched_performers`, `tags` and `matched_tags`.
+
+**Modifiers apply strictly left to right**, in the order you write them. This matters whenever a filter and a
+limit appear together:
+
+```
+{performers|gender=female|limit=1}   the first female performer
+{performers|limit=1|gender=female}   the first performer, kept only if she is female
+```
+
+Both are valid; they just mean different things, and each one means what it reads like. The preview shows you
+which you got before anything is renamed
+
+On a list token, the text modifiers apply to **each value**, leaving the separator alone, so
+`{performers|compact}` gives `AvaKensington, MarcusChen` rather than running the names together
+
+`gender` accepts several values separated by commas, e.g. `{performers|gender=female,trans_female}`. Valid
+values are `female`, `male`, `trans_female`, `trans_male`, `intersex`, `non_binary` and `unknown`
+(`transgender_female`, `transgender_male` and `nonbinary` also work if you prefer them spelled out)
+
+`titlecase` is deliberately simple: it capitalises the first letter of each word and lowercases the rest. It is
+meant for fixing scraped ALL-CAPS titles, not for correcting names — it will turn `McDonald` into `Mcdonald`
+
+> ⚠️ **Deprecated in version 0.7**: the `{performers:2}` spelling of the limit. Write `{performers|limit=2}`
+> instead. `:N` still works and Librarian shows the exact replacement, but note that it is now read in the
+> position it is written: `{performers:1|gender=female}` used to mean "the first female performer" and now
+> means "the first performer, if she happens to be female". Anywhere you combined `:N` with `gender=`, swap
+> the order: `{performers|gender=female|limit=1}`
 
 > **Gender has to actually be set in Stash.** `unknown` means "no gender recorded", and it is deliberately _not_
 > matched by `gender=female` — so on a library where performers have not been tagged, `{performers|gender=female}`
@@ -261,7 +292,7 @@ the default pattern) has its own performer sort order, only shown when the patte
 references one of those tokens. Pick any combination of **Favourites first** and **Highest rated**,
 in the order you click them; whatever is left over is broken alphabetically, always. So choosing
 both, in that order, means "favourited performers first, best-rated first among those, then A→Z",
-which combined with `{performers:1}` gives you a folder named after the favourite you rate highest.
+which combined with `{performers|limit=1}` gives you a folder named after the favourite you rate highest.
 Unrated performers sort last. `{tags}`/`{matched_tags}` always sort alphabetically.
 
 **When a matched rule's pattern references a required token the scene doesn't have data for**, that
@@ -300,18 +331,18 @@ Without:
 Folder:
 
 ```
-OnlyFans/{matched_performers:1}
+OnlyFans/{matched_performers|limit=1}
 ```
 
 Filename:
 
 ```
-{date}< ({rating?}) > - [{performers:3}]
+{date}< ({rating?}) > - [{performers|limit=3}]
 ```
 
 `:1` on `{matched_performers}` is a safety cap in case your rule matches multiple performers and two or
 more of them appear in the same scene - the first performer is used for the folder name.
-The `[...]` around `{performers:3}` are just literal bracket characters for decoration, not `<...>` syntax, so it never collapses.
+The `[...]` around `{performers|limit=3}` are just literal bracket characters for decoration, not `<...>` syntax, so it never collapses.
 The optional `< ({rating?}) >` does collapse, angle brackets included, when a scene has no rating set:
 
 With a rating
@@ -352,7 +383,7 @@ of space-replacement (a literal comma would survive as `Ava.Kensington,.Marcus.C
 Folder stays `{studio_hierarchy}`; filename:
 
 ```
-{studio}<.{code?}>.{date_year}.{date_month}.{date_day}.{title}.-.{performers:3}.{resolution}.{video_codec}
+{studio}<.{code?}>.{date_year}.{date_month}.{date_day}.{title}.-.{performers|limit=3}.{resolution}.{video_codec}
 ```
 
 `{date_year}.{date_month}.{date_day}` is used instead of bare `{date}`, since Stash's own date
