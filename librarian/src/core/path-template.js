@@ -27,6 +27,10 @@ export const KNOWN_TOKENS = [
   "date_day",
   "rating",
   "stash_id",
+  // The path the file already has. Unlike every other token this one reads what
+  // the pattern writes, so it is the only token that can fail to settle: see
+  // currentUsage and the fixed-point check in plan-scene
+  "current",
   // Optional file metadata
   "phash",
   // Core file metadata, should always be available
@@ -168,7 +172,7 @@ function listValue(entities, delimiter, sourceCount) {
 
 // {studio_hierarchy} is the one token whose value is allowed to carry "/", so
 // it is also the one token that must not be re-sanitized afterwards
-const SLASH_EXEMPT_TOKENS = { studio_hierarchy: true };
+const SLASH_EXEMPT_TOKENS = { studio_hierarchy: true, current: true };
 
 // We can't allow a regex to insert a slash to create a new folder hierarchy
 // because it breaks a lot of other assumptions we've made
@@ -351,6 +355,9 @@ export function buildTokens(sceneView, config, matchedIds) {
     rating:
       sceneView.rating100 != null ? (sceneView.rating100 / 10).toFixed(1) : "",
     stash_id: stashIdValue(sceneView.stashIds, matched),
+    // overridden per pattern by renderPath: {current} means the current
+    // folder in a folder pattern and the current basename in a filename one
+    current: "",
   };
 }
 
@@ -647,10 +654,33 @@ export function findPatternProblems(pattern, allowedTokens, options) {
   const allowed = allowedTokens || KNOWN_TOKENS;
 
   const stashBoxes = (options && options.stashBoxes) || null;
+  const patternKind = (options && options.patternKind) || null;
   const problems = [];
   const add = (raw, message, blocking) => {
     problems.push({ raw: raw, message: message, blocking: !!blocking });
   };
+
+  // {current} reads the path that the pattern is about to write, so anything
+  // added around it is read back on the next run and added again. Refusing the
+  // composition is what keeps a pattern a fixed point rather than a recurrence
+  const usage = currentUsage(pattern);
+  if (usage.uses && !usage.alone) {
+    add(
+      "{current}",
+      "{current} has to be the whole pattern. Combined with anything else it" +
+        " grows every time the rename runs, because the next run reads back the" +
+        " name the last one wrote",
+      true,
+    );
+  }
+  if (usage.uses && usage.alone && usage.modified && patternKind === "folder") {
+    add(
+      "{current}",
+      "a folder pattern can only use {current} on its own: rewriting the" +
+        " folder a file already sits in would move it somewhere new every run",
+      true,
+    );
+  }
 
   scanPattern(pattern).forEach((token) => {
     token.errors.forEach((message) => {
@@ -941,16 +971,54 @@ export function joinBasename(folder, basename) {
   return f.replace(/[\\/]+$/, "") + sep + basename;
 }
 
-export function folderPatternMode(folderPattern) {
-  const raw = (folderPattern == null ? "" : String(folderPattern)).trim();
-  if (raw === "") return "keep";
-  if (/^[\\/]+$/.test(raw)) return "root";
-  return "render";
+// How {current} is written in a pattern. `alone` is the only legal shape:
+// concatenated with anything else the pattern grows every run, because the next
+// run reads back what the last one wrote --
+//   {current}/{date_year}   folder/name -> .../2024 -> .../2024/2024 -> ...
+export function currentUsage(pattern) {
+  const text = pattern == null ? "" : String(pattern);
+  const tokens = scanPattern(text);
+  const currents = tokens.filter((t) => {
+    return t.name === "current";
+  });
+  if (currents.length === 0) {
+    return { uses: false, alone: false, modified: false };
+  }
+  let literal = "";
+  let last = 0;
+  tokens.forEach((t) => {
+    literal += text.slice(last, t.index);
+    last = t.index + t.raw.length;
+  });
+  literal += text.slice(last);
+  return {
+    uses: true,
+    alone: tokens.length === 1 && literal.trim() === "",
+    modified: currents[0].modifiers.length > 0,
+  };
 }
 
+function keepsCurrent(raw) {
+  const usage = currentUsage(raw);
+  return usage.uses && usage.alone && !usage.modified;
+}
+
+// "keep" is no longer a blank pattern but one that is exactly {current}: the
+// file stays in the folder it already occupies, which needs no library root and
+// lets the move go by folder id rather than by a path we assembled
+export function folderPatternMode(folderPattern) {
+  const raw = (folderPattern == null ? "" : String(folderPattern)).trim();
+  if (raw === "") return "blank";
+  if (/^[\\/]+$/.test(raw)) return "root";
+  return keepsCurrent(raw) ? "keep" : "render";
+}
+
+// A filename of exactly {current} keeps the name byte for byte. Given a
+// modifier it is a rename like any other, and is sanitised like one
 export function filenamePatternMode(filenamePattern) {
   const raw = (filenamePattern == null ? "" : String(filenamePattern)).trim();
-  return raw === "" ? "keep" : "render";
+  if (raw === "") return "blank";
+  return keepsCurrent(raw) ? "keep" : "render";
 }
 
 function filenameHasContentWithout(
@@ -969,15 +1037,29 @@ function filenameHasContentWithout(
   return sanitizeSegmentRaw(rendered, sanitizeOptions) !== "";
 }
 
+// `currentPath` is { folder, basename }, the path this file already has, with the
+// basename stripped of its extension. {current} resolves to a different one of
+// those in each pattern, which is why the token map is rebuilt per pattern
+// rather than shared between them
 export function renderPath(
   folderPattern,
   filenamePattern,
   sceneView,
   config,
   matchedIds,
+  currentPath,
 ) {
-  const tokens = buildTokens(sceneView, config, matchedIds);
-  const sanitizeOptions = config.sanitize || {};
+  const base = buildTokens(sceneView, config, matchedIds);
+  const from = currentPath || { folder: "", basename: "" };
+  const tokens = Object.assign({}, base, { current: from.folder });
+  const filenameTokens = Object.assign({}, base, { current: from.basename });
+  // a kept name is already legal on disk, so replacing its spaces would be the
+  // rename that {current} on its own promises not to make. Asking for a
+  // modifier is asking for a rename, and that is sanitised like any other
+  const sanitizeOptions =
+    filenamePatternMode(filenamePattern) === "keep"
+      ? Object.assign({}, config.sanitize || {}, { spaceReplacement: "" })
+      : config.sanitize || {};
 
   const renderedFolder = renderTemplate(folderPattern || "", tokens);
   // Windows users write their folder patterns with backslashes, so both count as
@@ -992,13 +1074,16 @@ export function renderPath(
       return sanitizeSegment(segment, sanitizeOptions);
     });
 
-  const renderedFilename = renderTemplate(filenamePattern || "", tokens);
+  const renderedFilename = renderTemplate(
+    filenamePattern || "",
+    filenameTokens,
+  );
   const basenameNoExt = sanitizeSegment(renderedFilename, sanitizeOptions);
   const basenameHasContent =
     sanitizeSegmentRaw(renderedFilename, sanitizeOptions) !== "";
   const basenameHasMetadataContent = filenameHasContentWithout(
     filenamePattern || "",
-    tokens,
+    filenameTokens,
     FILE_TECH_TOKENS,
     sanitizeOptions,
   );

@@ -287,24 +287,25 @@ _Scene metadata_
 
 <!-- BEGIN GENERATED: tokens-metadata -->
 
-| Token                       | Description                                                                                                                                                             |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `{studio}`                  | The scene's own studio                                                                                                                                                  |
-| `{studio_root}`             | The TOP of the studio hierarchy (often the network), not the scene's own; for a BangBros scene under Public Bang, this is “BangBros”, not “Public Bang”                 |
-| `{studio_hierarchy}`        | The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)                                                                                 |
-| `{performers}`              | All performers on the scene, sorted per this rule's “Sort performers by” setting, joined with a comma                                                                   |
-| `{performers_not_in_title}` | Performers not already named in the scene's title. It would not include “Joy” if the title is “A Day in the Park with Joy”                                              |
-| `{matched_performers}`      | Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the scene                                                     |
-| `{tags}`                    | All tags on the scene, joined with a comma                                                                                                                              |
-| `{matched_tags}`            | Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene                                                                       |
-| `{title}`                   | The scene's title                                                                                                                                                       |
-| `{code}`                    | The scene's own “Studio Code”, not that very few studios actually have these                                                                                            |
-| `{date}`                    | The scene's date, can be partial                                                                                                                                        |
-| `{date_year}`               | Just the year of the date, e.g. “2024”                                                                                                                                  |
-| `{date_month}`              | Just the month of the date, e.g. “05”, can be missing if the scene has a partial date                                                                                   |
-| `{date_day}`                | Just the day of the date, e.g. “10”, can be missing if the scene has a partial date                                                                                     |
-| `{rating}`                  | The scene's rating on a 0-10 scale (one decimal place)                                                                                                                  |
-| `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below. Several sources can appear in one pattern |
+| Token                       | Description                                                                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `{studio}`                  | The scene's own studio                                                                                                       |
+| `{studio_root}`             | The TOP of the studio hierarchy (often the network), not the scene's own                                                     |
+| `{studio_hierarchy}`        | The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)                                      |
+| `{performers}`              | All performers on the scene, sorted per this rule's “Sort performers by” setting, joined with a comma                        |
+| `{performers_not_in_title}` | Performers not already named in the scene's title. It would not include “Joy” if the title is “A Day in the Park with Joy”   |
+| `{matched_performers}`      | Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the scene          |
+| `{tags}`                    | All tags on the scene, joined with a comma                                                                                   |
+| `{matched_tags}`            | Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene                            |
+| `{title}`                   | The scene's title                                                                                                            |
+| `{code}`                    | The scene's own “Studio Code”, not that very few studios actually have these                                                 |
+| `{date}`                    | The scene's date, can be partial                                                                                             |
+| `{date_year}`               | Just the year of the date, e.g. “2024”                                                                                       |
+| `{date_month}`              | Just the month of the date, e.g. “05”, can be missing if date is partial                                                     |
+| `{date_day}`                | Just the day of the date, e.g. “10”, can be missing if date is partial                                                       |
+| `{rating}`                  | The scene's rating on a 0-10 scale (one decimal place)                                                                       |
+| `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below |
+| `{current}`                 | The path this file already has                                                                                               |
 
 <!-- END GENERATED: tokens-metadata -->
 

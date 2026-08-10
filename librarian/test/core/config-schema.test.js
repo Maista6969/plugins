@@ -145,8 +145,29 @@ test("galleries and images ship with automatic renaming off so upgrading never m
 
 test("galleries and images default to a keep-in-place folder pattern", () => {
   const config = normalizeConfig(undefined);
-  assert.equal(config.galleries.defaultPattern.folderPattern, "");
-  assert.equal(config.images.defaultPattern.folderPattern, "");
+  assert.equal(config.galleries.defaultPattern.folderPattern, "{current}");
+  assert.equal(config.images.defaultPattern.folderPattern, "{current}");
+});
+
+// A blank pattern used to mean "keep what this file already has". It is spelled
+// {current} now, and stored blanks are rewritten so that nothing moves
+test("blank patterns are migrated to {current}", () => {
+  const config = normalizeConfig({
+    scenes: {
+      defaultPattern: { folderPattern: "  ", filenamePattern: "" },
+      rules: [{ id: "r1", folderPattern: "", filenamePattern: "{title}" }],
+    },
+  });
+  assert.equal(config.scenes.defaultPattern.folderPattern, "{current}");
+  assert.equal(config.scenes.defaultPattern.filenamePattern, "{current}");
+  assert.equal(config.scenes.rules[0].folderPattern, "{current}");
+  // a rule that said something is left alone
+  assert.equal(config.scenes.rules[0].filenamePattern, "{title}");
+  // "/" is the library root, not a blank, and must survive
+  const root = normalizeConfig({
+    scenes: { defaultPattern: { folderPattern: "/" } },
+  });
+  assert.equal(root.scenes.defaultPattern.folderPattern, "/");
 });
 
 test("global formatting settings are preserved across the migration, not moved into scenes", () => {

@@ -50,6 +50,7 @@ export const TOKEN_DESCRIPTIONS = {
   oshash:
     "The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file {noun}",
   rating: "The {noun}'s rating on a 0-10 scale (one decimal place)",
+  current: "The path this file already has",
   stash_id:
     "The {noun}'s StashID. Add |from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below",
 };

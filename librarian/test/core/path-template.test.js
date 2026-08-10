@@ -1347,11 +1347,18 @@ test("the {stash_id} entry carries no endpoint when no source is configured, sin
 });
 
 test("folderPatternMode reads intent off the raw pattern, which renderPath would otherwise erase", () => {
-  // renderPath strips empty segments, so all of these render identically to ""
-  assert.equal(folderPatternMode(""), "keep");
-  assert.equal(folderPatternMode("   "), "keep");
-  assert.equal(folderPatternMode(undefined), "keep");
-  assert.equal(folderPatternMode(null), "keep");
+  // keep-in-place is spelled {current} now; a literal blank means nothing and
+  // is reported rather than guessed at
+  assert.equal(folderPatternMode("{current}"), "keep");
+  assert.equal(folderPatternMode(" {current} "), "keep");
+  assert.equal(folderPatternMode(""), "blank");
+  assert.equal(folderPatternMode("   "), "blank");
+  assert.equal(folderPatternMode(undefined), "blank");
+  assert.equal(folderPatternMode(null), "blank");
+  // composed or modified, it is an ordinary rendered pattern (and refused by
+  // findPatternProblems, which is where the reason is explained)
+  assert.equal(folderPatternMode("{current}/{studio}"), "render");
+  assert.equal(folderPatternMode("{current|uppercase}"), "render");
   assert.equal(folderPatternMode("/"), "root");
   assert.equal(folderPatternMode("//"), "root");
   assert.equal(folderPatternMode("\\"), "root");
@@ -1361,10 +1368,15 @@ test("folderPatternMode reads intent off the raw pattern, which renderPath would
 });
 
 test("filenamePatternMode reads the same intent, but has no root case: a filename never splits into folders", () => {
-  assert.equal(filenamePatternMode(""), "keep");
-  assert.equal(filenamePatternMode("   "), "keep");
-  assert.equal(filenamePatternMode(undefined), "keep");
-  assert.equal(filenamePatternMode(null), "keep");
+  assert.equal(filenamePatternMode("{current}"), "keep");
+  assert.equal(filenamePatternMode(" {current} "), "keep");
+  assert.equal(filenamePatternMode(""), "blank");
+  assert.equal(filenamePatternMode("   "), "blank");
+  assert.equal(filenamePatternMode(undefined), "blank");
+  assert.equal(filenamePatternMode(null), "blank");
+  // a modifier makes it a rename like any other, so it is sanitised as one
+  assert.equal(filenamePatternMode("{current|uppercase}"), "render");
+  assert.equal(filenamePatternMode("{current} - {date}"), "render");
   assert.equal(filenamePatternMode("/"), "render");
   assert.equal(filenamePatternMode("{title}"), "render");
   assert.equal(filenamePatternMode("{title?}"), "render");

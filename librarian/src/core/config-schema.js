@@ -42,7 +42,7 @@ const DEFAULT_GALLERIES = {
   rules: [],
   excludeConditions: { conditionLogic: "OR", conditions: [] },
   defaultPattern: {
-    folderPattern: "",
+    folderPattern: "{current}",
     filenamePattern: "{title}",
     sortBy: DEFAULT_SORT_CRITERIA,
     libraryRoot: "",
@@ -55,7 +55,7 @@ const DEFAULT_IMAGES = {
   rules: [],
   excludeConditions: { conditionLogic: "OR", conditions: [] },
   defaultPattern: {
-    folderPattern: "",
+    folderPattern: "{current}",
     filenamePattern: "{title}",
     sortBy: DEFAULT_SORT_CRITERIA,
     libraryRoot: "",
@@ -118,6 +118,66 @@ function migrateLegacyConfig(raw) {
   return migrateSortBy(hoistLegacySections(raw));
 }
 
+// A blank pattern used to mean "keep the folder, or the name, this file already
+// has". That is spelled {current} now, so stored blanks are rewritten once and
+// the special case disappears from the engine. The meaning is identical, which
+// is the whole point: nobody's files move because of this.
+//
+// Runs after the defaults are merged, so a section that never mentioned a
+// pattern at all is migrated along with one that stored an empty string. "/"
+// survives untouched: it is the library root, not a blank.
+export const KEEP_CURRENT = "{current}";
+
+// Exported because the pattern editor applies the same rule the moment a field
+// is cleared, rather than leaving a blank in the page state for the preview to
+// report on and the next save to rewrite anyway
+export function blankPatternToCurrent(value) {
+  const raw = value == null ? "" : String(value);
+  return raw.trim() === "" ? KEEP_CURRENT : value;
+}
+
+// Only rewrites keys the holder actually carries: adding a pattern to a rule
+// that never named one would put words in the user's mouth, and mergeDefaults
+// deliberately leaves rules alone
+function migratePatternHolder(holder) {
+  if (!isPlainObject(holder)) {
+    return holder;
+  }
+  const next = Object.assign({}, holder);
+  ["folderPattern", "filenamePattern"].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(next, key)) {
+      next[key] = blankPatternToCurrent(next[key]);
+    }
+  });
+  return next;
+}
+
+function migrateBlankPatterns(config) {
+  if (!isPlainObject(config)) {
+    return config;
+  }
+  const result = Object.assign({}, config);
+  Object.keys(result).forEach((key) => {
+    const section = result[key];
+    if (!isPlainObject(section)) {
+      return;
+    }
+    if (
+      !isPlainObject(section.defaultPattern) &&
+      !Array.isArray(section.rules)
+    ) {
+      return;
+    }
+    const next = Object.assign({}, section);
+    next.defaultPattern = migratePatternHolder(next.defaultPattern);
+    if (Array.isArray(next.rules)) {
+      next.rules = next.rules.map(migratePatternHolder);
+    }
+    result[key] = next;
+  });
+  return result;
+}
+
 function hoistLegacySections(raw) {
   if (!isPlainObject(raw)) {
     return raw;
@@ -157,9 +217,11 @@ function hoistLegacySections(raw) {
 }
 
 export function normalizeConfig(raw) {
-  return mergeDefaults(
-    DEFAULT_CONFIG,
-    migrateLegacyConfig(isPlainObject(raw) ? raw : {}),
+  return migrateBlankPatterns(
+    mergeDefaults(
+      DEFAULT_CONFIG,
+      migrateLegacyConfig(isPlainObject(raw) ? raw : {}),
+    ),
   );
 }
 
