@@ -26,6 +26,31 @@ export function normalizeScene(rawScene, entityType) {
     .slice()
     .sort(byKey(performerKey));
   const tags = (rawScene.tags || []).slice().sort(byKey(tagKey));
+  // Stash does not order a scenes groups (SceneStore.GetGroups runs no ORDER
+  // BY), so the pick has to be ours or {group} would vary between runs. Lowest
+  // id first means the group created earliest wins, which is stable and does
+  // not move when a group is renamed
+  const groups = (rawScene.groups || [])
+    .filter((g) => {
+      return g && g.group;
+    })
+    .map((g) => {
+      return {
+        id: String(g.group.id),
+        name: g.group.name || "",
+        // nullable in the schema: a scene can be in a group with no place in
+        // its running order, which is missing data rather than index 0
+        sceneIndex: g.scene_index == null ? null : g.scene_index,
+      };
+    })
+    .sort((a, b) => {
+      const an = parseInt(a.id, 10);
+      const bn = parseInt(b.id, 10);
+      if (!isNaN(an) && !isNaN(bn) && an !== bn) {
+        return an - bn;
+      }
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
 
   return {
     id: rawScene.id,
@@ -56,6 +81,7 @@ export function normalizeScene(rawScene, entityType) {
     tags: tags.map((t) => {
       return { id: String(t.id), name: t.name };
     }),
+    groups: groups,
     performerNames: performers.map((p) => {
       return p.name;
     }),

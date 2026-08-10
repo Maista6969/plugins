@@ -2,6 +2,7 @@ import { PLUGIN_ID } from "../core/config-schema.js";
 import {
   STUDIO_FIELDS,
   PERFORMER_FIELDS,
+  SCENE_GROUP_FIELDS,
   TAG_FIELDS,
 } from "../core/gql-fields.js";
 
@@ -17,6 +18,7 @@ export const SCENE_FIELDS = `
     ${STUDIO_FIELDS}
   }
   performers { ${PERFORMER_FIELDS} }
+  groups { ${SCENE_GROUP_FIELDS} }
   tags { ${TAG_FIELDS} }
   files {
     id
@@ -43,6 +45,7 @@ const COMMON_METADATA_FIELDS = `
     ${STUDIO_FIELDS}
   }
   performers { ${PERFORMER_FIELDS} }
+  groups { ${SCENE_GROUP_FIELDS} }
   tags { ${TAG_FIELDS} }
 `;
 

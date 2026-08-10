@@ -22,3 +22,13 @@ export const STUDIO_FIELDS = `
 export const PERFORMER_FIELDS = `id name favorite rating100 gender`;
 
 export const TAG_FIELDS = `id name sort_name`;
+
+// Only scenes have groups: SceneGroup pairs the group with the scene's index
+// inside it, and that index is nullable, so a scene can be in a group without
+// having a place in its running order
+export const GROUP_FIELDS = `id name`;
+
+export const SCENE_GROUP_FIELDS = `
+  scene_index
+  group { ${GROUP_FIELDS} }
+`;
