@@ -325,6 +325,8 @@ _Scene metadata_
 | `{date_day}`                | Just the day of the date, e.g. “10”, can be missing if date is partial                                                       |
 | `{rating}`                  | The scene's rating on a 0-10 scale (one decimal place)                                                                       |
 | `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below |
+| `{group}`                   | The group (Stash's replacement for Movies) this scene belongs to. If it is in several, the one created first is used         |
+| `{group_idx}`               | This scene's place in that group's running order, e.g. “1” for a movie's first scene. Always the same group {group} names    |
 | `{current}`                 | The path this file already has                                                                                               |
 
 <!-- END GENERATED: tokens-metadata -->

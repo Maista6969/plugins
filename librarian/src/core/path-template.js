@@ -27,6 +27,9 @@ export const KNOWN_TOKENS = [
   "date_day",
   "rating",
   "stash_id",
+  // scenes only: galleries and images have no groups
+  "group",
+  "group_idx",
   // The path the file already has. Unlike every other token this one reads what
   // the pattern writes, so it is the only token that can fail to settle: see
   // currentUsage and the fixed-point check in plan-scene
@@ -272,6 +275,23 @@ export function resolveStashIdSource(parsed, matchedIds) {
   return { endpoint: "", requested: "", listKnown: listKnown };
 }
 
+// The group both group tokens speak for. A scene can be in several, and Stash
+// returns them unordered, so normalizeScene sorts by id and this takes the
+// first: the earliest-created group, which is stable across runs and unaffected
+// by renaming. `ambiguous` is what the planner warns on.
+//
+// Resolving in one place is the point. Choosing per token would let {group} say
+// "Teen Dreams" while {group_idx} answered for a different movie, which reads
+// as a perfectly plausible filename and is wrong.
+export function resolveSceneGroup(sceneView) {
+  const groups = (sceneView && sceneView.groups) || [];
+  return {
+    group: groups.length > 0 ? groups[0] : null,
+    ambiguous: groups.length > 1,
+    all: groups,
+  };
+}
+
 function stashIdValue(stashIds, matchedIds) {
   return {
     __stashId: true,
@@ -285,6 +305,7 @@ const MONTH_RE = /^(\d{4})-(\d{2})/;
 const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})/;
 
 export function buildTokens(sceneView, config, matchedIds) {
+  const chosenGroup = resolveSceneGroup(sceneView);
   const delimiters = config.delimiters || {};
   const chain = sceneView.studioNames || [];
   const matched = matchedIds || EMPTY_MATCHED_IDS;
@@ -355,6 +376,11 @@ export function buildTokens(sceneView, config, matchedIds) {
     rating:
       sceneView.rating100 != null ? (sceneView.rating100 / 10).toFixed(1) : "",
     stash_id: stashIdValue(sceneView.stashIds, matched),
+    group: chosenGroup.group ? sanitizeTokenValue(chosenGroup.group.name) : "",
+    group_idx:
+      chosenGroup.group && chosenGroup.group.sceneIndex != null
+        ? String(chosenGroup.group.sceneIndex)
+        : "",
     // overridden per pattern by renderPath: {current} means the current
     // folder in a folder pattern and the current basename in a filename one
     current: "",
@@ -452,6 +478,22 @@ const TOKEN_REQUIREMENTS = {
   rating: {
     isMissing: (view) => view.rating100 == null,
     message: "{noun} has no rating",
+  },
+  group: {
+    isMissing: (view) => resolveSceneGroup(view).group === null,
+    message: "{noun} does not belong to any group",
+  },
+  group_idx: {
+    isMissing: (view) => {
+      const chosen = resolveSceneGroup(view).group;
+      return !chosen || chosen.sceneIndex == null;
+    },
+    message: (view) => {
+      const chosen = resolveSceneGroup(view).group;
+      return chosen
+        ? '{noun} has no place in the running order of "' + chosen.name + '"'
+        : "{noun} does not belong to any group";
+    },
   },
   // all three hooks go through resolveStashIdSource so the reported reason can
   // never describe a different source than the one that was rendered
@@ -871,7 +913,11 @@ export function findUnknownTokens(pattern, allowedTokens) {
 // report differs per type
 export const METADATA_TOKENS = KNOWN_TOKENS.filter((t) => {
   return (
-    FILE_TECH_TOKENS.indexOf(t) === -1 && t !== "phash" && t !== "stash_id"
+    FILE_TECH_TOKENS.indexOf(t) === -1 &&
+    t !== "phash" &&
+    t !== "stash_id" &&
+    t !== "group" &&
+    t !== "group_idx"
   );
 });
 

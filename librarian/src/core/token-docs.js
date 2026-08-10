@@ -44,6 +44,10 @@ export const TOKEN_DESCRIPTIONS = {
   phash: "The file's perceptual hash fingerprint",
   oshash: "The file's oshash fingerprint",
   rating: "The {noun}'s rating on a 0-10 scale (one decimal place)",
+  group:
+    "The group (Stash's replacement for Movies) this scene belongs to. If it is in several, the one created first is used",
+  group_idx:
+    "This scene's place in that group's running order, e.g. “1” for a movie's first scene. Always the same group {group} names",
   current: "The path this file already has",
   stash_id:
     "The {noun}'s StashID. Add |from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below",
