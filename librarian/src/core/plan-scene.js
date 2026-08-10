@@ -13,6 +13,8 @@ import {
   findPatternProblems,
   patternsNeedStashIdDefault,
   patternsUseStashIdSource,
+  patternUsesAnyToken,
+  resolveSceneGroup,
   describePatternPair,
   folderPatternMode,
   filenamePatternMode,
@@ -538,8 +540,36 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
     return resultByFileId[file.id];
   });
 
+  // Which group {group} spoke for is a choice the user did not make, so a
+  // scene in several says so on its own row rather than only in the docs. Not
+  // an error: the pick is deterministic, it just might not be the one wanted
+  const groupChoice = resolveSceneGroup(sceneView);
+  const warnings = [];
+  if (
+    groupChoice.ambiguous &&
+    patternUsesAnyToken(folderPattern + " " + filenamePattern, [
+      "group",
+      "group_idx",
+    ])
+  ) {
+    warnings.push(
+      "this " +
+        adapter.noun +
+        " is in " +
+        groupChoice.all.length +
+        ' groups; used "' +
+        groupChoice.group.name +
+        '" (the earliest created). The others: ' +
+        groupChoice.all
+          .slice(1)
+          .map((g) => g.name)
+          .join(", "),
+    );
+  }
+
   return {
     status: "ok",
+    warnings: warnings,
     reason: matchedRule
       ? "rule:" +
         (matchedRule.id ||

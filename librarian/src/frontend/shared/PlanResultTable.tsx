@@ -209,7 +209,17 @@ export function PlanResultTable({
                       <td className="cover_image-data">
                         {coverImageLink(scene, entityType)}
                       </td>
-                      <td>{entityLink(scene, entityType)}</td>
+                      <td>
+                        {entityLink(scene, entityType)}
+                        {(plan.warnings || []).map((w: string, i: number) => (
+                          <div
+                            key={i}
+                            className="librarian-token-hint text-warning"
+                          >
+                            {w}
+                          </div>
+                        ))}
+                      </td>
                       <td className="librarian-path-diff">
                         {f.unchanged ? (
                           <div className="correct-path">{f.currentPath}</div>

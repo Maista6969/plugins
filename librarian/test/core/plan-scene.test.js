@@ -1597,3 +1597,56 @@ test("a literal blank pattern is refused, naming the token to write instead", ()
   assert.equal(result.reason, "blank_pattern");
   assert.match(result.missingData[0].message, /\{current\}/);
 });
+
+// A scene in several groups still renames, deterministically, but the row says
+// which group was used: the choice is ours, not the user's
+test("a scene in several groups is planned with a warning naming the pick", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{group}",
+      filenamePattern: "{title} [Sc. {group_idx}]",
+    },
+  });
+  const scene = Object.assign({}, normalOrganizedScene, {
+    groups: [
+      { scene_index: 9, group: { id: "42", name: "Later Compilation" } },
+      { scene_index: 1, group: { id: "7", name: "Teen Dreams" } },
+    ],
+  });
+  const result = planScene(scene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Teen Dreams/);
+  assert.match(result.warnings[0], /Later Compilation/);
+  assert.equal(result.files[0].folder, "/data/Teen Dreams");
+});
+
+test("a single group plans with no warning at all", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{group}",
+      filenamePattern: "{title} [Sc. {group_idx}]",
+    },
+  });
+  const scene = Object.assign({}, normalOrganizedScene, {
+    groups: [{ scene_index: 1, group: { id: "7", name: "Teen Dreams" } }],
+  });
+  const result = planScene(scene, config);
+  assert.equal(result.status, "ok");
+  assert.deepEqual(result.warnings, []);
+});
+
+// no group token in the pattern means the ambiguity cannot affect the name, so
+// warning about it would be noise on every row
+test("several groups warn only when the pattern actually uses one", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "{title}" },
+  });
+  const scene = Object.assign({}, normalOrganizedScene, {
+    groups: [
+      { scene_index: 1, group: { id: "7", name: "Teen Dreams" } },
+      { scene_index: 9, group: { id: "42", name: "Later Compilation" } },
+    ],
+  });
+  assert.deepEqual(planScene(scene, config).warnings, []);
+});
