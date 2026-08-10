@@ -204,9 +204,16 @@ other illegal character
 > Everything else behaves identically in both engines and is fully supported: capture groups, non-capturing
 > `(?:...)`, alternation, lookahead, lookbehind, backreferences and `{2}` quantifiers
 
-> ⚠️ A slow regex is slow in the rename engine too. A pattern with nested quantifiers (the classic being
-> `(a+)+`) can take exponentially long on a long title. It will not freeze Stash — the rest of the app stays
-> responsive — and you can stop the task from the job queue, but check the preview before running a sweep
+> ⚠️ **A slow regex is slow in the rename engine too.** A pattern with nested quantifiers (the classic being
+> `(a+)+`) can take exponentially longer for every extra character in the value, so a long title can take
+> hours. The rest of Stash stays responsive either way, but how you get out of it depends on what triggered it:
+>
+> - a **"Rename all …" task** appears in the job queue and can be stopped there, which interrupts it immediately
+> - **automatic renaming** runs inside the update itself. It is not a job, so there is nothing to cancel:
+>   the request that triggered it hangs until the pattern finishes, and closing the tab does not stop it
+>
+> The rule editor runs your pattern as you type, so a runaway regex will usually bog down the editor before you
+> ever save it. Check the preview before turning automatic renaming on for a pattern using `regex=`
 
 > ⚠️ **Deprecated in version 0.7**: the `{performers:2}` spelling of the limit. Write `{performers|limit=2}`
 > instead. `:N` still works and Librarian shows the exact replacement, but note that it is now read in the
