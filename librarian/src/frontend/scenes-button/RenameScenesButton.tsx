@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useApolloClient, gql } from "@apollo/client";
+import { RenamableFilterButton } from "./RenamableFilterButton.js";
 import { usePreviewMode } from "./preview-context.js";
 import { isTerminalStatus } from "../shared/job-poll.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
@@ -93,6 +94,9 @@ export function RenameScenesButton() {
 
   const toggle = (
     <ButtonGroup>
+      {active && (
+        <RenamableFilterButton config={config} liveFilter={liveFilter} />
+      )}
       <ToggleButton
         active={active}
         onClick={active ? cancelPreview : startPreview}
