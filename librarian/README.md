@@ -20,6 +20,17 @@ Librarian also ensures that the Stash database and the filesystem can not drift 
 the `moveFiles` GraphQL mutation instead of directly touching the filesystem or editing the database directly.
 This leaves a lot of the safety checks to Stash and makes the plugin faster (no coordination overhead) and more robust.
 
+## Anti-motivation
+
+According to the primary goals listed in the the motivation section this plugin will only ever work through the Stash API,
+which means it will always be limited to whatever operations it offers. This means that it is currently **not** able to
+move sidecar files such as captions/subtitles, funscripts or NFO files.
+It also cannot move entire folders in one move, so folder-based galleries are not supported (zip galleries work fine).
+
+As the author of this plugin I do not collect any of these files, so if you'd like support for this in the plugin you'll
+have to open an issue or submit a PR to [Stash](https://github.com/stashapp/stash) itself to add these capabilities before
+I can integrate them into the plugin.
+
 ## Warning
 
 As with any plugin that promises to rename your files, these changes are not reversible! There are safety measures in place
