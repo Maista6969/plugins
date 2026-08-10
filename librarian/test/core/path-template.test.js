@@ -831,7 +831,8 @@ test("modifiers apply in the order they are written", () => {
   assert.equal(render("{performers|limit=1}", view), "Marcus");
   assert.equal(render("{performers|gender=female|limit=1}", view), "Zara");
   assert.equal(render("{performers|limit=1|gender=female}", view), "");
-  assert.equal(render("{performers:1|gender=female}", view), "");
+  // :N alone still works and still means "cap the list"
+  assert.equal(render("{performers:1}", view), "Marcus");
 });
 
 test("value modifiers rewrite the text of any token", () => {
@@ -1028,17 +1029,24 @@ test("only modifier mistakes block a rename; unknown tokens stay lenient", () =>
   assert.deepEqual(blocking("{performers:2}"), []);
 });
 
-test(":N is reported as deprecated without blocking the rename", () => {
-  const problems = findPatternProblems("{performers:2}");
-  assert.equal(problems.length, 1);
-  assert.equal(problems[0].blocking, false);
-  assert.match(problems[0].message, /deprecated/);
-  assert.match(problems[0].message, /\{performers\|limit=2\}/);
+// :N is kept for the one spelling where its fixed position cannot mislead:
+// on its own there is no other modifier for it to be ordered against
+test(":N is accepted alone and refused beside any modifier", () => {
+  assert.deepEqual(findPatternProblems("{performers:2}"), []);
+  assert.deepEqual(findPatternProblems("{performers:2?}"), []);
   assert.deepEqual(findPatternProblems("{performers|limit=2}"), []);
-  // a real mistake on the same token is still listed first
-  assert.match(
-    findPatternProblems("{performers:2|bogus=1}")[0].message,
-    /no "bogus" modifier/,
+
+  const problems = findPatternProblems("{performers:1|gender=female}");
+  assert.equal(problems.length, 1);
+  // blocking: renaming on a pattern that reads backwards is the thing to avoid
+  assert.equal(problems[0].blocking, true);
+  assert.match(problems[0].message, /only works on its own/);
+  assert.match(problems[0].message, /\{performers\|limit=1\|gender=female\}/);
+
+  // the rewrite it suggests has to be accepted, or the advice is a dead end
+  assert.deepEqual(
+    findPatternProblems("{performers|limit=1|gender=female}"),
+    [],
   );
 });
 

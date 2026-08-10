@@ -69,21 +69,35 @@ test("parses every spelling of the token grammar", () => {
   });
 });
 
-// ":N" sits at the front of the token, and the front is where a left-to-right
-// limit runs, so the sugar is exactly a leading |limit=N
-test(":N desugars to a leading limit modifier, with a deprecation warning", () => {
+// Alone, ":N" has no other modifier to be ordered against, so it is simply
+// sugar for a leading |limit=N
+test(":N on its own desugars to a leading limit modifier", () => {
   assert.deepEqual(only("{performers:2}").modifiers, [
     { name: "limit", value: "2", raw: ":2" },
   ]);
-  assert.deepEqual(
-    only("{performers:1|gender=female}").modifiers.map((m) => m.name),
-    ["limit", "gender"],
-  );
-  const warnings = only("{performers:1|gender=female}").warnings;
-  assert.equal(warnings.length, 1);
-  // the warning has to print the rewrite, including the rest of the modifiers
-  assert.match(warnings[0], /\{performers\|limit=1\|gender=female\}/);
-  assert.equal(only("{performers|limit=2}").warnings.length, 0);
+  assert.deepEqual(only("{performers:2}").errors, []);
+  // the optional marker is not a modifier, so it does not disqualify the sugar
+  const optional = only("{performers:2?}");
+  assert.equal(optional.optional, true);
+  assert.deepEqual(optional.errors, []);
+  assert.deepEqual(optional.modifiers, [
+    { name: "limit", value: "2", raw: ":2" },
+  ]);
+});
+
+// Beside anything else its position lies: it reads like a cap on the finished
+// list but always runs before every filter
+test(":N alongside another modifier is refused, naming the rewrite", () => {
+  const token = only("{performers:1|gender=female}");
+  assert.equal(token.errors.length, 1);
+  assert.match(token.errors[0], /only works on its own/);
+  assert.match(token.errors[0], /\{performers\|limit=1\|gender=female\}/);
+  // the limit itself is never desugared, so it cannot half-apply. The other
+  // chunks still parse, but an errored token renders literally and is never
+  // applied at all
+  assert.equal(token.modifiers.filter((m) => m.name === "limit").length, 0);
+  // and the rewrite it names is itself valid
+  assert.deepEqual(only("{performers|limit=1|gender=female}").errors, []);
 });
 
 test("modifiers keep the order they were written", () => {
@@ -105,9 +119,9 @@ test("modifiers keep the order they were written", () => {
 // are ordinary modifier problems now, and findPatternProblems reports them
 test("a bad limit is no longer a parse error, just a modifier", () => {
   assert.deepEqual(only("{performers|limit=abc}").errors, []);
-  assert.deepEqual(only("{performers:2|limit=3}").errors, []);
+  assert.deepEqual(only("{performers|limit=2|limit=3}").errors, []);
   assert.deepEqual(
-    only("{performers:2|limit=3}").modifiers.map((m) => m.name),
+    only("{performers|limit=2|limit=3}").modifiers.map((m) => m.name),
     ["limit", "limit"],
   );
 });

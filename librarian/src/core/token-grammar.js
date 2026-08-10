@@ -5,10 +5,12 @@
 //
 // Examples: {title}  {performers|limit=2}  {title?}  {performers|gender=female|uppercase?}
 //
-// ":N" is the original spelling of the limit. It is deprecated and desugars to
-// a leading "|limit=N", which is exactly what its position means now that
-// modifiers run left to right; "?" is still always the last character before
-// the closing brace
+// ":N" is the original spelling of the limit and still works, but only when it
+// is the whole body: it desugars to a leading "|limit=N", and with nothing else
+// on the token there is no ordering for that to disagree with. Alongside any
+// modifier it is refused, because it always runs first while reading like a cap
+// on the finished list. "?" is still always the last character before the
+// closing brace
 //
 // Deliberately parsed in two stages rather than by one big regex: a modifier
 // value can legitimately contain ":", "|" and "?" (a regex= modifier certainly
@@ -469,7 +471,6 @@ export function parseToken(name, body, index, raw) {
     optional: false,
     modifiers: [],
     errors: [],
-    warnings: [],
   };
 
   let text = body || "";
@@ -483,24 +484,32 @@ export function parseToken(name, body, index, raw) {
   if (head !== "") {
     const limitMatch = /^:(\d+)$/.exec(head);
     if (limitMatch) {
-      // desugared rather than kept as its own field: ":N" sits at the front of
-      // the token, and the front is where a left-to-right limit runs
-      token.modifiers.push({
-        name: "limit",
-        value: limitMatch[1],
-        raw: head,
-      });
-      token.warnings.push(
-        ":" +
-          limitMatch[1] +
-          " is deprecated, write {" +
-          name +
-          "|limit=" +
-          limitMatch[1] +
-          (chunks.length > 0 ? "|" + chunks.join("|") : "") +
-          "} instead. Modifiers now apply left to right, so a limit written" +
-          " first is applied first",
-      );
+      if (chunks.length > 0) {
+        // ":N" is pinned to the front of the token, so as soon as anything
+        // else is present its position stops matching its meaning: it reads
+        // like a cap on the final list but runs before every filter. Rather
+        // than let {performers:1|gender=female} quietly mean "the first
+        // performer, if she is female", refuse it and name the spelling that
+        // says what it does
+        token.errors.push(
+          "the :N shorthand only works on its own, because modifiers apply" +
+            " left to right and :N always runs first. Write {" +
+            name +
+            "|limit=" +
+            limitMatch[1] +
+            "|" +
+            chunks.join("|") +
+            "} instead",
+        );
+      } else {
+        // desugared rather than kept as its own field: with nothing else on the
+        // token there is no order for it to disagree with
+        token.modifiers.push({
+          name: "limit",
+          value: limitMatch[1],
+          raw: head,
+        });
+      }
     } else if (head.indexOf("?") !== -1) {
       token.errors.push(
         "the ? has to be the last thing before the closing brace, as in {" +

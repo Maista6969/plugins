@@ -762,10 +762,6 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         addStashBoxProblems(add, token, parsed.value, stashBoxes);
       }
     });
-
-    token.warnings.forEach((message) => {
-      add(token.raw, message, false);
-    });
   });
 
   return problems;

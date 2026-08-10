@@ -215,11 +215,15 @@ other illegal character
 > The rule editor runs your pattern as you type, so a runaway regex will usually bog down the editor before you
 > ever save it. Check the preview before turning automatic renaming on for a pattern using `regex=`
 
-> ⚠️ **Deprecated in version 0.7**: the `{performers:2}` spelling of the limit. Write `{performers|limit=2}`
-> instead. `:N` still works and Librarian shows the exact replacement, but note that it is now read in the
-> position it is written: `{performers:1|gender=female}` used to mean "the first female performer" and now
-> means "the first performer, if she happens to be female". Anywhere you combined `:N` with `gender=`, swap
-> the order: `{performers|gender=female|limit=1}`
+> ⚠️ **Behaviour change in version 0.7**: `{performers:2}`, the original shorthand for a limit, now only works
+> when it is the only thing on the token. `{performers:2}` and `{performers:2?}` are fine and mean exactly what
+> they always did. Combined with anything else it is refused, and Librarian prints the spelling to use instead.
+>
+> The reason is that `:N` is stuck at the front of the token while modifiers apply left to right, so its
+> position stops matching its meaning as soon as it has company: `{performers:1|gender=female}` reads like
+> "the first female performer" but would run the limit first, giving "the first performer, if she happens to
+> be female". Rather than let that quietly rename files the wrong way, Librarian refuses it and asks for
+> `{performers|gender=female|limit=1}` — which says which one you meant.
 
 > **Gender has to actually be set in Stash.** `unknown` means "no gender recorded", and it is deliberately _not_
 > matched by `gender=female` — so on a library where performers have not been tagged, `{performers|gender=female}`

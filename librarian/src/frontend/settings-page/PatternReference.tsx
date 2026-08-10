@@ -74,6 +74,12 @@ export function PatternReference({
         performer, while <code>{"{performers|limit=1|gender=female}"}</code>{" "}
         takes the first performer and keeps her only if she is female.
       </p>
+      <p className="text-muted">
+        The older <code>{"{performers:2}"}</code> shorthand still works, but
+        only on its own. It is stuck at the front of the token, so beside any
+        modifier its position stops matching its meaning - write{" "}
+        <code>|limit=2</code> there instead, and Librarian will say so.
+      </p>
 
       <TokenTable
         label="Metadata tokens"
