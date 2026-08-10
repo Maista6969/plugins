@@ -387,99 +387,119 @@ ending up with placeholder text.
 
 ## Example patterns
 
-#### Expanded version of the default pattern with an optional performers suffix
+All three examples rename the same scene, so you can see what each pattern does with it:
 
-Folder
+| Field      | Value                                                  |
+| ---------- | ------------------------------------------------------ |
+| Studio     | Petite HD Porn, whose parent studio is Nubiles         |
+| Title      | Squeeze Every Last Drop                                |
+| Date       | 2015-05-10                                             |
+| Performers | Riley Reid, Alex Jones                                 |
+| StashIDs   | `260b608a-…` from StashDB, `829e4543-…` from ThePornDB |
 
-```
-{studio_root}
-```
-
-Filename:
-
-```
-{studio} - {date} - {title}< - {performers|gender=female,trans_fem?}>
-```
-
-The `< - {performers?}>` group drops away as a whole (leading " - " included) rather than leaving
-a dangling separator when a scene has no performers tagged:
-
-With performers:
-
-`Galaxy Network/Nebula Films - 2024-03-15 - Sunflower Fields - Ava Kensington, Marcus Chen.mp4`
-
-Without:
-
-`Galaxy Network/Nebula Films - 2024-03-15 - Sunflower Fields.mp4`
-
-#### Performer-specific folders for OnlyFans studios
+#### Tokens on their own
 
 Folder:
 
 ```
-OnlyFans/{matched_performers|limit=1}
+{studio_hierarchy}
 ```
 
 Filename:
 
 ```
-{date}< ({rating?}) > - [{performers|limit=3}]
+{date} - {title} - {performers}
 ```
 
-`:1` on `{matched_performers}` is a safety cap in case your rule matches multiple performers and two or
-more of them appear in the same scene - the first performer is used for the folder name.
-The `[...]` around `{performers|limit=3}` are just literal bracket characters for decoration, not `<...>` syntax, so it never collapses.
-The optional `< ({rating?}) >` does collapse, angle brackets included, when a scene has no rating set:
+`Nubiles/Petite HD Porn/2015-05-10 - Squeeze Every Last Drop - Alex Jones, Riley Reid.mp4`
 
-With a rating
+`{studio_hierarchy}` is the one token that expands into more than one folder: it walks the whole studio
+chain, so the parent studio becomes the outer folder without you naming it. `{performers}` joins every
+performer with a comma, in the order set by that rule's **Sort performers by** which defaults to alphabetical
 
-`OnlyFans/Ava Kensington/2024-03-15 (8.5) - [Ava Kensington, Marcus Chen].mp4`
+#### Narrowing and dropping things
 
-Without:
+Folder:
 
-`OnlyFans/Ava Kensington/2024-03-15 - [Ava Kensington, Marcus Chen].mp4`
-
-#### Prefer the studio code, fall back to the date, fall back to a fixed placeholder
+```
+{studio_root}/{studio}
+```
 
 Filename:
 
 ```
-<{code?}|{date?}|xxx> - {performers}
+{studio} - {date} - {title} - {performers|limit=2}< [{rating?}]>
 ```
 
-Each `|`-separated alternative is tried in order; the first one that actually has content is used, and the
-rest (including their own literal text, if any) are discarded:
+Say Gabbie Carter is on this scene too, making three performers. With no rating set:
 
-With a code set:
+`Nubiles/Petite HD Porn - 2015-05-10 - Squeeze Every Last Drop - Alex Jones, Gabbie Carter.mp4`
 
-`v1234 - Ava Kensington, Marcus Chen.mp4`
+Rated 8.0:
 
-With no code but a date:
+`Nubiles/Petite HD Porn - 2015-05-10 - Squeeze Every Last Drop - Alex Jones, Gabbie Carter [8.0].mp4`
 
-`2020-01-01 - Ava Kensington, Marcus Chen.mp4`
+`|limit=2` keeps the first two performers **after** the sort, not the first two Stash happens to return,
+which is how you get a predictable name instead of one that changes when a performer is added. Riley Reid
+is the one dropped here purely because the default sort is alphabetical — put **Favourites first** or
+**Highest rated** on the rule to decide who survives the cap.
 
-With neither (`xxx` is plain literal text, so it always has content and never gets skipped):
+`< [{rating?}]>` is an optional group: because `{rating?}` is the only token in it and the scene has no
+rating, the whole span disappears, square brackets and leading space included, rather than leaving ` []`
+behind
 
-`xxx - Ava Kensington, Marcus Chen.mp4`
-
-**A more compact, dot-separated look**, along the lines of what release/rip naming conventions
-often use. This one leans on the Formatting section: set "Space replacement" to `.`, and
-"Performers delimiter" to `.` too, since `{performers}` otherwise always joins with `, ` regardless
-of space-replacement (a literal comma would survive as `Ava.Kensington,.Marcus.Chen` otherwise).
-Folder stays `{studio_hierarchy}`; filename:
+Filtering the list rather than capping it uses `|gender=`, which keeps only the performers tagged with the
+gender(s) you name
 
 ```
-{studio}<.{code?}>.{date_year}.{date_month}.{date_day}.{title}.-.{performers|limit=3}.{resolution}.{video_codec}
+{studio} - {date} - {title} - {performers|gender=female}
 ```
 
-`{date_year}.{date_month}.{date_day}` is used instead of bare `{date}`, since Stash's own date
-format uses `-`, which space-replacement doesn't touch; `<.{code?}>` collapses away since most
-studios don't set Stash's own "Studio Code" field, rather than leaving a double dot behind:
+`Nubiles/Petite HD Porn - 2015-05-10 - Squeeze Every Last Drop - Gabbie Carter, Riley Reid.mp4`
 
-With a code set:
+Combining the two is where the left-to-right rule earns its keep, because the order changes the answer:
 
-`Galaxy.Network/Nebula.Films.NF-042.2024.03.15.Sunflower.Fields.-.Ava.Kensington.Marcus.Chen.1080p.h264.mp4`
+```
+{performers|gender=female|limit=2}   ->  Gabbie Carter, Riley Reid
+{performers|limit=2|gender=female}   ->  Gabbie Carter
+```
 
-Without:
+The first keeps the female performers and then caps that list at two. The second caps the full list at two
+first - Alex Jones and Gabbie Carter, alphabetically - and only then drops the male performer, leaving one name.
+Both are valid; each does what it reads liked.
 
-`Galaxy.Network/Nebula.Films.2024.03.15.Sunflower.Fields.-.Ava.Kensington.Marcus.Chen.1080p.h264.mp4`
+#### Modifiers that rewrite the text
+
+Folder:
+
+```
+{studio_hierarchy}/{date_year}
+```
+
+Filename:
+
+```
+{studio|compact}.{date}.{title|regex=/ /./}-{stash_id|from=StashDB}
+```
+
+`Nubiles/Petite HD Porn/2015/PetiteHDPorn.2015-05-10.Squeeze.Every.Last.Drop-260b608a-ebcc-4c41-b06f-52e698feda56.mp4`
+
+A release-style name, built from three modifiers that each change the text rather than pick which values
+survive. `|compact` removes the spaces from the studio, `|regex=/ /./` replaces every space in the title
+with a dot, and `|from=StashDB` says which of the scene's two StashIDs to use — without it, a scene
+carrying IDs from several stash-boxes has no way to know which you meant.
+
+Naming the other source is the only change needed to switch:
+
+```
+{studio|compact}.{date}.{title|regex=/ /./}-{stash_id|from=ThePornDB}
+```
+
+`Nubiles/Petite HD Porn/2015/PetiteHDPorn.2015-05-10.Squeeze.Every.Last.Drop-829e4543-2d92-46e7-b891-8aec044e1646.mp4`
+
+Both IDs can appear in one name, which is the main reason `|from=` exists at all:
+`{stash_id|from=StashDB}+{stash_id|from=ThePornDB}`.
+
+> A dot-separated look like this one is usually easier to get from the **Space replacement** setting in
+> Formatting, which applies to every folder and filename at once. Reach for `|regex=` when you want it on
+> one token only, as here, where the date keeps its hyphens.
