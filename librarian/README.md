@@ -109,7 +109,7 @@ that defines a subset, such as having a particular set of tags or performers, be
   For example `{studio}<, {date?}>< - {title?}>` renders `Studio, 2024 - Title` when both are present, or just `Studio` when both are missing,
   each bracket collapsing independently. A required token inside `<...>` normally never triggers a collapse, because it is
   guaranteed to have data (if it didn't, the scene would be reported as missing data instead of rendered). The one exception
-  is a **list token a filter emptied** — `{performers|gender=female}` on a scene with no female performers, or
+  is a **list token a filter emptied** - `{performers|gender=female}` on a scene with no female performers, or
   `{performers_not_in_title}` when every performer is named in the title.
 - `<a|b|c>`: split a bracket on `|` to try alternatives in order, using each one's own collapse rule as the test. The first
   alternative that doesn't collapse wins: any literal-only or required-token alternative always qualifies; an optional-token
@@ -171,7 +171,7 @@ values are `female`, `male`, `trans_female`, `trans_male`, `intersex`, `non_bina
 (`transgender_female`, `transgender_male` and `nonbinary` also work if you prefer them spelled out)
 
 `titlecase` is deliberately simple: it capitalises the first letter of each word and lowercases the rest. It is
-meant for fixing scraped ALL-CAPS titles, not for correcting names — it will turn `McDonald` into `Mcdonald`
+meant for fixing scraped ALL-CAPS titles, not for correcting names - it will turn `McDonald` into `Mcdonald`
 
 **`regex=`** does a find-and-replace, written as `/find/replace/`. Every match is replaced, and a captured
 group is reused in the replacement as `$1`, `$2` and so on:
@@ -199,7 +199,7 @@ other illegal character
 > | `\1` in the replacement                             | `$1`                                              |
 > | `\p{Lu}` and friends                                | a class like `[A-Z]`                              |
 > | `[[:digit:]]` POSIX classes                         | `\d`, `\w`, or `[0-9]`                            |
-> | a pattern that can match nothing, like `a?` or ` *` | `a+`, ` +` — make it match at least one character |
+> | a pattern that can match nothing, like `a?` or ` *` | `a+`, ` +` - make it match at least one character |
 >
 > Everything else behaves identically in both engines and is fully supported: capture groups, non-capturing
 > `(?:...)`, alternation, lookahead, lookbehind, backreferences and `{2}` quantifiers
@@ -223,52 +223,61 @@ other illegal character
 > position stops matching its meaning as soon as it has company: `{performers:1|gender=female}` reads like
 > "the first female performer" but would run the limit first, giving "the first performer, if she happens to
 > be female". Rather than let that quietly rename files the wrong way, Librarian refuses it and asks for
-> `{performers|gender=female|limit=1}` — which says which one you meant.
+> `{performers|gender=female|limit=1}` - which says which one you meant.
 
 > **Gender has to actually be set in Stash.** `unknown` means "no gender recorded", and it is deliberately _not_
-> matched by `gender=female` — so on a library where performers have not been tagged, `{performers|gender=female}`
+> matched by `gender=female` - so on a library where performers have not been tagged, `{performers|gender=female}`
 > will quietly leave them out. Like `{performers_not_in_title}`, a filter that matches nobody renders empty rather
 > than reporting missing data; use `{performers|gender=female?}` or `<{performers|gender=female}|Unsorted>` if you
 > want to handle that case explicitly.
 
-**Folder pattern**: the folder pattern accepts the same syntax as the filename pattern, and additionally
-treats three cases specially:
+**Keeping what a file already has**: `{current}` is the path the file is at already - the folder it sits
+in when used in a folder pattern, its current name (without the extension) in a filename pattern.
 
-| Folder pattern           | Result                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| blank                    | **Keep each file in the folder it is already in**, renaming it but never moving it |
-| `/`                      | Place files directly under the library root                                        |
-| renders empty for a file | An error for that file, rather than a silent guess                                 |
+| Pattern                         | Result                                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| folder `{current}`              | **Keep each file in the folder it is already in**, renaming it but never moving it |
+| filename `{current}`            | **Keep the name each file already has**, and only move it where the folder says    |
+| both `{current}`                | Nothing happens; the files are reported as skipped                                 |
+| folder `/`                      | Place files directly under the library root                                        |
+| folder renders empty for a file | An error for that file, rather than a silent guess                                 |
 
-Leaving the folder pattern blank is the option to use if you maintain your own folder hierarchy by hand,
-or if an external tool depends on your existing structure, and you only want Librarian to fix filenames.
+A folder pattern of `{current}` is the option to use if you maintain your own folder hierarchy by hand, or
+if an external tool depends on your existing structure, and you only want Librarian to fix filenames. It
+needs no library root, since the file never leaves the folder it is in.
 
-The third row covers a pattern like `{studio?}` that is not blank but happens to render to nothing for a
-particular scene (here, one with no studio). Rather than quietly dropping such a file into the library
-root, Librarian reports it so you can decide: write `/` if the root really is what you want, or leave the
-pattern blank to keep those files where they are.
+An unmodified `{current}` filename is never sanitised. It is a name your filesystem has already accepted,
+so settings like the space replacement leave it alone; sanitising it would be a rename, which is the one
+thing `{current}` promises not to do. Add a modifier and you have asked for a rename, so the usual
+sanitising applies. Names are still de-duplicated either way: if two files of the same scene land in the
+same destination folder under the same name, the second becomes `name (2).ext`. Two files that differ only
+in their extension are not a collision and both keep their names.
+
+`{current}` on both sides is a no-op, which on a rule is a useful escape hatch: because the first matching
+rule wins, it marks everything it matches as off-limits to every rule below it and to the default pattern.
+
+The "renders empty" row covers a pattern like `{studio?}` that happens to render to nothing for a particular
+scene (here, one with no studio). Rather than quietly dropping such a file into the library root, Librarian
+reports it so you can decide: write `/` if the root really is what you want, or `{current}` to keep those
+files where they are.
+
+> **`{current}` has to be the whole pattern.** It is the only token that reads what the pattern writes, so
+> anything put around it comes back on the next run and is added again: `{current}/{date_year}` would turn
+> `Films/Heat` into `Films/Heat/2024`, then `Films/Heat/2024/2024`, and so on forever. Combining it with
+> anything else is refused for that reason.
+>
+> A modifier on it is allowed, but only if it leaves an already-renamed file alone.
+> `{current|regex=/ - Trailer//}` strips a suffix once and then keeps giving the same answer, so it settles.
+> `{current|regex=/a/aa/}` never does, and Librarian refuses it rather than renaming the file on every run.
+
+> ⚠️ **Behaviour change in version 0.8**: blank folder and filename patterns used to mean "keep what this file
+> already has". That is spelled `{current}` now, and your stored patterns are rewritten automatically the
+> first time this version loads them, so nothing moves. A pattern left blank by hand is reported instead of
+> guessed at.
 
 > ⚠️ **Behaviour change in version 0.4**: a blank folder pattern used to mean "put files in the library root",
-> which flattened manually-organised folder hierarchies. It now means "leave files where they are".
-> If you were relying on the old behaviour, change your folder pattern to `/`.
-
-**Blank filename pattern**: the mirror image of a blank folder pattern. It will **keep the name each file already
-has**, extension included, and only move it to wherever the folder pattern points. This is the option to use
-when your filenames are already how you want them and it is only the folder structure you want maintained.
-
-A kept name is never sanitised. It is a name your filesystem has already accepted, so settings like the
-space replacement leave it alone; sanitising it would be a rename, which is the one thing a blank pattern
-promises not to do. Names are still de-duplicated, though: if two files of the same scene land in the same
-destination folder under the same name, the second becomes `name (2).ext`. Two files that differ only in
-their extension are not a collision and both keep their names.
-
-Leaving both patterns blank is a no-op, and Librarian reports those files as skipped. On a rule that is a
-useful escape hatch: because the first matching rule wins, an all-blank rule marks everything it matches
-as off-limits to every rule below it and to the default pattern.
-
-> ⚠️ **Behaviour change in version 0.6**: a blank filename pattern used to be an error, so a half-finished
-> rule that had a folder pattern but no filename pattern quietly did nothing. It now moves files while
-> keeping their names. Check any rule you left with a blank filename pattern.
+> which flattened manually-organised folder hierarchies. It came to mean "leave files where they are", which
+> is now written `{current}`. If you were relying on the 0.3 behaviour, use `/`.
 
 **Nesting**: a folder pattern may contain `/` or `\` to nest folders, so `{studio}/{date_year}` and
 `{studio}\{date_year}` are equivalent and both produce two levels. Whichever you write, the finished
@@ -342,7 +351,7 @@ A source is worked out in this order:
 1. `|from=` on the token itself.
 2. otherwise the **Default StashID source** picker, which appears on a rule (or the default pattern)
    as soon as some `{stash_id}` in it does _not_ say `|from=`.
-3. otherwise, if you have exactly **one** stash-box configured, that one — there is nothing to choose
+3. otherwise, if you have exactly **one** stash-box configured, that one - there is nothing to choose
    between, so `{stash_id}` just works.
 4. otherwise it is missing data, an error unless written `{stash_id?}`.
 

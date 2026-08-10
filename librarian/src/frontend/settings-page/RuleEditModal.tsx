@@ -110,10 +110,10 @@ export function RuleEditModal({
 
           {keepsInPlace ? (
             <p className="librarian-token-hint text-muted">
-              This rule's folder pattern is blank, so matching {adapter.plural}{" "}
-              keep the folder they are already in and no library root is needed.
-              Give the folder pattern a value (or “/” for the library root
-              itself) to move them into a library.
+              This rule's folder pattern is <code>{"{current}"}</code>, so
+              matching {adapter.plural} keep the folder they are already in and
+              no library root is needed. Give the folder pattern something else
+              (or “/” for the library root itself) to move them into a library.
             </p>
           ) : (
             <LibraryRootPicker
@@ -128,7 +128,7 @@ export function RuleEditModal({
             label="Folder pattern"
             isFolder
             entityType={entityType}
-            subHeading="May contain “/” or “\\” for multiple nested folder levels. Leave blank to keep files in their current folder, or use “/” to place them directly under the library root"
+            subHeading="May contain “/” or “\\” for multiple nested folder levels. Use {current} to keep files in their current folder, or “/” to place them directly under the library root"
             value={rule.folderPattern}
             onChange={(folderPattern) => onChange({ ...rule, folderPattern })}
           />
@@ -137,7 +137,7 @@ export function RuleEditModal({
             label="Filename pattern"
             entityType={entityType}
             subHeading={
-              "The file name without the extension. Cannot contain < > : \" / \\ | ? * (stripped automatically if present). Leave blank to keep each file's current name and only move it"
+              "The file name without the extension. Cannot contain < > : \" / \\ | ? * (stripped automatically if present). Use {current} to keep each file's current name and only move it"
             }
             value={rule.filenamePattern}
             onChange={(filenamePattern) =>
@@ -146,14 +146,15 @@ export function RuleEditModal({
             validate={(v) => !hasUnsafeOptionalOnlyBasename(v)}
           />
 
-          {/* Not an error: the first matching rule wins, so an all-blank rule is
-              a deliberate way to hold matches back from every later rule */}
+          {/* Not an error: the first matching rule wins, so a rule that keeps
+              both the folder and the name is a deliberate way to hold matches
+              back from every later rule */}
           {keepsInPlace && keepsName && (
             <p className="librarian-token-hint text-muted">
-              Both patterns are blank, so matching {adapter.plural} are left
-              exactly as they are, and no later rule or the default pattern gets
-              to claim them. Give one of the two a value if you meant this rule
-              to rename or move something.
+              Both patterns are <code>{"{current}"}</code>, so matching{" "}
+              {adapter.plural} are left exactly as they are, and no later rule
+              or the default pattern gets to claim them. Change one of the two
+              if you meant this rule to rename or move something.
             </p>
           )}
 

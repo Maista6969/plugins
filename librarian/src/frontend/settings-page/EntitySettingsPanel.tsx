@@ -97,8 +97,9 @@ export function EntitySettingsPanel({
     entityType === "galleries" ? { is_zip: false } : undefined,
   );
 
-  // A blank folder pattern keeps files in their own folder, so the library root
-  // has no effect. Hide the picker rather than letting it be set and ignored.
+  // A folder pattern of {current} keeps files in their own folder, so the
+  // library root has no effect. Hide the picker rather than letting it be set
+  // and ignored.
   const keepsInPlace =
     folderPatternMode(defaultPattern.folderPattern) === "keep";
   // Blank on both sides is a no-op the planner reports as skipped, which is only
@@ -252,10 +253,10 @@ export function EntitySettingsPanel({
           </p>
           {keepsInPlace ? (
             <p className="librarian-token-hint text-muted">
-              The folder pattern below is blank, so each {noun} keeps the folder
-              it is already in and no library root is needed. Give the folder
-              pattern a value (or “/” for the library root itself) to move{" "}
-              {plural} into a library.
+              The folder pattern below is <code>{"{current}"}</code>, so each{" "}
+              {noun} keeps the folder it is already in and no library root is
+              needed. Give the folder pattern something else (or “/” for the
+              library root itself) to move {plural} into a library.
             </p>
           ) : (
             <LibraryRootPicker
@@ -274,7 +275,7 @@ export function EntitySettingsPanel({
             label="Folder pattern"
             isFolder
             entityType={entityType}
-            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Leave blank to keep files in their current folder, or use “/” to place them directly under the library root"
+            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Use {current} to keep files in their current folder, or “/” to place them directly under the library root"
             value={defaultPattern.folderPattern}
             onChange={(folderPattern: string) =>
               updateDefaultPattern({ folderPattern })
@@ -284,7 +285,7 @@ export function EntitySettingsPanel({
           <PatternInput
             label="Filename pattern"
             entityType={entityType}
-            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”. Leave blank to keep each file's current name and only move it"
+            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”. Use {current} to keep each file's current name and only move it"
             value={defaultPattern.filenamePattern}
             onChange={(filenamePattern: string) =>
               updateDefaultPattern({ filenamePattern })
@@ -294,9 +295,10 @@ export function EntitySettingsPanel({
 
           {keepsInPlace && keepsName && (
             <p className="librarian-token-hint text-warning">
-              Both patterns are blank, so nothing would happen: every {noun}{" "}
-              would keep the folder and the name it already has, and be reported
-              as skipped. Give one of the two a value to activate this rule
+              Both patterns are <code>{"{current}"}</code>, so nothing would
+              happen: every {noun} would keep the folder and the name it already
+              has, and be reported as skipped. Change one of the two to activate
+              this rule
             </p>
           )}
 

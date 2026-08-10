@@ -105,8 +105,8 @@ function PatternModalField({
       {isFolder ? (
         <div className="librarian-token-hint text-muted">
           <p>
-            Leave this <strong>blank</strong> to keep every file in the folder
-            it is already in, renaming it without touching your folder
+            Use <code>{"{current}"}</code> on its own to keep every file in the
+            folder it is already in, renaming it without touching your folder
             structure. Use <code>/</code> on its own to place files directly
             under the library root instead.
           </p>
@@ -114,9 +114,10 @@ function PatternModalField({
       ) : (
         <div className="librarian-token-hint text-muted">
           <p>
-            Leave this <strong>blank</strong> to keep every file's current name,
-            extension and all, and only move it to the folder the folder pattern
-            asks for. Blanking both patterns leaves files completely alone.
+            Use <code>{"{current}"}</code> on its own to keep every file's
+            current name, extension and all, and only move it to the folder the
+            folder pattern asks for. <code>{"{current}"}</code> on both sides
+            leaves files completely alone.
           </p>
         </div>
       )}
