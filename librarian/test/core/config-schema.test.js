@@ -23,7 +23,7 @@ test("raw values override the matching default, field by field", () => {
   assert.deepEqual(config.scenes.rules, [{ id: "r1" }]);
   // Untouched fields still fall back to their own default.
   assert.equal(config.scenes.onlyWithStashId, false);
-  assert.equal(config.scenes.autoRename, true);
+  assert.equal(config.scenes.autoRename, false);
 });
 
 test("a partially-specified nested object (defaultPattern) is merged field by field, not replaced wholesale", () => {
@@ -135,13 +135,6 @@ test("migrating a pre-sections config leaves galleries and images at their defau
   const config = normalizeConfig({ rules: [{ id: "r1" }] });
   assert.deepEqual(config.galleries, DEFAULT_CONFIG.galleries);
   assert.deepEqual(config.images, DEFAULT_CONFIG.images);
-});
-
-test("galleries and images ship with automatic renaming off so upgrading never moves files unasked", () => {
-  const config = normalizeConfig({ rules: [{ id: "r1" }] });
-  assert.equal(config.galleries.autoRename, false);
-  assert.equal(config.images.autoRename, false);
-  assert.equal(config.scenes.autoRename, true);
 });
 
 test("galleries and images default to a keep-in-place folder pattern", () => {

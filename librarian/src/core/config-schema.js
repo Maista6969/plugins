@@ -20,7 +20,7 @@ const LEGACY_SCENE_KEYS = [
 ];
 
 const DEFAULT_SCENES = {
-  autoRename: true,
+  autoRename: false,
   onlyOrganized: true,
   onlyWithStashId: false,
   // which stash-box endpoints satisfy onlyWithStashId; empty means any of them
