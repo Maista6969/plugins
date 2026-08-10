@@ -481,6 +481,43 @@ The first keeps the female performers and then caps that list at two. The second
 first - Alex Jones and Gabbie Carter, alphabetically - and only then drops the male performer, leaving one name.
 Both are valid; each does what it reads liked.
 
+#### Filing a movie's scenes in its own folder
+
+Groups are Stash's replacement for Movies: a named collection with its scenes in a running order. Take the
+movie **Teen Dreams**, whose first scene is "Anita Goes Hard" and whose second is "Betty Does Too".
+
+Folder:
+
+```
+{group}
+```
+
+Filename:
+
+```
+{title} [Sc. {group_idx}]
+```
+
+`Teen Dreams/Anita Goes Hard [Sc. 1].mp4`
+`Teen Dreams/Betty Does Too [Sc. 2].mp4`
+
+`{group_idx}` is the scene's place in that group's order, and it always answers for the same group
+`{group}` names — the two can never describe different movies.
+
+A scene can be in more than one group, which the pattern has no way to ask about. Librarian uses the group
+created first and says so on that scene's row in the preview:
+
+> this scene is in 2 groups; used "Teen Dreams" (the earliest created). The others: Later Compilation
+
+That is a warning, not an error: the choice is stable across runs and unaffected by renaming a group, so
+the file lands somewhere predictable. If it picked the wrong one, a [rule](#rule) matching that group with
+its own `{group}` pattern will claim those scenes before the default pattern sees them.
+
+Two cases count as missing data rather than rendering empty, because a wrong folder is worse than a
+reported problem: a scene in no group at all, and a scene in a group with no place in its running order
+(Stash allows that). Write `{group?}` and `{group_idx?}` if you would rather those scenes were renamed
+without the group parts.
+
 #### Modifiers that rewrite the text
 
 Folder:
