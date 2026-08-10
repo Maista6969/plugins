@@ -1,0 +1,11 @@
+# Build output and vendored trees
+**/dist/
+node_modules/
+_site/
+plugins/
+
+# pnpm owns this file's formatting
+pnpm-lock.yaml
+
+# Upstream licence text, kept verbatim
+LICENCE

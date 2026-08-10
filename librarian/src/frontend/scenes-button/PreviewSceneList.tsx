@@ -115,7 +115,6 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, studioIdsKey]);
 
   const [enrichedTagSortNamesById, setEnrichedTagSortNamesById] = useState<
@@ -152,7 +151,6 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, tagIdsKey]);
 
   if (!config) {

@@ -22,10 +22,7 @@ import { EntitySettingsPanel } from "./EntitySettingsPanel.js";
 import { ConfigPreviewPanel } from "./ConfigPreviewPanel.js";
 import { SettingsSection } from "./SettingsSection.js";
 import { LibraryPathsProvider } from "../shared/LibraryPathsContext.js";
-import {
-  StashBoxesProvider,
-  useStashBoxes,
-} from "../shared/StashBoxesContext.js";
+import { StashBoxesProvider } from "../shared/StashBoxesContext.js";
 import { TokenizedText } from "../shared/TokenizedText.js";
 import { useLoadSettingsComponents } from "../shared/useLoadSettingsComponents.js";
 import { usePluginPageTitle } from "./usePluginPageTitle.js";

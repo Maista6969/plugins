@@ -60,6 +60,8 @@ export const FILE_TECH_TOKENS = [
   "oshash",
 ];
 
+// the control characters are the point: a filename must not contain them
+// eslint-disable-next-line no-control-regex
 const ILLEGAL_CHARS_REGEX = /[<>:"/\\|?*\x00-\x1F]/g;
 
 // Let's be careful with the Windows thing

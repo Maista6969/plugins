@@ -23,7 +23,7 @@ jobs:
           # build_site.sh reads each plugin's git history (last commit
           # touching its own top-level source directory) to compute the
           # published version/date -- needs full history, not a shallow clone.
-          fetch-depth: '0'
+          fetch-depth: "0"
 
       - uses: pnpm/action-setup@v4
         # Version is read from this repo's root package.json "packageManager"
@@ -37,6 +37,18 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # format -> lint -> typecheck -> generated docs -> tests, in that order so
+      # the cheapest and most mechanical failure is reported first. This is the
+      # same `pnpm run verify` you run locally, deliberately a single script
+      # rather than a list of steps here: a check that exists only in the
+      # workflow is one you cannot reproduce before pushing, and one added
+      # locally would never reach CI.
+      #
+      # It runs before the build because there is no point publishing a plugin
+      # whose README describes a version of itself that no longer exists.
+      - name: Verify (format, lint, typecheck, docs, tests)
+        run: pnpm run verify
 
       # Every plugin is a pnpm workspace member (pnpm-workspace.yaml matches
       # every top-level folder with a package.json) -- this builds all of
