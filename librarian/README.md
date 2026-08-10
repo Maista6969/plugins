@@ -322,15 +322,15 @@ _File metadata_
 
 <!-- BEGIN GENERATED: tokens-file -->
 
-| Token           | Description                                                                                                                                    |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `{phash}`       | The file's perceptual hash fingerprint. Can differ per file on a multi-file scene                                                              |
-| `{resolution}`  | The file's resolution, e.g. “1080p” or “4K”. Can differ per file on a multi-file scene                                                         |
-| `{video_codec}` | The file's video codec, e.g. “h264”, “hevc”. Can differ per file on a multi-file scene                                                         |
-| `{audio_codec}` | The file's audio codec, e.g. “aac”. Can differ per file on a multi-file scene                                                                  |
-| `{bitrate}`     | The file's bitrate, e.g. “8.42Mbps”. Can differ per file on a multi-file scene                                                                 |
-| `{fps}`         | The file's framerate, e.g. “30fps” or “23.98fps”. Can differ per file on a multi-file scene                                                    |
-| `{oshash}`      | The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file scene |
+| Token           | Description                                      |
+| --------------- | ------------------------------------------------ |
+| `{phash}`       | The file's perceptual hash fingerprint           |
+| `{resolution}`  | The file's resolution, e.g. “1080p” or “4K”      |
+| `{video_codec}` | The file's video codec, e.g. “h264”, “hevc”      |
+| `{audio_codec}` | The file's audio codec, e.g. “aac”               |
+| `{bitrate}`     | The file's bitrate, e.g. “8.42Mbps”              |
+| `{fps}`         | The file's framerate, e.g. “30fps” or “23.98fps” |
+| `{oshash}`      | The file's oshash fingerprint                    |
 
 <!-- END GENERATED: tokens-file -->
 

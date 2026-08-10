@@ -35,20 +35,14 @@ export const TOKEN_DESCRIPTIONS = {
   date_month:
     "Just the month of the date, e.g. “05”, can be missing if date is partial",
   date_day:
-    "Just the day of the date, e.g. “10”, can be missing if the {noun} has a partial date",
-  resolution:
-    "The file's resolution, e.g. “1080p” or “4K”. Can differ per file on a multi-file {noun}",
-  video_codec:
-    "The file's video codec, e.g. “h264”, “hevc”. Can differ per file on a multi-file {noun}",
-  audio_codec:
-    "The file's audio codec, e.g. “aac”. Can differ per file on a multi-file {noun}",
-  bitrate:
-    "The file's bitrate, e.g. “8.42Mbps”. Can differ per file on a multi-file {noun}",
-  fps: "The file's framerate, e.g. “30fps” or “23.98fps”. Can differ per file on a multi-file {noun}",
-  phash:
-    "The file's perceptual hash fingerprint. Can differ per file on a multi-file {noun}",
-  oshash:
-    "The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file {noun}",
+    "Just the day of the date, e.g. “10”, can be missing if date is partial",
+  resolution: "The file's resolution, e.g. “1080p” or “4K”",
+  video_codec: "The file's video codec, e.g. “h264”, “hevc”",
+  audio_codec: "The file's audio codec, e.g. “aac”",
+  bitrate: "The file's bitrate, e.g. “8.42Mbps”",
+  fps: "The file's framerate, e.g. “30fps” or “23.98fps”",
+  phash: "The file's perceptual hash fingerprint",
+  oshash: "The file's oshash fingerprint",
   rating: "The {noun}'s rating on a 0-10 scale (one decimal place)",
   current: "The path this file already has",
   stash_id:

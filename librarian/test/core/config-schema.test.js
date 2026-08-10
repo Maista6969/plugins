@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   normalizeConfig,
+  blankPatternToCurrent,
   DEFAULT_CONFIG,
   resetSection,
   resetFormatting,
@@ -385,4 +386,19 @@ test("the active tab falls back when the remembered one is no longer available",
   // image-only library, remembered default of scenes
   assert.equal(resolveActiveType(["images"], "scenes"), "images");
   assert.equal(resolveActiveType([], "scenes"), undefined);
+});
+
+// The pattern editor calls this the moment a field is cleared, so a blank never
+// reaches the page state at all: without it the preview would spend the time
+// between the edit and the save reporting a pattern the save was going to
+// rewrite anyway
+test("blankPatternToCurrent turns an empty pattern into the token", () => {
+  assert.equal(blankPatternToCurrent(""), "{current}");
+  assert.equal(blankPatternToCurrent("   "), "{current}");
+  assert.equal(blankPatternToCurrent(undefined), "{current}");
+  assert.equal(blankPatternToCurrent(null), "{current}");
+  // anything the user actually wrote is left exactly as typed
+  assert.equal(blankPatternToCurrent("{title}"), "{title}");
+  assert.equal(blankPatternToCurrent("/"), "/");
+  assert.equal(blankPatternToCurrent(" {studio} "), " {studio} ");
 });

@@ -26,6 +26,9 @@ interface PatternReferenceProps {
   noun: string;
   insertToken: (token: string) => void;
   onClose: () => void;
+  isFolder?: boolean;
+  stashBoxes: any[];
+  boxesLoading: boolean;
 }
 
 // Whether the panel is open is PatternInput's business, not this component's:
@@ -36,6 +39,9 @@ export function PatternReference({
   noun,
   insertToken,
   onClose,
+  isFolder,
+  stashBoxes,
+  boxesLoading,
 }: PatternReferenceProps) {
   const rows = describeTokens(tokens, noun);
   const metadata = rows.filter((r: any) => !r.fileTech);
@@ -79,6 +85,23 @@ export function PatternReference({
         only on its own. It is stuck at the front of the token, so beside any
         modifier its position stops matching its meaning - write{" "}
         <code>|limit=2</code> there instead, and Librarian will say so.
+      </p>
+      <p className="text-muted">
+        {isFolder ? (
+          <>
+            Use <code>{"{current}"}</code> on its own to keep every file in the
+            folder it is already in, renaming it without touching your folder
+            structure. Use <code>/</code> on its own to place files directly
+            under the library root instead.
+          </>
+        ) : (
+          <>
+            Use <code>{"{current}"}</code> on its own to keep every file's
+            current name, extension and all, and only move it to the folder the
+            folder pattern asks for. <code>{"{current}"}</code> on both sides
+            leaves files completely alone.
+          </>
+        )}
       </p>
       <p className="text-muted">
         <code>{"{current}"}</code> is the path a file already has, and is the
@@ -126,6 +149,23 @@ export function PatternReference({
           </li>
         ))}
       </ul>
+      {tokens.indexOf("stash_id") !== -1 && (
+        <p className="text-muted librarian-reference-note">
+          <code>{"{stash_id}"}</code> takes <code>|from=</code> to say which
+          stash-box it means, so{" "}
+          <code>{"{stash_id|from=StashDB}-{stash_id|from=ThePornDB}"}</code>{" "}
+          puts both in one name. Without <code>|from=</code> the default source
+          on the settings page is used
+          {!boxesLoading && stashBoxes.length > 0 && (
+            <>
+              {". "}Your sources:{" "}
+              <samp className="text-success">
+                {stashBoxes.map((b: any) => b.name).join(", ")}
+              </samp>
+            </>
+          )}
+        </p>
+      )}
     </aside>,
     document.body,
   );

@@ -5,6 +5,7 @@ import { useStashBoxes } from "../shared/StashBoxesContext.js";
 import { TextSettingModal } from "./TextSettingModal.js";
 import { PatternReference } from "./PatternReference.js";
 import { describeToken } from "../../core/token-docs.js";
+import { blankPatternToCurrent } from "../../core/config-schema.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form } = PluginApi.libraries.Bootstrap;
@@ -65,14 +66,7 @@ function PatternModalField({
   }
 
   return (
-    <div
-      className={
-        "librarian-pattern-input-wrapper" +
-        // the panel lists the same tokens with descriptions, so the chips here
-        // are redundant while it is open
-        (referenceOpen ? " librarian-reference-open" : "")
-      }
-    >
+    <div className="librarian-pattern-input-wrapper">
       <Form.Control
         ref={inputRef}
         type="text"
@@ -102,26 +96,15 @@ function PatternModalField({
           required token
         </div>
       )}
-      {isFolder ? (
-        <div className="librarian-token-hint text-muted">
-          <p>
-            Use <code>{"{current}"}</code> on its own to keep every file in the
-            folder it is already in, renaming it without touching your folder
-            structure. Use <code>/</code> on its own to place files directly
-            under the library root instead.
-          </p>
-        </div>
-      ) : (
-        <div className="librarian-token-hint text-muted">
-          <p>
-            Use <code>{"{current}"}</code> on its own to keep every file's
-            current name, extension and all, and only move it to the folder the
-            folder pattern asks for. <code>{"{current}"}</code> on both sides
-            leaves files completely alone.
-          </p>
+      {pattern.trim() === "" && (
+        <div className="librarian-token-hint text-warning">
+          An empty pattern means <code>{"{current}"}</code>:{" "}
+          {isFolder
+            ? "each file keeps the folder it is already in"
+            : "each file keeps the name it already has"}
+          . Confirming will fill that in for you.
         </div>
       )}
-      <div className="librarian-token-hint text-muted"></div>
       {renderTokenGroup(
         adapter.label + " metadata",
         metadataTokens,
@@ -135,26 +118,6 @@ function PatternModalField({
           insertToken,
           adapter.noun,
         )}
-      <div className="librarian-token-hint text-muted">
-        {adapter.tokens.indexOf("stash_id") !== -1 && (
-          <p>
-            <code>{"{stash_id}"}</code> takes <code>|from=</code> to say which
-            stash-box it means, so{" "}
-            <code>{"{stash_id|from=StashDB}-{stash_id|from=ThePornDB}"}</code>{" "}
-            puts both in one name. Without <code>|from=</code> the default
-            source below is used
-            {!boxesLoading && stashBoxes.length > 0 && (
-              <>
-                {" "}
-                Your sources:{" "}
-                <samp className="text-success">
-                  {stashBoxes.map((b: any) => b.name).join(", ")}
-                </samp>
-              </>
-            )}
-          </p>
-        )}
-      </div>
       <button
         type="button"
         className="btn btn-link btn-sm librarian-reference-toggle"
@@ -168,6 +131,9 @@ function PatternModalField({
           noun={adapter.noun}
           insertToken={insertToken}
           onClose={() => setReferenceOpen(false)}
+          isFolder={isFolder}
+          stashBoxes={stashBoxes}
+          boxesLoading={boxesLoading}
         />
       )}
     </div>
@@ -225,7 +191,7 @@ export function PatternInput({
   return (
     <TextSettingModal
       value={value}
-      onChange={onChange}
+      onChange={(next: string) => onChange(blankPatternToCurrent(next))}
       heading={label || "Pattern"}
       subHeading={subHeading}
       renderField={(fieldValue, setValue) => (

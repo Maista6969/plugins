@@ -400,15 +400,10 @@
   font-size: 0.8rem;
 }
 
-/* The pattern modal is deliberately left where it is. Sliding it aside to
-   "balance" the pair only moved the field the user was already looking at. */
-
-/* While the panel is open it lists every token with a description, so the chips
-   in the modal are saying the same thing twice a few inches to the left */
-.librarian-pattern-input-wrapper.librarian-reference-open
-  .librarian-token-group {
-  display: none;
-}
+/* The pattern modal is deliberately left where it is, and keeps its token chips
+   while the panel is open. The chips and the panel's table do overlap, but
+   hiding one of them resized the modal at the moment of opening the panel, which
+   moved the field being edited. Duplication is the cheaper of the two. */
 
 /* Too narrow to stand two dialogs side by side: dock the reference to the
    bottom instead, where it covers the page rather than the modal's input.
@@ -489,4 +484,9 @@
 .librarian-reference-example {
   margin-top: 0.15rem;
   overflow-wrap: anywhere;
+}
+
+/* separates the stash-box note from the modifier list it follows */
+.librarian-reference-note {
+  margin-top: 0.6rem;
 }
