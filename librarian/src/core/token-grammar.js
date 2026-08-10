@@ -77,12 +77,14 @@ function parseReplaceValue(raw) {
   return null;
 }
 
-function valueModifier(applyValue, group) {
+function valueModifier(applyValue, group, summary, example) {
   return {
     input: "value",
     appliesTo: ["*"],
     takesValue: "none",
     group: group || null,
+    summary: summary,
+    example: example,
     applyValue: applyValue,
   };
 }
@@ -101,6 +103,12 @@ function valueModifier(applyValue, group) {
 //              is what makes {title|gender=female} an error and not a no-op
 //   takesValue "required" or "none"
 //   group      a MODIFIER_GROUPS key when the modifier excludes its siblings
+//   summary    one line of prose, and `example` a {pattern, before, after}
+//              triple. Both are documentation rather than behaviour, but they
+//              live here so that adding a modifier and documenting it are the
+//              same edit: token-docs.js turns them into the in-app reference
+//              and the README's table, and doc-coverage.test.js fails if they
+//              are missing
 //   parseValue turns the written value into whatever apply wants, or explains
 //              why it can't. Its message is the only documentation most users
 //              will ever see for the valid values. Omitted when takesValue is
@@ -112,6 +120,12 @@ export const MODIFIERS = {
     input: "list",
     appliesTo: ["performer", "tag"],
     takesValue: "required",
+    summary: "Joins at most the first N values",
+    example: {
+      pattern: "{performers|limit=2}",
+      before: "Ava Kensington, Marcus Chen, Joy Adeyemi",
+      after: "Ava Kensington, Marcus Chen",
+    },
     // users pick these tokens by name, not by entity kind, so the "wrong token"
     // message enumerates the list tokens instead of saying "performer/tag"
     targetsAllLists: true,
@@ -140,6 +154,13 @@ export const MODIFIERS = {
     input: "list",
     appliesTo: ["performer"],
     takesValue: "required",
+    summary:
+      "Keeps only performers of the gender(s) named, comma-separated. One or more of female, male, trans_female, trans_male, intersex, non_binary, unknown",
+    example: {
+      pattern: "{performers|gender=female}",
+      before: "Ava Kensington, Marcus Chen",
+      after: "Ava Kensington",
+    },
     parseValue: function (raw) {
       const wanted = [];
       const invalid = [];
@@ -191,20 +212,63 @@ export const MODIFIERS = {
       });
     },
   },
-  uppercase: valueModifier(function (text) {
-    return text.toUpperCase();
-  }, "case"),
-  lowercase: valueModifier(function (text) {
-    return text.toLowerCase();
-  }, "case"),
-  titlecase: valueModifier(titleCase, "case"),
-  compact: valueModifier(function (text) {
-    return text.replace(/\s+/g, "");
-  }),
+  uppercase: valueModifier(
+    function (text) {
+      return text.toUpperCase();
+    },
+    "case",
+    "Upper-cases the value",
+    {
+      pattern: "{title|uppercase}",
+      before: "Sunflower Fields",
+      after: "SUNFLOWER FIELDS",
+    },
+  ),
+  lowercase: valueModifier(
+    function (text) {
+      return text.toLowerCase();
+    },
+    "case",
+    "Lower-cases the value",
+    {
+      pattern: "{title|lowercase}",
+      before: "Sunflower Fields",
+      after: "sunflower fields",
+    },
+  ),
+  titlecase: valueModifier(
+    titleCase,
+    "case",
+    "Capitalises the first letter of each word and lower-cases the rest. Meant for scraped ALL-CAPS titles, not for names: it turns McDonald into Mcdonald",
+    {
+      pattern: "{title|titlecase}",
+      before: "SUNFLOWER FIELDS",
+      after: "Sunflower Fields",
+    },
+  ),
+  compact: valueModifier(
+    function (text) {
+      return text.replace(/\s+/g, "");
+    },
+    null,
+    "Removes the spaces from the value",
+    {
+      pattern: "{title|compact}",
+      before: "Sunflower Fields",
+      after: "SunflowerFields",
+    },
+  ),
   regex: {
     input: "value",
     appliesTo: ["*"],
     takesValue: "required",
+    summary:
+      "Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \\/ for a literal slash",
+    example: {
+      pattern: "{title|regex=/(?:\\D*(\\d+).*)/Time for $1/}",
+      before: "Happy 420 day",
+      after: "Time for 420",
+    },
     parseValue: function (raw) {
       const parsed = parseReplaceValue(raw);
       if (!parsed) {
@@ -296,6 +360,13 @@ export const MODIFIERS = {
     input: "source",
     appliesTo: ["stash_id"],
     takesValue: "required",
+    summary:
+      "Which stash-box source the StashID comes from, by name or endpoint URL. Without it the rule's default source is used",
+    example: {
+      pattern: "{stash_id|from=StashDB}",
+      before: "IDs from two stash-boxes",
+      after: "the StashDB one",
+    },
     // Only the shape can be checked here: whether a name actually exists is a
     // question about the user's Stash config, which the registry never sees
     // findPatternProblems does that part

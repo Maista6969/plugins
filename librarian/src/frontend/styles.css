@@ -369,3 +369,124 @@
   font-size: 0.8rem;
   vertical-align: middle;
 }
+
+/* The pattern reference (PatternReference.tsx) is portalled to <body> and sits
+   beside the pattern modal as its own panel. Read inline it pushed the input
+   off-screen, so looking a token up meant scrolling away from the pattern being
+   edited; widening the dialog only made the modal huge. This scrolls inside
+   itself and never moves the field.
+
+   It carries no backdrop on purpose. It is a companion to the modal, not a
+   layer over it, so the pattern stays editable while it is open. */
+.librarian-reference {
+  position: fixed;
+  /* clears the modal's own margin-top, so the two line up */
+  top: 4.5rem;
+  right: 1.5rem;
+  width: 39rem;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  /* reaching the end must not start scrolling the page behind it */
+  overscroll-behavior: contain;
+  /* above .modal (1050) so it stays usable if the two ever overlap */
+  z-index: 1055;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.3rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.45);
+  /* opaque: it floats over the page, not inside a dialog that already has a
+     background. var() so a themed Stash can still win */
+  background-color: var(--card-bg, #30404d);
+  font-size: 0.8rem;
+}
+
+/* The pattern modal is deliberately left where it is. Sliding it aside to
+   "balance" the pair only moved the field the user was already looking at. */
+
+/* While the panel is open it lists every token with a description, so the chips
+   in the modal are saying the same thing twice a few inches to the left */
+.librarian-pattern-input-wrapper.librarian-reference-open
+  .librarian-token-group {
+  display: none;
+}
+
+/* Too narrow to stand two dialogs side by side: dock the reference to the
+   bottom instead, where it covers the page rather than the modal's input.
+   Note the mismatch in what "rem" means across these two rules: a media query
+   resolves rem against the initial 16px, while the width above resolves it
+   against Stash's 14px root, so 39rem of panel is 546px but 75rem of query is
+   1200px. That is roughly 500px of modal plus the panel plus margins, which is
+   the point at which the two stop fitting abreast. */
+@media (max-width: 74.99rem) {
+  .librarian-reference {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 45vh;
+    border-radius: 0.3rem 0.3rem 0 0;
+  }
+}
+
+/* deliberately not sticky: it would need an opaque background to scroll under,
+   and there is no theme-safe colour to give it. The toggle in the editing
+   column says "Hide" while the panel is open and never scrolls away, so there
+   is always a visible way out */
+.librarian-reference-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.librarian-reference-toggle {
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.librarian-reference-group-label {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.librarian-reference-table {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.librarian-reference-table td {
+  padding: 0.2rem 0.4rem 0.2rem 0;
+  vertical-align: top;
+  /* a long description wraps instead of widening the panel */
+  overflow-wrap: anywhere;
+}
+
+/* width:1% plus nowrap shrinks the chip column to its content, so a long token
+   name gets the room it needs and the description takes whatever is left */
+.librarian-reference-table td:first-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.librarian-reference-modifiers {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.librarian-reference-modifiers li {
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.librarian-reference-modifiers li:first-child {
+  border-top: 0;
+}
+
+.librarian-reference-example {
+  margin-top: 0.15rem;
+  overflow-wrap: anywhere;
+}

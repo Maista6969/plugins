@@ -1,52 +1,13 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { findPatternProblems } from "../../core/path-template.js";
 import { adapterFor } from "../../core/entity-adapter.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 import { TextSettingModal } from "./TextSettingModal.js";
+import { PatternReference } from "./PatternReference.js";
+import { describeToken } from "../../core/token-docs.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form } = PluginApi.libraries.Bootstrap;
-
-const TOKEN_DESCRIPTIONS: Record<string, string> = {
-  studio: "The {noun}'s own studio",
-  studio_root:
-    "The TOP of the studio hierarchy (often the network), not the {noun}'s own; for a BangBros {noun} under Public Bang, this is “BangBros”, not “Public Bang”",
-  studio_hierarchy:
-    "The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)",
-  performers:
-    "All performers on the {noun}, sorted per this rule's “Sort performers by” setting, joined with a comma. Add |limit=N to cap the count, e.g. {performers|limit=3}, or |gender=female to keep only performers of a given gender",
-  performers_not_in_title:
-    "Performers not already named in the {noun}'s title. It would not include “Joy” if the title is “A Day in the Park with Joy”",
-  matched_performers:
-    "Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the {noun}",
-  tags: "All tags on the {noun}, joined with a comma",
-  matched_tags:
-    "Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the {noun}",
-  title: "The {noun}'s title",
-  code: "The {noun}'s own “Studio Code”, not that very few studios actually have these",
-  date: "The {noun}'s date, can be partial",
-  date_year: "Just the year of the date, e.g. “2024”",
-  date_month:
-    "Just the month of the date, e.g. “05”, can be missing if the {noun} has a partial date",
-  date_day:
-    "Just the day of the date, e.g. “10”, can be missing if the {noun} has a partial date",
-  resolution:
-    "The file's resolution, e.g. “1080p” or “4K”. Can differ per file on a multi-file {noun}",
-  video_codec:
-    "The file's video codec, e.g. “h264”, “hevc”. Can differ per file on a multi-file {noun}",
-  audio_codec:
-    "The file's audio codec, e.g. “aac”. Can differ per file on a multi-file {noun}",
-  bitrate:
-    "The file's bitrate, e.g. “8.42Mbps”. Can differ per file on a multi-file {noun}",
-  fps: "The file's framerate, e.g. “30fps” or “23.98fps”. Can differ per file on a multi-file {noun}",
-  phash:
-    "The file's perceptual hash fingerprint. Can differ per file on a multi-file {noun}",
-  oshash:
-    "The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file {noun}",
-  rating: "The {noun}'s rating on a 0-10 scale (one decimal place)",
-  stash_id:
-    "The {noun}'s StashID. Add |from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below. Several sources can appear in one pattern",
-};
 
 interface PatternModalFieldProps {
   value: string | undefined;
@@ -72,6 +33,7 @@ function PatternModalField({
   );
   const { stashBoxes, loading: boxesLoading } = useStashBoxes();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [referenceOpen, setReferenceOpen] = useState(false);
   const pattern = value || "";
   // null while loading, so a from= value is never flagged against a list we
   // have not received yet: a blocking problem refuses the rename outright
@@ -103,7 +65,14 @@ function PatternModalField({
   }
 
   return (
-    <div className="librarian-pattern-input-wrapper">
+    <div
+      className={
+        "librarian-pattern-input-wrapper" +
+        // the panel lists the same tokens with descriptions, so the chips here
+        // are redundant while it is open
+        (referenceOpen ? " librarian-reference-open" : "")
+      }
+    >
       <Form.Control
         ref={inputRef}
         type="text"
@@ -166,46 +135,6 @@ function PatternModalField({
           adapter.noun,
         )}
       <div className="librarian-token-hint text-muted">
-        <p>
-          Add <code>?</code> to make a token optional, or <code>|limit=N</code>{" "}
-          on a list token to cap how many values it joins, e.g.{" "}
-          <code>{"{performers|limit=2}"}</code> will either be{" "}
-          <samp className="text-success">First Performer</samp> if there's one
-          performer or{" "}
-          <samp className="text-success">
-            First Performer, Second Performer
-          </samp>{" "}
-          if there are two or more performers. A performer token can also take{" "}
-          <code>|gender=female</code> to keep only performers of that gender.
-        </p>
-        <p>
-          Any token takes <code>|uppercase</code>, <code>|lowercase</code>,{" "}
-          <code>|titlecase</code> and <code>|compact</code> (removes spaces), so{" "}
-          <code>{"{performers|limit=1|compact}"}</code> gives{" "}
-          <samp className="text-success">FirstPerformer</samp>. On a list these
-          apply to each value, leaving the separator alone.
-        </p>
-        <p>
-          <code>|regex=/find/replace/</code> does a find-and-replace on any
-          token, reusing captured groups as <code>$1</code>,{" "}
-          <code>$2</code> and so on. For a title of{" "}
-          <samp className="text-success">Happy 420 day</samp>,{" "}
-          <code>{"{title|regex=/(?:\\D*(\\d+).*)/Time for $1/}"}</code> gives{" "}
-          <samp className="text-success">Time for 420</samp>, and{" "}
-          <code>{"{title|regex=/ - Trailer//}"}</code> strips a suffix. Write{" "}
-          <code>\/</code> for a literal slash. A few regex features work
-          differently in the rename engine than in this preview and are refused
-          with an explanation rather than silently renaming to something else.
-        </p>
-        <p>
-          <strong>Modifiers apply left to right</strong>, so{" "}
-          <code>{"{performers|gender=female|limit=1}"}</code> is the first
-          female performer, while{" "}
-          <code>{"{performers|limit=1|gender=female}"}</code> takes the first
-          performer and then keeps her only if she is female. The older{" "}
-          <code>:N</code> spelling still works but is deprecated: write{" "}
-          <code>|limit=N</code> instead.
-        </p>
         {adapter.tokens.indexOf("stash_id") !== -1 && (
           <p>
             <code>{"{stash_id}"}</code> takes <code>|from=</code> to say which
@@ -224,28 +153,22 @@ function PatternModalField({
             )}
           </p>
         )}
-        <p>
-          Wrap optional text in <code>&lt;...&gt;</code> to drop it as a whole
-          (literal text included) when the optional token(s) inside are empty,
-          e.g. <code>{"{studio} - {date}< - {title?}>"}</code> will only include
-          the title if it exists, so the result will be either{" "}
-          <samp className="text-success">{"Studio Name - 2024-06-27"}</samp>{" "}
-          without the trailing hyphen or{" "}
-          <samp className="text-success">
-            {"Studio Name - 2024-06-27 - Scene Title"}
-          </samp>
-        </p>
-        <p>
-          Split a <code>&lt;...&gt;</code> group with <code>|</code> to try
-          alternatives in order and use the first one with content, so{" "}
-          <code>{"<{date?}|missing-date>"}</code> uses the date if set, else the
-          literal text <samp className="text-success">missing-date</samp>. Each
-          alternative can carry its own literal text, so{" "}
-          <code>{"< ({code?})| [{date?}]>"}</code> only adds the parentheses
-          when the code alternative wins and the brackets when the date one
-          does.
-        </p>
       </div>
+      <button
+        type="button"
+        className="btn btn-link btn-sm librarian-reference-toggle"
+        onClick={() => setReferenceOpen(!referenceOpen)}
+      >
+        {referenceOpen ? "Hide" : "Show"} the full pattern reference
+      </button>
+      {referenceOpen && (
+        <PatternReference
+          tokens={adapter.tokens}
+          noun={adapter.noun}
+          insertToken={insertToken}
+          onClose={() => setReferenceOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -267,8 +190,8 @@ function renderTokenGroup(
           className="librarian-token-chip badge badge-secondary"
           onClick={() => insertToken(token)}
           title={
-            (TOKEN_DESCRIPTIONS[token]
-              ? TOKEN_DESCRIPTIONS[token].replace(/{noun}/g, noun) + " "
+            (describeToken(token, noun)
+              ? describeToken(token, noun) + " "
               : "") + "(click to insert)"
           }
         >

@@ -120,16 +120,35 @@ that defines a subset, such as having a particular set of tags or performers, be
 
 **Token modifiers**
 
-| Modifier    | Works on                                                            | Effect                                                |
-| ----------- | ------------------------------------------------------------------- | ----------------------------------------------------- |
-| `limit=N`   | list tokens                                                         | Join at most the first N values                       |
-| `gender=`   | `{performers}`, `{performers_not_in_title}`, `{matched_performers}` | Keep only performers of the gender(s) named           |
-| `uppercase` | any token                                                           | `AVA KENSINGTON`                                      |
-| `lowercase` | any token                                                           | `ava kensington`                                      |
-| `titlecase` | any token                                                           | `Ava Kensington`                                      |
-| `compact`   | any token                                                           | Removes spaces: `AvaKensington`                       |
-| `regex=`    | any token                                                           | Find-and-replace, written `/find/replace/`; see below |
-| `from=`     | `{stash_id}`                                                        | Which stash-box source to take the ID from; see below |
+<!-- BEGIN GENERATED: modifiers -->
+
+| Modifier    | Works on             | Effect                                                                                                                                                | Example                                       |
+| ----------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `limit=`    | list tokens          | Joins at most the first N values                                                                                                                      | `{performers\|limit=2}`                       |
+| `gender=`   | the performer tokens | Keeps only performers of the gender(s) named, comma-separated. One or more of female, male, trans_female, trans_male, intersex, non_binary, unknown   | `{performers\|gender=female}`                 |
+| `uppercase` | any token            | Upper-cases the value                                                                                                                                 | `{title\|uppercase}`                          |
+| `lowercase` | any token            | Lower-cases the value                                                                                                                                 | `{title\|lowercase}`                          |
+| `titlecase` | any token            | Capitalises the first letter of each word and lower-cases the rest. Meant for scraped ALL-CAPS titles, not for names: it turns McDonald into Mcdonald | `{title\|titlecase}`                          |
+| `compact`   | any token            | Removes the spaces from the value                                                                                                                     | `{title\|compact}`                            |
+| `regex=`    | any token            | Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \/ for a literal slash                                              | `{title\|regex=/(?:\D*(\d+).*)/Time for $1/}` |
+| `from=`     | {stash_id}           | Which stash-box source the StashID comes from, by name or endpoint URL. Without it the rule's default source is used                                  | `{stash_id\|from=StashDB}`                    |
+
+<!-- END GENERATED: modifiers -->
+
+Worked examples, one per modifier:
+
+<!-- BEGIN GENERATED: modifier-examples -->
+
+- `{performers|limit=2}` - `Ava Kensington, Marcus Chen, Joy Adeyemi` becomes `Ava Kensington, Marcus Chen`
+- `{performers|gender=female}` - `Ava Kensington, Marcus Chen` becomes `Ava Kensington`
+- `{title|uppercase}` - `Sunflower Fields` becomes `SUNFLOWER FIELDS`
+- `{title|lowercase}` - `Sunflower Fields` becomes `sunflower fields`
+- `{title|titlecase}` - `SUNFLOWER FIELDS` becomes `Sunflower Fields`
+- `{title|compact}` - `Sunflower Fields` becomes `SunflowerFields`
+- `{title|regex=/(?:\D*(\d+).*)/Time for $1/}` - `Happy 420 day` becomes `Time for 420`
+- `{stash_id|from=StashDB}` - `IDs from two stash-boxes` becomes `the StashDB one`
+
+<!-- END GENERATED: modifier-examples -->
 
 The list tokens are `performers`, `performers_not_in_title`, `matched_performers`, `tags` and `matched_tags`.
 
@@ -255,34 +274,44 @@ subfolders at all: a `/` or `\` there, whether literal or from a token, becomes 
 
 _Scene metadata_
 
-| Token                                         | Description                                                                                                                                                                                                                |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `{title}`                                     | The scene's title                                                                                                                                                                                                          |
-| `{date}`                                      | The scene's date, can be partial                                                                                                                                                                                           |
-| `{date_year}` / `{date_month}` / `{date_day}` | Individual date parts. Stash dates come in 3 precisions, full `YYYY-MM-DD` or partial `YYYY-MM`/`YYYY`; `{date_year}` is available from all three, `{date_month}` needs at least `YYYY-MM`, `{date_day}` needs a full date |
-| `{code}`                                      | The studio code, only used by certain studios                                                                                                                                                                              |
-| `{studio}`                                    | The scene's own studio                                                                                                                                                                                                     |
-| `{studio_root}`                               | The top of the studio hierarchy, e.g. the network                                                                                                                                                                          |
-| `{studio_hierarchy}`                          | The full chain of studios from top to bottom, joined with `/`, capped at 5 levels                                                                                                                                          |
-| `{performers}`                                | All performers on the scene                                                                                                                                                                                                |
-| `{performers_not_in_title}`                   | Performers not already named in the scene's title                                                                                                                                                                          |
-| `{matched_performers}`                        | Only the performer(s) that satisfied this rule's own `performer` condition                                                                                                                                                 |
-| `{tags}`                                      | All tags on the scene                                                                                                                                                                                                      |
-| `{matched_tags}`                              | Only the tag(s) that satisfied this rule's own `tag` condition                                                                                                                                                             |
-| `{rating}`                                    | 0-10 decimal scale, regardless of which rating system this Stash instance is configured to display                                                                                                                         |
-| `{stash_id}`                                  | StashID from one stash-box source, can be specified as `{stash_id\|from=StashDB}`; see below                                                                                                                               |
+<!-- BEGIN GENERATED: tokens-metadata -->
+
+| Token                       | Description                                                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{studio}`                  | The scene's own studio                                                                                                                                                  |
+| `{studio_root}`             | The TOP of the studio hierarchy (often the network), not the scene's own; for a BangBros scene under Public Bang, this is “BangBros”, not “Public Bang”                 |
+| `{studio_hierarchy}`        | The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)                                                                                 |
+| `{performers}`              | All performers on the scene, sorted per this rule's “Sort performers by” setting, joined with a comma                                                                   |
+| `{performers_not_in_title}` | Performers not already named in the scene's title. It would not include “Joy” if the title is “A Day in the Park with Joy”                                              |
+| `{matched_performers}`      | Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the scene                                                     |
+| `{tags}`                    | All tags on the scene, joined with a comma                                                                                                                              |
+| `{matched_tags}`            | Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene                                                                       |
+| `{title}`                   | The scene's title                                                                                                                                                       |
+| `{code}`                    | The scene's own “Studio Code”, not that very few studios actually have these                                                                                            |
+| `{date}`                    | The scene's date, can be partial                                                                                                                                        |
+| `{date_year}`               | Just the year of the date, e.g. “2024”                                                                                                                                  |
+| `{date_month}`              | Just the month of the date, e.g. “05”, can be missing if the scene has a partial date                                                                                   |
+| `{date_day}`                | Just the day of the date, e.g. “10”, can be missing if the scene has a partial date                                                                                     |
+| `{rating}`                  | The scene's rating on a 0-10 scale (one decimal place)                                                                                                                  |
+| `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below. Several sources can appear in one pattern |
+
+<!-- END GENERATED: tokens-metadata -->
 
 _File metadata_
 
-| Token           | Description                                         |
-| --------------- | --------------------------------------------------- |
-| `{resolution}`  | Uses Stash classifications like `1080p`, `4K`       |
-| `{video_codec}` | `h264`, `av1`, and so on                            |
-| `{audio_codec}` | `aac`, `mp3`, and so on                             |
-| `{bitrate}`     | Formatted with two significant digits as `8.42Mbps` |
-| `{fps}`         | Framerate, e.g. `30fps` or `23.98fps`               |
-| `{phash}`       | Perceptual hash fingerprint                         |
-| `{oshash}`      | OpenSubtitles hash fingerprint                      |
+<!-- BEGIN GENERATED: tokens-file -->
+
+| Token           | Description                                                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{phash}`       | The file's perceptual hash fingerprint. Can differ per file on a multi-file scene                                                              |
+| `{resolution}`  | The file's resolution, e.g. “1080p” or “4K”. Can differ per file on a multi-file scene                                                         |
+| `{video_codec}` | The file's video codec, e.g. “h264”, “hevc”. Can differ per file on a multi-file scene                                                         |
+| `{audio_codec}` | The file's audio codec, e.g. “aac”. Can differ per file on a multi-file scene                                                                  |
+| `{bitrate}`     | The file's bitrate, e.g. “8.42Mbps”. Can differ per file on a multi-file scene                                                                 |
+| `{fps}`         | The file's framerate, e.g. “30fps” or “23.98fps”. Can differ per file on a multi-file scene                                                    |
+| `{oshash}`      | The file's oshash fingerprint (Stash's older, pre-phash identifier, still computed for every video). Can differ per file on a multi-file scene |
+
+<!-- END GENERATED: tokens-file -->
 
 **`{stash_id}`**: a scene can have StashIDs from several different stash-box sources at once, so the
 token has to say which one it means. Name it inline with `|from=`:
