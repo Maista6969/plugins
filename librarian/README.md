@@ -128,6 +128,7 @@ that defines a subset, such as having a particular set of tags or performers, be
 | `lowercase` | any token                                                           | `ava kensington`                                      |
 | `titlecase` | any token                                                           | `Ava Kensington`                                      |
 | `compact`   | any token                                                           | Removes spaces: `AvaKensington`                       |
+| `regex=`    | any token                                                           | Find-and-replace, written `/find/replace/`; see below |
 | `from=`     | `{stash_id}`                                                        | Which stash-box source to take the ID from; see below |
 
 The list tokens are `performers`, `performers_not_in_title`, `matched_performers`, `tags` and `matched_tags`.
@@ -152,6 +153,41 @@ values are `female`, `male`, `trans_female`, `trans_male`, `intersex`, `non_bina
 
 `titlecase` is deliberately simple: it capitalises the first letter of each word and lowercases the rest. It is
 meant for fixing scraped ALL-CAPS titles, not for correcting names — it will turn `McDonald` into `Mcdonald`
+
+**`regex=`** does a find-and-replace, written as `/find/replace/`. Every match is replaced, and a captured
+group is reused in the replacement as `$1`, `$2` and so on:
+
+```
+{title|regex=/(?:\D*(\d+).*)/Time for $1/}     "Happy 420 day"  ->  "Time for 420"
+{date|regex=/(\d{4}).*/$1/}                    "2024-03-15"     ->  "2024"
+{title|regex=/ - Trailer//}                    strips a suffix
+{performers|regex=/ /_/}                       "Ava Kensington" ->  "Ava_Kensington"
+```
+
+Write `\/` for a literal forward slash, and `$$` for a literal `$`. On a list token the find-and-replace runs
+on each value separately, so it can never damage the separator between them. A replacement cannot smuggle a
+path separator into a folder either: the result is re-cleaned afterwards, so a `/` becomes a space like any
+other illegal character
+
+> **Why some valid regexes are refused.** The rename preview runs in your browser, but the rename itself runs
+> inside Stash's own JavaScript Virtual Machine Goja, and the two do not agree on every regex feature.
+> Rather than let the preview show one filename while the rename produces another, Librarian refuses the
+> constructs where they differ and says what to write instead:
+>
+> | Refused                                             | Write instead                                     |
+> | --------------------------------------------------- | ------------------------------------------------- |
+> | `$<name>` in the replacement                        | `$1`, by group number                             |
+> | `\1` in the replacement                             | `$1`                                              |
+> | `\p{Lu}` and friends                                | a class like `[A-Z]`                              |
+> | `[[:digit:]]` POSIX classes                         | `\d`, `\w`, or `[0-9]`                            |
+> | a pattern that can match nothing, like `a?` or ` *` | `a+`, ` +` — make it match at least one character |
+>
+> Everything else behaves identically in both engines and is fully supported: capture groups, non-capturing
+> `(?:...)`, alternation, lookahead, lookbehind, backreferences and `{2}` quantifiers
+
+> ⚠️ A slow regex is slow in the rename engine too. A pattern with nested quantifiers (the classic being
+> `(a+)+`) can take exponentially long on a long title. It will not freeze Stash — the rest of the app stays
+> responsive — and you can stop the task from the job queue, but check the preview before running a sweep
 
 > ⚠️ **Deprecated in version 0.7**: the `{performers:2}` spelling of the limit. Write `{performers|limit=2}`
 > instead. `:N` still works and Librarian shows the exact replacement, but note that it is now read in the

@@ -186,6 +186,18 @@ function PatternModalField({
           apply to each value, leaving the separator alone.
         </p>
         <p>
+          <code>|regex=/find/replace/</code> does a find-and-replace on any
+          token, reusing captured groups as <code>$1</code>,{" "}
+          <code>$2</code> and so on. For a title of{" "}
+          <samp className="text-success">Happy 420 day</samp>,{" "}
+          <code>{"{title|regex=/(?:\\D*(\\d+).*)/Time for $1/}"}</code> gives{" "}
+          <samp className="text-success">Time for 420</samp>, and{" "}
+          <code>{"{title|regex=/ - Trailer//}"}</code> strips a suffix. Write{" "}
+          <code>\/</code> for a literal slash. A few regex features work
+          differently in the rename engine than in this preview and are refused
+          with an explanation rather than silently renaming to something else.
+        </p>
+        <p>
           <strong>Modifiers apply left to right</strong>, so{" "}
           <code>{"{performers|gender=female|limit=1}"}</code> is the first
           female performer, while{" "}

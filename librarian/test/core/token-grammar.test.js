@@ -170,3 +170,57 @@ test("splitTopLevel ignores separators nested inside braces", () => {
   assert.deepEqual(splitTopLevel("{unclosed|b", "|"), ["{unclosed|b"]);
   assert.deepEqual(splitTopLevel("closed}|b", "|"), ["closed}", "b"]);
 });
+
+// A regex value is an opaque span: the separator, the optional marker and the
+// braces of a {2} quantifier all have to survive tokenizing
+test("a regex= value can contain |, ? and braces", () => {
+  const pipe = only("{title|regex=/(a|b)/X/}");
+  assert.deepEqual(pipe.errors, []);
+  assert.deepEqual(pipe.modifiers, [
+    { name: "regex", value: "/(a|b)/X/", raw: "regex=/(a|b)/X/" },
+  ]);
+
+  const braces = only("{date|regex=/(\\d{4}).*/$1/}");
+  assert.equal(braces.name, "date");
+  assert.deepEqual(braces.errors, []);
+  assert.equal(braces.modifiers[0].value, "/(\\d{4}).*/$1/");
+
+  // the value always ends in "/", so a trailing ? is unambiguously the marker
+  const optional = only("{title|regex=/a?/X/?}");
+  assert.equal(optional.optional, true);
+  assert.equal(optional.modifiers[0].value, "/a?/X/");
+  assert.equal(only("{title|regex=/a/X/}").optional, false);
+});
+
+test("a regex= value composes with other modifiers in written order", () => {
+  assert.deepEqual(
+    only("{title|regex=/(a|b)/X/|uppercase}").modifiers.map((m) => m.name),
+    ["regex", "uppercase"],
+  );
+  assert.deepEqual(
+    only("{performers|uppercase|regex=/ /_/|limit=2}").modifiers.map(
+      (m) => m.name,
+    ),
+    ["uppercase", "regex", "limit"],
+  );
+});
+
+test("scanning still refuses nested tokens and survives stray braces", () => {
+  assert.deepEqual(
+    scanPattern("{title{studio}}").map((t) => t.name),
+    ["studio"],
+  );
+  assert.deepEqual(
+    scanPattern("{unclosed").map((t) => t.name),
+    [],
+  );
+  assert.deepEqual(
+    scanPattern("a{b").map((t) => t.name),
+    [],
+  );
+  // an unterminated regex value must not swallow the rest of the pattern
+  assert.deepEqual(
+    scanPattern("{title|regex=/oops} - {studio}").map((t) => t.name),
+    ["title", "studio"],
+  );
+});

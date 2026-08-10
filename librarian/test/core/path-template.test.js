@@ -1547,3 +1547,100 @@ test("the limit message still names exactly the list tokens, never stash_id", ()
   // and a limit on stash_id is still reported as meaningless
   assert.match(findPatternProblems("{stash_id:2}")[0].message, /list token/);
 });
+
+test("regex= rewrites a token with a find/replace pair", () => {
+  const view = sceneView({ title: "Happy 420 day" });
+  assert.equal(
+    render("{title|regex=/(?:\\D*(\\d+).*)/Time for $1/}", view),
+    "Time for 420",
+  );
+  // braces of a quantifier are inside the value, not the end of the token
+  assert.equal(render("{date|regex=/(\\d{4}).*/$1/}", view), "2024");
+  assert.equal(render("{title|regex=/ - Trailer//}", view), "Happy 420 day");
+  assert.equal(render("{title|regex=/Happy/Sad/}", view), "Sad 420 day");
+  assert.equal(render("{title|regex=/nomatch/x/}", view), "Happy 420 day");
+  // an alternation inside the value is not a new bracket alternative
+  assert.equal(
+    render("{title|regex=/(Happy|Sad)/Glad/}", view),
+    "Glad 420 day",
+  );
+});
+
+test("regex= maps over a list and composes left to right", () => {
+  const view = sceneView({ performerNames: ["Amy Adams", "Zed Zane"] });
+  assert.equal(render("{performers|regex=/ /_/}", view), "Amy_Adams, Zed_Zane");
+  assert.equal(render("{performers|regex=/ /_/|limit=1}", view), "Amy_Adams");
+  const titled = sceneView({ title: "Happy 420 day" });
+  assert.equal(
+    render("{title|regex=/(?:\\D*(\\d+).*)/Ep $1/|uppercase}", titled),
+    "EP 420",
+  );
+  assert.equal(
+    render("{title|uppercase|regex=/HAPPY/Sad/}", titled),
+    "Sad 420 DAY",
+  );
+});
+
+test("regex= cannot smuggle a path separator into a value", () => {
+  const view = sceneView({ title: "Happy 420 day" });
+  assert.equal(render("{title|regex=/ /\\//}", view), "Happy 420 day");
+  const cfg = normalizeConfig({});
+  const result = renderPath(
+    "{title|regex=/ /\\//}",
+    "{title}",
+    view,
+    cfg,
+    null,
+  );
+  assert.equal(result.folder, "Happy 420 day");
+});
+
+test("a regex that empties a value collapses a bracket group", () => {
+  const view = sceneView({ title: "Happy 420 day" });
+  assert.equal(render("{studio}< [{title|regex=/^.+$//}]>", view), "Leaf");
+  assert.equal(
+    render("{studio}< [{title|regex=/(\\d+)/$1/}]>", view),
+    "Leaf [Happy 420 day]",
+  );
+  assert.equal(render("<{title|regex=/^.+$//}|Unsorted>", view), "Unsorted");
+});
+
+// These were all tested in Goja and found to be quite different
+// than how the JavaScript regexes in my browser work
+test("regex= refuses constructs that differ between preview and rename", () => {
+  const messageFor = (pattern) =>
+    findPatternProblems(pattern)
+      .map((p) => p.message)
+      .join(" | ");
+  assert.match(messageFor("{title|regex=/(\\d)/$<n>/}"), /\$<name>/);
+  assert.match(messageFor("{title|regex=/\\p{Lu}/x/}"), /\\p\{\.\.\.\}/);
+  assert.match(messageFor("{title|regex=/[[:digit:]]/x/}"), /POSIX/);
+  assert.match(
+    messageFor("{title|regex=/(\\d)/\\1/}"),
+    /write \$1 rather than/,
+  );
+  assert.match(messageFor("{title|regex=/(oops/x/}"), /not a valid regular/);
+  assert.match(messageFor("{title|regex=/nope}"), /find\/replace/);
+  assert.match(messageFor("{title|regex}"), /needs a value/);
+  assert.match(messageFor("{title|regex=//x/}"), /nothing to search for/);
+  assert.deepEqual(findPatternProblems("{title|regex=/(\\d+)/[$1]/}"), []);
+});
+
+test("regex= refuses a pattern that can match nothing", () => {
+  const messageFor = (pattern) =>
+    findPatternProblems(pattern)
+      .map((p) => p.message)
+      .join(" | ");
+  assert.match(messageFor("{title|regex=/a?/X/}"), /can match nothing at all/);
+  assert.match(messageFor("{title|regex=/ */_/}"), /can match nothing at all/);
+  assert.match(messageFor("{title|regex=/\\d*/X/}"), /can match nothing/);
+  // the + spellings of the same intent are fine
+  assert.deepEqual(findPatternProblems("{title|regex=/a+/X/}"), []);
+  assert.deepEqual(findPatternProblems("{title|regex=/ +/_/}"), []);
+  assert.deepEqual(findPatternProblems("{title|regex=/^.+$//}"), []);
+  // and so is the target case, whose \D* is guarded by a required \d+
+  assert.deepEqual(
+    findPatternProblems("{title|regex=/(?:\\D*(\\d+).*)/Time for $1/}"),
+    [],
+  );
+});

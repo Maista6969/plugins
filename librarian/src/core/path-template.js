@@ -164,6 +164,16 @@ function listValue(entities, delimiter, sourceCount) {
   };
 }
 
+// {studio_hierarchy} is the one token whose value is allowed to carry "/", so
+// it is also the one token that must not be re-sanitized afterwards
+const SLASH_EXEMPT_TOKENS = { studio_hierarchy: true };
+
+// We can't allow a regex to insert a slash to create a new folder hierarchy
+// because it breaks a lot of other assumptions we've made
+function resanitize(text, parsed) {
+  return SLASH_EXEMPT_TOKENS[parsed.name] ? text : sanitizeTokenValue(text);
+}
+
 function renderTokenValue(value, parsed) {
   if (value && value.__list) {
     const pairs = value.entities.map((e) => {
@@ -171,7 +181,7 @@ function renderTokenValue(value, parsed) {
     });
     const text = applyListModifiers(pairs, parsed)
       .map((pair) => {
-        return pair.name;
+        return resanitize(pair.name, parsed);
       })
       .join(value.delimiter);
     return { text: text, filteredEmpty: text === "" && value.sourceCount > 0 };
@@ -185,14 +195,21 @@ function renderTokenValue(value, parsed) {
       : [];
     const id = hit.length > 0 ? hit[0].stash_id : "";
     return {
-      text: applyValueModifiers(sanitizeTokenValue(id), parsed),
+      text: resanitize(
+        applyValueModifiers(sanitizeTokenValue(id), parsed),
+        parsed,
+      ),
       filteredEmpty: false,
     };
   }
   // plain strings, and the probe maps filenameHasContentWithout builds
+  const source = String(value);
+  const text = resanitize(applyValueModifiers(source, parsed), parsed);
   return {
-    text: applyValueModifiers(String(value), parsed),
-    filteredEmpty: false,
+    // a regex that matches everything empties a token that did have data, which
+    // collapses a <...> group exactly like an emptied list does
+    text: text,
+    filteredEmpty: text === "" && source !== "",
   };
 }
 

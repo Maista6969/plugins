@@ -25,7 +25,9 @@ import {
 // Looser than the grammar on purpose, so that "{foo bar}" is seen and can be
 // reported as malformed instead of being silently invisible
 // promise we'll never support nested tokens lol
-export const TOKEN_SCAN = /\{(\w+)([^{}]*)\}/;
+// Only used to find where a token starts; where it ends is findTokenEnd's job,
+// because a regex= value may contain the braces of a {2} quantifier
+export const TOKEN_START = /^\{(\w+)/;
 
 // Modifiers that answer the same question, so a token may only use one of each
 export const MODIFIER_GROUPS = { case: "capitalisation" };
@@ -38,6 +40,43 @@ function titleCase(text) {
 
 // The value modifiers are all the same shape:
 // any token, no value, one string in and one string out
+// Splits "/find/replace/" into its two halves. Only "\/" is an escape this
+// consumes: every other backslash belongs to the regex (\d, \w, \.) and has to
+// survive intact. Returns null for anything that is not exactly two delimited
+// halves, so a half-written value is reported rather than half-applied
+function parseReplaceValue(raw) {
+  const text = String(raw == null ? "" : raw);
+  if (text.charAt(0) !== "/") {
+    return null;
+  }
+  const parts = ["", ""];
+  let stage = 0;
+  for (let i = 1; i < text.length; i++) {
+    const ch = text.charAt(i);
+    if (ch === "\\" && text.charAt(i + 1) === "/") {
+      parts[stage] += "/";
+      i++;
+      continue;
+    }
+    if (ch === "\\") {
+      parts[stage] += ch + text.charAt(i + 1);
+      i++;
+      continue;
+    }
+    if (ch === "/") {
+      if (stage === 1) {
+        return i === text.length - 1
+          ? { find: parts[0], replace: parts[1] }
+          : null;
+      }
+      stage = 1;
+      continue;
+    }
+    parts[stage] += ch;
+  }
+  return null;
+}
+
 function valueModifier(applyValue, group) {
   return {
     input: "value",
@@ -162,6 +201,97 @@ export const MODIFIERS = {
   compact: valueModifier(function (text) {
     return text.replace(/\s+/g, "");
   }),
+  regex: {
+    input: "value",
+    appliesTo: ["*"],
+    takesValue: "required",
+    parseValue: function (raw) {
+      const parsed = parseReplaceValue(raw);
+      if (!parsed) {
+        return {
+          ok: false,
+          message:
+            "regex= is written as /find/replace/, as in" +
+            " {title|regex=/ - Trailer//}. Write \\/ for a literal slash",
+        };
+      }
+      if (parsed.find === "") {
+        return { ok: false, message: "regex= has nothing to search for" };
+      }
+      // Safety: ensure that regex differences between browser and Goja
+      // are refused, but offer alternatives so the user can make progress
+      if (/\\[pP]\{/.test(parsed.find)) {
+        return {
+          ok: false,
+          message:
+            "\\p{...} matches in the preview but not in the rename engine." +
+            " Use a character class like [A-Za-z] instead",
+        };
+      }
+      if (parsed.find.indexOf("[[:") !== -1) {
+        return {
+          ok: false,
+          message:
+            "POSIX classes like [[:digit:]] match in the rename engine but not" +
+            " in the preview. Use \\d, \\w or a class like [0-9] instead",
+        };
+      }
+      if (parsed.replace.indexOf("$<") !== -1) {
+        return {
+          ok: false,
+          message:
+            "the rename engine cannot use $<name> in a replacement. Refer to" +
+            " the group by number instead, as in $1",
+        };
+      }
+      const backref = /\\(\d)/.exec(parsed.replace);
+      if (backref) {
+        return {
+          ok: false,
+          message:
+            "write $" +
+            backref[1] +
+            " rather than \\" +
+            backref[1] +
+            " to reuse a captured group",
+        };
+      }
+      let compiled;
+      try {
+        compiled = new RegExp(parsed.find, "g");
+      } catch (e) {
+        return {
+          ok: false,
+          message: '"' + parsed.find + '" is not a valid regular expression',
+        };
+      }
+      // Big difference between Goja and browser here, they disagree about
+      // how zero-or-one '?' matches so running /\d?/X/ on "abc-123" becomes
+      // "abc-XXX" in the browser but "aXbXcX-XXXX" in Goja
+      if (compiled.test("")) {
+        return {
+          ok: false,
+          message:
+            '"' +
+            parsed.find +
+            '" can match nothing at all, which would insert the replacement' +
+            " between every character. Make it match at least one character," +
+            " using + rather than *",
+        };
+      }
+      return { ok: true, value: parsed };
+    },
+    applyValue: function (text, raw) {
+      const parsed = MODIFIERS.regex.parseValue(raw);
+      if (!parsed.ok) {
+        return text;
+      }
+      return text.replace(
+        new RegExp(parsed.value.find, "g"),
+        parsed.value.replace,
+      );
+    },
+  },
   from: {
     input: "source",
     appliesTo: ["stash_id"],
@@ -217,6 +347,48 @@ export function splitTopLevel(text, separator) {
   return parts;
 }
 
+// Splits a token body on "|", treating a /.../.../ modifier value as one opaque
+// span so that a regex may contain the separator: {title|regex=/(a|b)/X/} is one
+// modifier, not three. A value is entered at "=/" and left at its third
+// unescaped "/", which is also why the trailing "?" of an optional token is
+// never ambiguous -- the value always ends with a "/"
+export function splitModifierChunks(text) {
+  const chunks = [];
+  let current = "";
+  let inValue = false;
+  let closers = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charAt(i);
+    if (inValue) {
+      if (ch === "\\" && i + 1 < text.length) {
+        current += ch + text.charAt(i + 1);
+        i++;
+        continue;
+      }
+      if (ch === "/") {
+        closers++;
+        if (closers === 2) {
+          inValue = false;
+        }
+      }
+      current += ch;
+      continue;
+    }
+    if (ch === "|") {
+      chunks.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
+    if (ch === "/" && text.charAt(i - 1) === "=") {
+      inValue = true;
+      closers = 0;
+    }
+  }
+  chunks.push(current);
+  return chunks;
+}
+
 // `body` is everything between the token name and the closing brace
 export function parseToken(name, body, index, raw) {
   const token = {
@@ -235,7 +407,7 @@ export function parseToken(name, body, index, raw) {
     text = text.slice(0, -1);
   }
 
-  const chunks = text.split("|");
+  const chunks = splitModifierChunks(text);
   const head = chunks.shift();
   if (head !== "") {
     const limitMatch = /^:(\d+)$/.exec(head);
@@ -296,12 +468,75 @@ export function parseToken(name, body, index, raw) {
   return token;
 }
 
+// Index of the "}" that closes the token opened at `open`, or -1.
+// `opaque` skips over a /.../.../ modifier value so that the braces of a {2}
+// quantifier inside a regex are not mistaken for the end of the token, or for a
+// nested token. A "{" outside such a value still ends the search, keeping the
+// no-nested-tokens promise
+function findTokenEnd(text, bodyStart, opaque) {
+  let inValue = false;
+  let closers = 0;
+  for (let i = bodyStart; i < text.length; i++) {
+    const ch = text.charAt(i);
+    if (inValue) {
+      if (ch === "\\") {
+        i++;
+      } else if (ch === "/") {
+        closers++;
+        if (closers === 2) {
+          inValue = false;
+        }
+      }
+      continue;
+    }
+    if (ch === "}") {
+      return i;
+    }
+    if (ch === "{") {
+      return -1;
+    }
+    if (opaque && ch === "/" && text.charAt(i - 1) === "=") {
+      inValue = true;
+      closers = 0;
+    }
+  }
+  return -1;
+}
+
 export function scanPattern(pattern) {
-  const regex = new RegExp(TOKEN_SCAN.source, "g");
+  const text = pattern || "";
   const tokens = [];
-  let match;
-  while ((match = regex.exec(pattern || "")) !== null) {
-    tokens.push(parseToken(match[1], match[2], match.index, match[0]));
+  let i = 0;
+  while (i < text.length) {
+    const open = text.indexOf("{", i);
+    if (open === -1) {
+      break;
+    }
+    const nameMatch = TOKEN_START.exec(text.slice(open));
+    if (!nameMatch) {
+      i = open + 1;
+      continue;
+    }
+    const bodyStart = open + nameMatch[0].length;
+    // an unterminated value must not swallow the rest of the pattern, so a
+    // failed opaque scan falls back to the plain "first }" rule
+    let end = findTokenEnd(text, bodyStart, true);
+    if (end === -1) {
+      end = findTokenEnd(text, bodyStart, false);
+    }
+    if (end === -1) {
+      i = open + 1;
+      continue;
+    }
+    tokens.push(
+      parseToken(
+        nameMatch[1],
+        text.slice(bodyStart, end),
+        open,
+        text.slice(open, end + 1),
+      ),
+    );
+    i = end + 1;
   }
   return tokens;
 }
@@ -321,7 +556,10 @@ export function applyListModifiers(pairs, parsed) {
       result = spec.applyList(result, modifier.value);
     } else if (spec.input === "value") {
       result = result.map((pair) => {
-        return { entity: pair.entity, name: spec.applyValue(pair.name) };
+        return {
+          entity: pair.entity,
+          name: spec.applyValue(pair.name, modifier.value),
+        };
       });
     }
   });
@@ -333,7 +571,7 @@ export function applyValueModifiers(text, parsed) {
   (parsed.modifiers || []).forEach((modifier) => {
     const spec = MODIFIERS[modifier.name];
     if (spec && spec.input === "value") {
-      result = spec.applyValue(result);
+      result = spec.applyValue(result, modifier.value);
     }
   });
   return result;
