@@ -16,6 +16,7 @@ import {
   describePatternPair,
   folderPatternMode,
   filenamePatternMode,
+  currentUsage,
 } from "./path-template.js";
 import { assignSuffixes } from "./file-ordering.js";
 import { deriveFileTech } from "./file-tech.js";
@@ -240,6 +241,33 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
   const folderMode = folderPatternMode(folderPattern);
   const filenameMode = filenamePatternMode(filenamePattern);
 
+  // A backstop rather than something a user is expected to see: the editor
+  // substitutes {current} the moment a field is cleared, and normalizeConfig
+  // rewrites any blank it is handed, on every path into the planner. This is
+  // what keeps a blank from meaning something by accident if one ever gets past
+  // both of those
+  if (folderMode === "blank" || filenameMode === "blank") {
+    return dataError(
+      "blank_pattern",
+      sceneView.id,
+      matchedRule,
+      folderPattern,
+      filenamePattern,
+      [
+        {
+          token: null,
+          message:
+            "a blank " +
+            (folderMode === "blank" ? "folder" : "filename") +
+            " pattern no longer means anything. Write {current} to keep the " +
+            (folderMode === "blank"
+              ? "folder this file is already in"
+              : "name this file already has"),
+        },
+      ],
+    );
+  }
+
   if (folderMode === "keep" && filenameMode === "keep") {
     return {
       status: "skipped",
@@ -316,6 +344,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       fileView,
       renderConfig,
       matchedIds,
+      { folder: current.folder, basename: stripExtension(current.basename) },
     );
 
     // Both guards ask whether the pattern produced a usable name. Neither means
@@ -361,6 +390,44 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       filenameMode === "keep"
         ? stripExtension(current.basename)
         : rendered.basenameNoExt;
+
+    // {current} is the one token that reads what the pattern writes, so a
+    // pattern using it can fail to settle: {current|regex=/a/aa/} grows every
+    // run, {current|titlecase|compact} costs one extra rename before it stops.
+    // Rendering once more from the name we just produced is a total check, and
+    // needs no claim about whether the modifiers are idempotent
+    if (currentUsage(filenamePattern).modified) {
+      const again = renderPath(
+        folderPattern,
+        filenamePattern,
+        fileView,
+        renderConfig,
+        matchedIds,
+        { folder: current.folder, basename: basenameNoExt },
+      );
+      if (again.basenameNoExt !== basenameNoExt) {
+        return dataError(
+          "unstable_pattern",
+          sceneView.id,
+          matchedRule,
+          folderPattern,
+          filenamePattern,
+          [
+            {
+              token: null,
+              message:
+                "this pattern does not settle: renaming to " +
+                basenameNoExt +
+                " would rename again to " +
+                again.basenameNoExt +
+                " on the next run, and so on. {current} reads the name the" +
+                " pattern writes, so its modifiers have to leave an already" +
+                " renamed file alone",
+            },
+          ],
+        );
+      }
+    }
 
     if (folderMode === "render" && !rendered.folder) {
       return dataError(

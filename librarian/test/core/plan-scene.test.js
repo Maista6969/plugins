@@ -1544,3 +1544,56 @@ test("galleries and images never need the stash-box list, having no {stash_id}",
   assert.equal(configNeedsStashBoxes(config, "galleries"), false);
   assert.equal(configNeedsStashBoxes(config, "images"), false);
 });
+
+// {current} is the only token that reads what the pattern writes, so it is the
+// only one whose modifiers can fail to settle. The planner renders a second
+// time from the name it just produced: if that moves again, every run would
+// rename the file, so it refuses instead
+test("a pattern using {current} that never settles is refused", () => {
+  const grows = baseConfig({
+    defaultPattern: {
+      folderPattern: "{current}",
+      filenamePattern: "{current|regex=/o/oo/}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, grows);
+  assert.equal(result.status, "error");
+  assert.equal(result.reason, "unstable_pattern");
+  assert.match(result.missingData[0].message, /does not settle/);
+});
+
+test("{current} with a modifier that does settle is planned normally", () => {
+  const stable = baseConfig({
+    defaultPattern: {
+      folderPattern: "{current}",
+      filenamePattern: "{current|uppercase}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, stable);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].basename, "OLD.mp4");
+});
+
+test("{current} on both sides is the keep-in-place pair, reported as unchanged", () => {
+  const keep = baseConfig({
+    defaultPattern: {
+      folderPattern: "{current}",
+      filenamePattern: "{current}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, keep);
+  assert.equal(result.status, "skipped");
+  assert.equal(result.reason, "nothing_to_change");
+});
+
+test("a literal blank pattern is refused, naming the token to write instead", () => {
+  const blank = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "" },
+  });
+  // normalizeConfig migrates blanks, so reach past it to simulate a hand-edit
+  blank.scenes.defaultPattern.filenamePattern = "";
+  const result = planScene(normalOrganizedScene, blank);
+  assert.equal(result.status, "error");
+  assert.equal(result.reason, "blank_pattern");
+  assert.match(result.missingData[0].message, /\{current\}/);
+});
