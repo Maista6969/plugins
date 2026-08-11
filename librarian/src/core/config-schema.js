@@ -178,6 +178,50 @@ function migrateBlankPatterns(config) {
   return result;
 }
 
+// Only Scene has the groups field
+const SCENE_ONLY_CONDITION_FIELDS = ["group"];
+
+function keepableConditions(conditions) {
+  if (!Array.isArray(conditions)) {
+    return conditions;
+  }
+  return conditions.filter((c) => {
+    return (
+      !isPlainObject(c) || SCENE_ONLY_CONDITION_FIELDS.indexOf(c.field) === -1
+    );
+  });
+}
+
+function dropSceneOnlyConditions(config) {
+  if (!isPlainObject(config)) {
+    return config;
+  }
+  const result = Object.assign({}, config);
+  ENTITY_TYPES.forEach((type) => {
+    if (type === "scenes" || !isPlainObject(result[type])) {
+      return;
+    }
+    const section = Object.assign({}, result[type]);
+    if (Array.isArray(section.rules)) {
+      section.rules = section.rules.map((rule) => {
+        if (!isPlainObject(rule) || !Array.isArray(rule.conditions)) {
+          return rule;
+        }
+        return Object.assign({}, rule, {
+          conditions: keepableConditions(rule.conditions),
+        });
+      });
+    }
+    if (isPlainObject(section.excludeConditions)) {
+      section.excludeConditions = Object.assign({}, section.excludeConditions, {
+        conditions: keepableConditions(section.excludeConditions.conditions),
+      });
+    }
+    result[type] = section;
+  });
+  return result;
+}
+
 function hoistLegacySections(raw) {
   if (!isPlainObject(raw)) {
     return raw;
@@ -217,10 +261,12 @@ function hoistLegacySections(raw) {
 }
 
 export function normalizeConfig(raw) {
-  return migrateBlankPatterns(
-    mergeDefaults(
-      DEFAULT_CONFIG,
-      migrateLegacyConfig(isPlainObject(raw) ? raw : {}),
+  return dropSceneOnlyConditions(
+    migrateBlankPatterns(
+      mergeDefaults(
+        DEFAULT_CONFIG,
+        migrateLegacyConfig(isPlainObject(raw) ? raw : {}),
+      ),
     ),
   );
 }

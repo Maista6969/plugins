@@ -16,6 +16,7 @@ const SCENES = {
   // report codecs, bitrate and framerate
   tokens: KNOWN_TOKENS,
   fileTechTokens: FILE_TECH_TOKENS,
+  hasGroups: true,
   files: (raw) => {
     return raw.files || [];
   },
@@ -32,6 +33,7 @@ const GALLERIES = {
   // token can resolve for a zip gallery
   tokens: METADATA_TOKENS,
   fileTechTokens: [],
+  hasGroups: false,
   files: (raw) => {
     return raw.files || [];
   },
@@ -67,6 +69,7 @@ const IMAGES = {
   // Scenes are the only type where files of differing quality coexist, via sceneMerge.
   tokens: METADATA_TOKENS,
   fileTechTokens: [],
+  hasGroups: false,
   // files is deprecated and silently drops video-backed images, so an animated
   // image would look like it simply had no files
   files: (raw) => {

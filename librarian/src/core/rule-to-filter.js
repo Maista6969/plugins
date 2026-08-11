@@ -63,8 +63,17 @@ function pathFilter(condition) {
   return filter;
 }
 
+function groupPresenceFilter(condition) {
+  if (condition.op !== "is_null" && condition.op !== "not_null") {
+    return null;
+  }
+  return hierarchicalFilter("groups", condition, 0);
+}
+
 function conditionToFilter(condition) {
   switch (condition.field) {
+    case "group":
+      return groupPresenceFilter(condition);
     case "studio":
       return hierarchicalFilter(
         "studios",

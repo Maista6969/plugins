@@ -45,8 +45,20 @@ function evaluateRating(sceneView, value) {
   return min != null || max != null;
 }
 
+function evaluateGroup(sceneView, condition) {
+  if (condition.op !== "is_null" && condition.op !== "not_null") {
+    return false;
+  }
+  const ids = (sceneView.groups || []).map((g) => {
+    return g.id;
+  });
+  return applyListOp(ids, condition.op, condition.value);
+}
+
 export function evaluateCondition(sceneView, condition) {
   switch (condition.field) {
+    case "group":
+      return evaluateGroup(sceneView, condition);
     case "studio": {
       if (condition.op === "any_of_or_descendant") {
         return applyListOp(sceneView.studioIds, "any_of", condition.value);
@@ -188,6 +200,23 @@ function describeListField(label, sceneIds, sceneNames, condition) {
 
 export function describeCondition(sceneView, condition) {
   switch (condition.field) {
+    case "group": {
+      if (condition.op === "is_null") {
+        return "belongs to no group";
+      }
+      // names it rather than just saying yes: which group matched is exactly
+      // what {group} is about to put in the path
+      const names = (sceneView.groups || [])
+        .map((g) => {
+          return g.name;
+        })
+        .filter((name) => {
+          return !!name;
+        });
+      return names.length
+        ? "belongs to '" + names.join("', '") + "'"
+        : "belongs to a group";
+    }
     case "studio":
       return describeListField(
         FIELD_LABEL[condition.field],

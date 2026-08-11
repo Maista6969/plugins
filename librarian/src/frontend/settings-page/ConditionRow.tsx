@@ -9,9 +9,18 @@ const FIELD_OPTIONS = [
   { value: "studio", label: "Studio" },
   { value: "performer", label: "Performer" },
   { value: "tag", label: "Tag" },
+  { value: "group", label: "Group" },
   { value: "rating", label: "Rating" },
   { value: "path", label: "File path" },
 ];
+
+// Only scenes have groups
+function fieldOptionsFor(entityType?: string) {
+  if (adapterFor(entityType).hasGroups) {
+    return FIELD_OPTIONS;
+  }
+  return FIELD_OPTIONS.filter((f) => f.value !== "group");
+}
 
 const ANY_ONLY_MODIFIERS = [
   {
@@ -54,10 +63,24 @@ const STUDIO_MODIFIERS = [
   ANY_ONLY_MODIFIERS[2],
 ];
 
+const GROUP_MODIFIERS = [
+  {
+    value: "not_null",
+    label: "is set",
+    title: "Matches if the {noun} belongs to a group, whichever one it is",
+  },
+  {
+    value: "is_null",
+    label: "is not set",
+    title: "Matches if the {noun} belongs to no group at all",
+  },
+];
+
 const LIST_MODIFIERS_BY_FIELD: Record<string, typeof ANY_ONLY_MODIFIERS> = {
   studio: STUDIO_MODIFIERS,
   performer: ANY_OR_ALL_MODIFIERS,
   tag: ANY_OR_ALL_MODIFIERS,
+  group: GROUP_MODIFIERS,
 };
 
 const LIST_FIELDS = Object.keys(LIST_MODIFIERS_BY_FIELD);
@@ -133,20 +156,21 @@ function nextOpForFieldChange(
   newField: string,
   currentOp: string,
 ): string {
-  if (
-    LIST_FIELDS.indexOf(oldField) !== -1 &&
-    LIST_FIELDS.indexOf(newField) !== -1
-  ) {
-    const newOptions = LIST_MODIFIERS_BY_FIELD[newField];
-    if (newOptions.some((o) => o.value === currentOp)) {
-      return currentOp;
-    }
-    return "any_of";
-  }
   if (newField === "path") {
     return "INCLUDES";
   }
-  return "any_of";
+  const newOptions = LIST_MODIFIERS_BY_FIELD[newField];
+  if (!newOptions) {
+    // rating has no op of its own, the range is the whole condition
+    return "any_of";
+  }
+  if (
+    LIST_FIELDS.indexOf(oldField) !== -1 &&
+    newOptions.some((o) => o.value === currentOp)
+  ) {
+    return currentOp;
+  }
+  return newOptions[0].value;
 }
 
 function parseRatingBound(text: string): number | null {
@@ -274,9 +298,11 @@ function ListModifierSelect({
 function FieldSelect({
   field,
   onChange,
+  entityType,
 }: {
   field: string;
   onChange: (field: string) => void;
+  entityType?: string;
 }) {
   return (
     <Form.Control
@@ -285,7 +311,7 @@ function FieldSelect({
       value={field}
       onChange={(e: any) => onChange(e.target.value)}
     >
-      {FIELD_OPTIONS.map((f) => (
+      {fieldOptionsFor(entityType).map((f) => (
         <option key={f.value} value={f.value}>
           {f.label}
         </option>
@@ -317,7 +343,9 @@ export function ConditionRow({
   const isPath = condition.field === "path";
   const isListField = LIST_FIELDS.indexOf(condition.field) !== -1;
   const isPresenceOp =
-    condition.op === "is_null" || condition.op === "not_null";
+    condition.field === "group" ||
+    condition.op === "is_null" ||
+    condition.op === "not_null";
   const ids =
     !isRating && !isPath && Array.isArray(condition.value)
       ? (condition.value as string[])
@@ -329,6 +357,7 @@ export function ConditionRow({
     <div className="librarian-condition-row">
       <FieldSelect
         field={condition.field}
+        entityType={entityType}
         onChange={(newField) => {
           onChange({
             field: newField,

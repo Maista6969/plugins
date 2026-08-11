@@ -46,6 +46,9 @@ const TOKEN_CRITERIA = {
   date_month: { type: "date", modifier: "NOT_NULL" },
   date_day: { type: "date", modifier: "NOT_NULL" },
   rating: { type: "rating100", modifier: "NOT_NULL" },
+  group: { type: "groups", modifier: "NOT_NULL" },
+  // Scene can be in a group without having an index in that group
+  group_idx: { type: "groups", modifier: "NOT_NULL" },
   stash_id: { type: "stash_id_count", modifier: "GREATER_THAN", value: 0 },
 };
 

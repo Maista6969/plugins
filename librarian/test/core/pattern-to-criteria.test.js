@@ -21,6 +21,20 @@ test("a required token contributes the criterion that selects items having it", 
   ]);
 });
 
+test("the group tokens gate on membership, and only once", () => {
+  assert.deepEqual(keys(requiredTokenCriteria(["{group}"])), [
+    "groups:NOT_NULL",
+  ]);
+  assert.deepEqual(keys(requiredTokenCriteria(["{group_idx}"])), [
+    "groups:NOT_NULL",
+  ]);
+  assert.deepEqual(
+    keys(requiredTokenCriteria(["{group}", "{title} [Sc. {group_idx}]"])),
+    ["groups:NOT_NULL", "title:NOT_NULL"],
+  );
+  assert.deepEqual(requiredTokenCriteria(["{group?}"]), []);
+});
+
 // {title?} renders empty instead of reporting missing data, so a scene without
 // a title is not skipped for it and must not be filtered out
 test("an optional token gates nothing", () => {

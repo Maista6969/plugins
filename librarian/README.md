@@ -102,6 +102,9 @@ Both skips are reported per item in the preview and in the logs, with the reason
 Rules let you define new folder and filename patterns for a subset of your collection: they must have at least one condition
 that defines a subset, such as having a particular set of tags or performers, belonging to a set of studios, or having a certain rating.
 
+Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
+their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.
+
 <p align="center">
   <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-rule-editor.png">
     <img src="images/stash-librarian-rule-editor.png" width="800" alt="Rule editor modal: conditions, folder/filename patterns, and a live preview of matching scenes">

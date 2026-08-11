@@ -79,6 +79,51 @@ test("the shared selections fetch every field normalize-scene reads", () => {
   }
 });
 
+const SCENE_ONLY_FIELDS = ["groups", "stash_ids"];
+
+const SHARED_FRAGMENT_FILES = [
+  "backend/gql.js",
+  "frontend/shared/scene-query-fields.ts",
+];
+
+function templateBody(source, name) {
+  const match = source.match(new RegExp("const " + name + " = `([^`]*)`"));
+  return match ? match[1] : null;
+}
+
+function commonMetadataFields(file) {
+  const source = fs.readFileSync(path.join(SRC, file), "utf8");
+  const body = templateBody(source, "COMMON_METADATA_FIELDS");
+  assert.ok(body, file + " no longer defines COMMON_METADATA_FIELDS");
+  return body;
+}
+
+test("the gallery/image metadata fragment asks for no scene-only field", () => {
+  for (const file of SHARED_FRAGMENT_FILES) {
+    const body = commonMetadataFields(file);
+    for (const field of SCENE_ONLY_FIELDS) {
+      assert.ok(
+        !new RegExp("\\b" + field + "\\s*\\{").test(body),
+        file +
+          " selects " +
+          field +
+          " in COMMON_METADATA_FIELDS, but only Scene has that field: every " +
+          "gallery and image query would fail validation and return null",
+      );
+    }
+  }
+});
+
+test("the two COMMON_METADATA_FIELDS stay identical", () => {
+  const [backend, frontend] = SHARED_FRAGMENT_FILES.map(commonMetadataFields);
+  assert.equal(
+    backend,
+    frontend,
+    "the backend job and the frontend preview would fetch different fields, " +
+      "so the preview could disagree with what the rename actually does",
+  );
+});
+
 test("performer selections are only spelled out in gql-fields.js", () => {
   const INLINED = /performers\s*\{(?!\s*\$\{)/;
   const offenders = sourceFiles(SRC)

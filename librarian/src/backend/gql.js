@@ -45,7 +45,6 @@ const COMMON_METADATA_FIELDS = `
     ${STUDIO_FIELDS}
   }
   performers { ${PERFORMER_FIELDS} }
-  groups { ${SCENE_GROUP_FIELDS} }
   tags { ${TAG_FIELDS} }
 `;
 
