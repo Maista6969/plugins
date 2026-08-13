@@ -2,21 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useApolloClient, gql } from "@apollo/client";
 import { usePreviewMode, buildPreviewRows } from "./preview-context.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
-import { STUDIO_FIELDS } from "../shared/scene-query-fields.js";
+import { SCENE_FIELDS } from "../shared/scene-query-fields.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 
-const ENRICH_STUDIOS_QUERY = gql(`
-  query LibrarianEnrichStudios($ids: [ID!]) {
-    findStudios(ids: $ids) {
-      studios { ${STUDIO_FIELDS} }
-    }
-  }
-`);
-
-const ENRICH_TAGS_QUERY = gql(`
-  query LibrarianEnrichTags($ids: [ID!]) {
-    findTags(ids: $ids) {
-      tags { id sort_name }
+// We can't rely on SlimSceneData because it does not include
+// rating100 for performers so our previews that rely on sorting
+// performers by their rating will be wrong
+const ENRICH_SCENES_QUERY = gql(`
+  query LibrarianEnrichScenes($ids: [ID!]) {
+    findScenes(ids: $ids) {
+      scenes { ${SCENE_FIELDS} }
     }
   }
 `);
@@ -47,26 +42,21 @@ interface PreviewSceneListProps {
   scenes: any[];
 }
 
-function distinctStudioIdsKey(scenes: any[]): string {
+function sceneIdsKey(scenes: any[]): string {
   const ids = new Set<string>();
   scenes.forEach((scene) => {
-    if (scene.studio && scene.studio.id) {
-      ids.add(String(scene.studio.id));
+    if (scene && scene.id != null) {
+      ids.add(String(scene.id));
     }
   });
   return Array.from(ids).sort().join(",");
 }
 
-function distinctTagIdsKey(scenes: any[]): string {
-  const ids = new Set<string>();
-  scenes.forEach((scene) => {
-    (scene.tags || []).forEach((tag: any) => {
-      if (tag && tag.id) {
-        ids.add(String(tag.id));
-      }
-    });
-  });
-  return Array.from(ids).sort().join(",");
+interface EnrichedScenes {
+  // The key the map was fetched for, so a page change is told apart from a
+  // page whose scenes genuinely came back empty
+  key: string;
+  byId: Record<string, any>;
 }
 
 export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
@@ -80,78 +70,39 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
   const client = useApolloClient();
   // must stay above the early returns below: hooks cannot be called conditionally
   const { stashBoxes, loading: boxesLoading } = useStashBoxes();
-  const [enrichedStudiosById, setEnrichedStudiosById] = useState<
-    Record<string, any>
-  >({});
-  const [enriching, setEnriching] = useState(false);
-  const studioIdsKey = distinctStudioIdsKey(scenes);
+  const [enriched, setEnriched] = useState<EnrichedScenes | null>(null);
+  const idsKey = sceneIdsKey(scenes);
 
   useEffect(() => {
-    if (!studioIdsKey) {
-      setEnrichedStudiosById({});
+    if (!idsKey) {
+      setEnriched({ key: "", byId: {} });
       return;
     }
     let cancelled = false;
-    setEnriching(true);
     client
       .query({
-        query: ENRICH_STUDIOS_QUERY,
-        variables: { ids: studioIdsKey.split(",") },
+        query: ENRICH_SCENES_QUERY,
+        variables: { ids: idsKey.split(",") },
         fetchPolicy: "network-only",
       })
       .then(({ data }: any) => {
         if (cancelled) return;
-        const studios =
-          (data && data.findStudios && data.findStudios.studios) || [];
+        const found = (data && data.findScenes && data.findScenes.scenes) || [];
         const byId: Record<string, any> = {};
-        studios.forEach((studio: any) => {
-          byId[studio.id] = studio;
+        found.forEach((scene: any) => {
+          byId[String(scene.id)] = scene;
         });
-        setEnrichedStudiosById(byId);
+        setEnriched({ key: idsKey, byId });
       })
-      .finally(() => {
-        if (!cancelled) setEnriching(false);
+      // Fall back to the props rather than sitting on the loading state
+      // forever: a preview built from thinner data still beats no preview
+      .catch(() => {
+        if (!cancelled) setEnriched({ key: idsKey, byId: {} });
       });
     return () => {
       cancelled = true;
     };
-  }, [client, studioIdsKey]);
-
-  const [enrichedTagSortNamesById, setEnrichedTagSortNamesById] = useState<
-    Record<string, string | null>
-  >({});
-  const [enrichingTags, setEnrichingTags] = useState(false);
-  const tagIdsKey = distinctTagIdsKey(scenes);
-
-  useEffect(() => {
-    if (!tagIdsKey) {
-      setEnrichedTagSortNamesById({});
-      return;
-    }
-    let cancelled = false;
-    setEnrichingTags(true);
-    client
-      .query({
-        query: ENRICH_TAGS_QUERY,
-        variables: { ids: tagIdsKey.split(",") },
-        fetchPolicy: "network-only",
-      })
-      .then(({ data }: any) => {
-        if (cancelled) return;
-        const tags = (data && data.findTags && data.findTags.tags) || [];
-        const byId: Record<string, string | null> = {};
-        tags.forEach((tag: any) => {
-          byId[tag.id] = tag.sort_name;
-        });
-        setEnrichedTagSortNamesById(byId);
-      })
-      .finally(() => {
-        if (!cancelled) setEnrichingTags(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, tagIdsKey]);
+  }, [client, idsKey]);
 
   if (!config) {
     return (
@@ -167,30 +118,16 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
     );
   }
 
-  if (
-    (enriching &&
-      Object.keys(enrichedStudiosById).length === 0 &&
-      studioIdsKey) ||
-    (enrichingTags &&
-      Object.keys(enrichedTagSortNamesById).length === 0 &&
-      tagIdsKey)
-  ) {
+  // Anything fetched for a previous page is stale the moment the ids change,
+  // and planning against it would show the wrong preview for a moment
+  if (!enriched || enriched.key !== idsKey) {
     return (
       <div className="librarian-preview-list">Loading preview data...</div>
     );
   }
 
   const effectiveScenes = scenes.map((scene) => {
-    const enrichedStudio = scene.studio && enrichedStudiosById[scene.studio.id];
-    const enrichedTags = (scene.tags || []).map((tag: any) => {
-      const sortName = enrichedTagSortNamesById[tag.id];
-      return sortName !== undefined ? { ...tag, sort_name: sortName } : tag;
-    });
-    return {
-      ...scene,
-      studio: enrichedStudio || scene.studio,
-      tags: enrichedTags,
-    };
+    return enriched.byId[String(scene.id)] || scene;
   });
 
   const rows = buildPreviewRows(
