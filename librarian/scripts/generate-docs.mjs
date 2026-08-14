@@ -83,7 +83,7 @@ function tokenTable(fileTech) {
       return !!t.fileTech === fileTech;
     })
     .map((t) => {
-      return ["`{" + t.name + "}`", cell(t.description)];
+      return ["`" + cell(t.spelling) + "`", cell(t.description)];
     });
   return table(["Token", "Description"], rows);
 }

@@ -59,6 +59,7 @@ export function normalizeScene(rawScene, entityType) {
     date: rawScene.date || "",
     organized: !!rawScene.organized,
     rating100: rawScene.rating100 != null ? rawScene.rating100 : null,
+    customFields: rawScene.custom_fields || {},
     hasStashId: !!(rawScene.stash_ids && rawScene.stash_ids.length > 0),
     stashIds: (rawScene.stash_ids || []).map((s) => {
       return { endpoint: s.endpoint || "", stash_id: s.stash_id || "" };

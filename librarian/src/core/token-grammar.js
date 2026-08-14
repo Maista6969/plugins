@@ -1,9 +1,19 @@
 // The token grammar (so far)
 //
 //   { name ( ":" digits )? ( "|" modifier )* "?"? }
+//   { "@" field ( "|" modifier )* "?"? }
 //   modifier := key ( "=" value )?
 //
 // Examples: {title}  {performers|limit=2}  {title?}  {performers|gender=female|uppercase?}
+//           {@Series}  {@Release Group}  {@Episode?}  {@Series|uppercase}
+//
+// The "@" form names a custom field, which is the one piece of metadata whose
+// names come from the user's own library rather than from Stash's schema. It
+// parses to the ordinary token "custom_field" carrying the name as `arg`, so
+// every registry downstream stays keyed by a name that is known at build time:
+// only resolving the value, and saying which field was missing, read the arg.
+// The field name runs to the first "|", "?" or "}", which is what lets it
+// contain the spaces that real field names have
 //
 // ":N" is the original spelling of the limit and still works, but only when it
 // is the whole body: it desugars to a leading "|limit=N", and with nothing else
@@ -30,6 +40,9 @@ import {
 // Only used to find where a token starts; where it ends is findTokenEnd's job,
 // because a regex= value may contain the braces of a {2} quantifier
 export const TOKEN_START = /^\{(\w+)/;
+
+export const CUSTOM_FIELD_TOKEN = "custom_field";
+const CUSTOM_TOKEN_START = /^\{@([^|?}]*)/;
 
 // Modifiers that answer the same question, so a token may only use one of each
 export const MODIFIER_GROUPS = { case: "capitalisation" };
@@ -462,16 +475,22 @@ export function splitModifierChunks(text) {
   return chunks;
 }
 
-// `body` is everything between the token name and the closing brace
-export function parseToken(name, body, index, raw) {
+export function parseToken(name, body, index, raw, arg) {
   const token = {
     name: name,
     raw: raw,
     index: index,
     optional: false,
+    arg: arg === undefined ? null : arg,
     modifiers: [],
     errors: [],
   };
+
+  if (token.arg === "") {
+    token.errors.push(
+      "{@...} needs the name of a custom field, as in {@Series}",
+    );
+  }
 
   let text = body || "";
   if (text.charAt(text.length - 1) === "?") {
@@ -592,7 +611,9 @@ export function scanPattern(pattern) {
     if (open === -1) {
       break;
     }
-    const nameMatch = TOKEN_START.exec(text.slice(open));
+    const rest = text.slice(open);
+    const customMatch = CUSTOM_TOKEN_START.exec(rest);
+    const nameMatch = customMatch || TOKEN_START.exec(rest);
     if (!nameMatch) {
       i = open + 1;
       continue;
@@ -610,10 +631,11 @@ export function scanPattern(pattern) {
     }
     tokens.push(
       parseToken(
-        nameMatch[1],
+        customMatch ? CUSTOM_FIELD_TOKEN : nameMatch[1],
         text.slice(bodyStart, end),
         open,
         text.slice(open, end + 1),
+        customMatch ? nameMatch[1].replace(/^\s+|\s+$/g, "") : undefined,
       ),
     );
     i = end + 1;

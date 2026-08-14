@@ -51,6 +51,8 @@ export const TOKEN_DESCRIPTIONS = {
   current: "The path this file already has",
   stash_id:
     "The {noun}'s StashID. Add |from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below",
+  custom_field:
+    "One of the {noun}'s own custom fields, named inside the token: {@Series} is the field called Series. Names are matched exactly, capitals included",
 };
 
 export function describeToken(name, noun) {
@@ -109,10 +111,23 @@ export function describeModifiers() {
   });
 }
 
+// Almost every token is written exactly as it is named. {custom_field} is not:
+// it is spelled {@FieldName}, so the reference and the chips have to show the
+// spelling while `insert` gives a chip something valid to actually type
+const TOKEN_SPELLINGS = {
+  custom_field: { spelling: "{@Custom Field}", insert: "{@}" },
+};
+
 export function describeTokens(tokenNames, noun) {
   return (tokenNames || KNOWN_TOKENS).map((name) => {
+    const written = TOKEN_SPELLINGS[name] || {
+      spelling: "{" + name + "}",
+      insert: "{" + name + "}",
+    };
     return {
       name: name,
+      spelling: written.spelling,
+      insert: written.insert,
       description: describeToken(name, noun),
       fileTech: FILE_TECH_TOKENS.indexOf(name) !== -1 || name === "phash",
     };

@@ -145,6 +145,12 @@
   min-width: 0;
 }
 
+/* the field name is usually one or two words, so it does not need the same
+   share of the row as the value it is being compared against */
+.librarian-condition-row input.librarian-custom-field-name {
+  flex: 0 1 10rem;
+}
+
 .librarian-inline-select {
   width: auto;
   padding-right: 1.5rem;

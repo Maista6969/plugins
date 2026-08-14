@@ -17,6 +17,7 @@ export const SCENE_FIELDS = `
   date
   organized
   rating100
+  custom_fields
   stash_ids { endpoint stash_id }
   studio {
     ${STUDIO_FIELDS}
@@ -56,6 +57,7 @@ const COMMON_METADATA_FIELDS = `
   date
   organized
   rating100
+  custom_fields
   studio {
     ${STUDIO_FIELDS}
   }

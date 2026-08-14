@@ -30,6 +30,10 @@ import { scanPattern } from "./token-grammar.js";
 //   the file-tech tokens              always present once a file is, which
 //                                     file_count already covers
 //   current                           every file has a path
+//   custom_field                      a list filter is a flat AND of criteria
+//                                     keyed by type, so two {@...} tokens in
+//                                     one pattern would need two custom_fields
+//                                     criteria and only one could survive
 const TOKEN_CRITERIA = {
   studio: { type: "studios", modifier: "NOT_NULL" },
   studio_root: { type: "studios", modifier: "NOT_NULL" },

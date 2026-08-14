@@ -49,6 +49,10 @@ export function pathSearchTerms(value) {
   return words.length > 0 ? words : [""];
 }
 
+export function likeContains(haystack, needle) {
+  return likeMatches(asciiLower(haystack), "%" + asciiLower(needle) + "%");
+}
+
 function matchesAnyTerm(haystack, value) {
   const text = asciiLower(haystack);
   return pathSearchTerms(value).some((term) => {

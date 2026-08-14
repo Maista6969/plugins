@@ -115,6 +115,8 @@ their own without writing a rule per movie: set the **Group** condition to _is s
 
 - `{token}`: required. Errors if the scene has no data for it.
 - `{token?}`: optional. Renders empty instead of erroring when the scene has no data for it.
+- `{@Field Name}`: a custom field, named inside the token because the names are yours rather than Stash's. Takes `?` and
+  modifiers like any other token.
 - `{token|modifier}`: a modifier, described below. Several can be chained, e.g. `{performers|gender=female|limit=1|uppercase}`.
   Modifiers always come before the `?`, so the fullest form is `{performers|gender=female|limit=1?}`
   A mistyped modifier is refused outright rather than quietly renaming to something wrong.
@@ -131,6 +133,23 @@ their own without writing a rule per movie: set the **Group** condition to _is s
   Each alternative can carry its own literal text, e.g. `< ({code?})| [{date?}]>` includes the parentheses
   only when the code alternative is the one chosen, the brackets only when the date one is. Like a plain `<...>`, if every
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
+
+**Custom fields** work as both a condition and a token. The **Custom field** condition asks about the scene's, gallery's or
+image's own custom fields. In a pattern, write `{@Series}` for the custom field named `Series`; the name can contain
+spaces (`{@Release Group}`) and takes `?` and modifiers like any other token (`{@Episode?}`, `{@Series|uppercase}`).
+
+Custom fields have no schema, so a few things follow from how Stash stores them, and Librarian matches all of them exactly:
+
+- **Field names are matched exactly**, capitals included. There is no API listing the names in use, so `series` finds nothing
+  when the field is called `Series`.
+- **_is_ and _is not_ are case-sensitive and compare the whole value**; _contains_ and _doesn't contain_ ignore capitals and
+  treat `%` and `_` as wildcards. Unlike the **File path** condition, _contains_ does not split your text into words.
+- **Every negative modifier also matches items with no such field at all.** _is not_ `Betty Files` includes everything that has
+  no `Series` field, which is usually what you want but is worth knowing before you build a rule on it.
+- **_is more than_ and _is less than_ sort every number before every piece of text**, because that is the order Stash stores
+  them in. A field one scene holds as the number `100` and another as the text `"3"` puts the `"3"` on top.
+- **Only use the regex operators on fields holding text.** If any item stores that field as a number, Stash fails the whole
+  query rather than returning nothing, and the preview will report an error.
 
 **Token modifiers**
 
@@ -310,27 +329,28 @@ _Scene metadata_
 
 <!-- BEGIN GENERATED: tokens-metadata -->
 
-| Token                       | Description                                                                                                                  |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `{studio}`                  | The scene's own studio                                                                                                       |
-| `{studio_root}`             | The TOP of the studio hierarchy (often the network), not the scene's own                                                     |
-| `{studio_hierarchy}`        | The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)                                      |
-| `{performers}`              | All performers on the scene, sorted per this rule's “Sort performers by” setting, joined with a comma                        |
-| `{performers_not_in_title}` | Performers not already named in the scene's title. It would not include “Joy” if the title is “A Day in the Park with Joy”   |
-| `{matched_performers}`      | Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the scene          |
-| `{tags}`                    | All tags on the scene, joined with a comma                                                                                   |
-| `{matched_tags}`            | Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene                            |
-| `{title}`                   | The scene's title                                                                                                            |
-| `{code}`                    | The scene's own “Studio Code”, not that very few studios actually have these                                                 |
-| `{date}`                    | The scene's date, can be partial                                                                                             |
-| `{date_year}`               | Just the year of the date, e.g. “2024”                                                                                       |
-| `{date_month}`              | Just the month of the date, e.g. “05”, can be missing if date is partial                                                     |
-| `{date_day}`                | Just the day of the date, e.g. “10”, can be missing if date is partial                                                       |
-| `{rating}`                  | The scene's rating on a 0-10 scale (one decimal place)                                                                       |
-| `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below |
-| `{group}`                   | The group (Stash's replacement for Movies) this scene belongs to. If it is in several, the one created first is used         |
-| `{group_idx}`               | This scene's place in that group's running order, e.g. “1” for a movie's first scene. Always the same group {group} names    |
-| `{current}`                 | The path this file already has                                                                                               |
+| Token                       | Description                                                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `{studio}`                  | The scene's own studio                                                                                                                           |
+| `{studio_root}`             | The TOP of the studio hierarchy (often the network), not the scene's own                                                                         |
+| `{studio_hierarchy}`        | The full studio chain from top to bottom, joined with “/” (e.g. “BangBros/Public Bang”)                                                          |
+| `{performers}`              | All performers on the scene, sorted per this rule's “Sort performers by” setting, joined with a comma                                            |
+| `{performers_not_in_title}` | Performers not already named in the scene's title. It would not include “Joy” if the title is “A Day in the Park with Joy”                       |
+| `{matched_performers}`      | Only the performer(s) that actually satisfied THIS rule's own performer condition, not every performer on the scene                              |
+| `{tags}`                    | All tags on the scene, joined with a comma                                                                                                       |
+| `{matched_tags}`            | Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene                                                |
+| `{title}`                   | The scene's title                                                                                                                                |
+| `{code}`                    | The scene's own “Studio Code”, not that very few studios actually have these                                                                     |
+| `{date}`                    | The scene's date, can be partial                                                                                                                 |
+| `{date_year}`               | Just the year of the date, e.g. “2024”                                                                                                           |
+| `{date_month}`              | Just the month of the date, e.g. “05”, can be missing if date is partial                                                                         |
+| `{date_day}`                | Just the day of the date, e.g. “10”, can be missing if date is partial                                                                           |
+| `{rating}`                  | The scene's rating on a 0-10 scale (one decimal place)                                                                                           |
+| `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below                     |
+| `{group}`                   | The group (Stash's replacement for Movies) this scene belongs to. If it is in several, the one created first is used                             |
+| `{group_idx}`               | This scene's place in that group's running order, e.g. “1” for a movie's first scene. Always the same group {group} names                        |
+| `{current}`                 | The path this file already has                                                                                                                   |
+| `{@Custom Field}`           | One of the scene's own custom fields, named inside the token: {@Series} is the field called Series. Names are matched exactly, capitals included |
 
 <!-- END GENERATED: tokens-metadata -->
 

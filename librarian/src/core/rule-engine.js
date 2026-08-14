@@ -1,4 +1,5 @@
 import { matchesAnyPath } from "./string-criterion.js";
+import { evaluateCustomField, isPresenceOp } from "./custom-fields.js";
 
 function applyListOp(list, op, value) {
   if (op === "is_null") {
@@ -57,6 +58,13 @@ function evaluateGroup(sceneView, condition) {
 
 export function evaluateCondition(sceneView, condition) {
   switch (condition.field) {
+    case "custom_field":
+      return evaluateCustomField(
+        sceneView.customFields,
+        condition.key,
+        condition.op,
+        condition.value,
+      );
     case "group":
       return evaluateGroup(sceneView, condition);
     case "studio": {
@@ -157,6 +165,19 @@ const FIELD_LABEL = {
   tag: "tag",
 };
 
+const CUSTOM_FIELD_OP_LABEL = {
+  EQUALS: "is",
+  NOT_EQUALS: "is not",
+  INCLUDES: "contains",
+  EXCLUDES: "doesn't contain",
+  MATCHES_REGEX: "matches regex",
+  NOT_MATCHES_REGEX: "doesn't match regex",
+  GREATER_THAN: "is more than",
+  LESS_THAN: "is less than",
+  IS_NULL: "is not set",
+  NOT_NULL: "is set",
+};
+
 const PATH_MODIFIER_LABEL = {
   INCLUDES: "contains",
   EXCLUDES: "doesn't contain",
@@ -198,8 +219,18 @@ function describeListField(label, sceneIds, sceneNames, condition) {
   );
 }
 
+function describeCustomField(condition) {
+  const label = CUSTOM_FIELD_OP_LABEL[condition.op] || condition.op;
+  const named = 'custom field "' + condition.key + '" ' + label;
+  return isPresenceOp(condition.op)
+    ? named
+    : named + " '" + condition.value + "'";
+}
+
 export function describeCondition(sceneView, condition) {
   switch (condition.field) {
+    case "custom_field":
+      return describeCustomField(condition);
     case "group": {
       if (condition.op === "is_null") {
         return "belongs to no group";

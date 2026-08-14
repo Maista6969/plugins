@@ -12,6 +12,7 @@ const FIELD_OPTIONS = [
   { value: "group", label: "Group" },
   { value: "rating", label: "Rating" },
   { value: "path", label: "File path" },
+  { value: "custom_field", label: "Custom field" },
 ];
 
 // Only scenes have groups
@@ -123,6 +124,70 @@ const PATH_MODIFIERS = [
   { value: "NOT_MATCHES_REGEX", label: "doesn't match regex" },
 ];
 
+// Custom fields have no schema so we have to be SQLite for this one
+const CUSTOM_FIELD_MODIFIERS = [
+  {
+    value: "EQUALS",
+    label: "is",
+    title:
+      "Matches the whole value exactly, capitals included. A number and the same digits typed as text both match",
+  },
+  {
+    value: "NOT_EQUALS",
+    label: "is not",
+    title:
+      "Matches unless the whole value is exactly this. Items with no such field set also match",
+  },
+  {
+    value: "INCLUDES",
+    label: "contains",
+    title:
+      "Matches if the value contains this anywhere, ignoring capitals. “%” matches any run of characters and “_” any single one",
+  },
+  {
+    value: "EXCLUDES",
+    label: "doesn't contain",
+    title:
+      "Matches unless the value contains this. Items with no such field set also match",
+  },
+  {
+    value: "MATCHES_REGEX",
+    label: "matches regex",
+    title:
+      "Case-sensitive. Only use this on fields holding text: Stash fails the whole query, rather than returning nothing, if any item stores this field as a number",
+  },
+  {
+    value: "NOT_MATCHES_REGEX",
+    label: "doesn't match regex",
+    title:
+      "Case-sensitive, and matches items with no such field set. Same warning as “matches regex”: text-valued fields only",
+  },
+  {
+    value: "GREATER_THAN",
+    label: "is more than",
+    title:
+      "Compares the way Stash stores the value, so every number sorts before every piece of text: a field holding “3” as text is above 100",
+  },
+  {
+    value: "LESS_THAN",
+    label: "is less than",
+    title:
+      "Compares the way Stash stores the value, so every number sorts before every piece of text",
+  },
+  {
+    value: "NOT_NULL",
+    label: "is set",
+    title: "Matches if the {noun} has this field with any value at all",
+  },
+  {
+    value: "IS_NULL",
+    label: "is not set",
+    title: "Matches if the {noun} has no such field",
+  },
+];
+
+const CUSTOM_FIELD_PRESENCE_OPS = ["IS_NULL", "NOT_NULL"];
+
 function idsToText(value: unknown): string {
   return Array.isArray(value) ? value.join(", ") : "";
 }
@@ -143,11 +208,13 @@ export interface Condition {
   field: string;
   op: string;
   value: string[] | RatingRange | string;
+  // custom fields only: which field, since the name is the user's own
+  key?: string;
 }
 
 function defaultValueForField(field: string): string[] | RatingRange | string {
   if (field === "rating") return { min: null, max: null };
-  if (field === "path") return "";
+  if (field === "path" || field === "custom_field") return "";
   return [];
 }
 
@@ -156,6 +223,9 @@ function nextOpForFieldChange(
   newField: string,
   currentOp: string,
 ): string {
+  if (newField === "custom_field") {
+    return "EQUALS";
+  }
   if (newField === "path") {
     return "INCLUDES";
   }
@@ -265,6 +335,61 @@ function withNoun(text: string | undefined, noun: string): string {
   return (text || "").replace(/{noun}/g, noun);
 }
 
+// A custom field condition needs one more box than any other: which field, the
+// name being the user's own rather than something Stash can enumerate. There is
+// no API to list the names in use, so this is a plain text box and the exact
+// spelling matters -- "series" finds nothing when the field is called "Series"
+function CustomFieldEditor({
+  condition,
+  onChange,
+  noun,
+}: {
+  condition: Condition;
+  onChange: (next: Condition) => void;
+  noun: string;
+}) {
+  const current =
+    CUSTOM_FIELD_MODIFIERS.find((m) => m.value === condition.op) ||
+    CUSTOM_FIELD_MODIFIERS[0];
+  const takesValue = CUSTOM_FIELD_PRESENCE_OPS.indexOf(condition.op) === -1;
+  return (
+    <>
+      <Form.Control
+        className="input-control librarian-custom-field-name"
+        type="text"
+        value={condition.key || ""}
+        placeholder="Field name"
+        title="The custom field's name, spelled exactly as it is in Stash"
+        onChange={(e: any) => onChange({ ...condition, key: e.target.value })}
+      />
+      <Form.Control
+        as="select"
+        className="librarian-inline-select input-control"
+        title={withNoun(current.title, noun)}
+        value={condition.op}
+        onChange={(e: any) => onChange({ ...condition, op: e.target.value })}
+      >
+        {CUSTOM_FIELD_MODIFIERS.map((m) => (
+          <option key={m.value} value={m.value} title={withNoun(m.title, noun)}>
+            {m.label}
+          </option>
+        ))}
+      </Form.Control>
+      {takesValue && (
+        <Form.Control
+          className="input-control"
+          type="text"
+          value={(condition.value as string) || ""}
+          placeholder="Value"
+          onChange={(e: any) =>
+            onChange({ ...condition, value: e.target.value })
+          }
+        />
+      )}
+    </>
+  );
+}
+
 function ListModifierSelect({
   field,
   op,
@@ -341,13 +466,14 @@ export function ConditionRow({
   ]);
   const isRating = condition.field === "rating";
   const isPath = condition.field === "path";
+  const isCustomField = condition.field === "custom_field";
   const isListField = LIST_FIELDS.indexOf(condition.field) !== -1;
   const isPresenceOp =
     condition.field === "group" ||
     condition.op === "is_null" ||
     condition.op === "not_null";
   const ids =
-    !isRating && !isPath && Array.isArray(condition.value)
+    !isRating && !isPath && !isCustomField && Array.isArray(condition.value)
       ? (condition.value as string[])
       : [];
   const SelectComponent =
@@ -374,7 +500,13 @@ export function ConditionRow({
           noun={noun}
         />
       )}
-      {isRating ? (
+      {isCustomField ? (
+        <CustomFieldEditor
+          condition={condition}
+          onChange={onChange}
+          noun={noun}
+        />
+      ) : isRating ? (
         <RatingRangeEditor
           value={(condition.value as RatingRange) || { min: null, max: null }}
           onChange={(next) => onChange({ ...condition, value: next })}

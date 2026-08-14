@@ -24,7 +24,7 @@ import { describeModifiers, describeTokens } from "../../core/token-docs.js";
 interface PatternReferenceProps {
   tokens: string[];
   noun: string;
-  insertToken: (token: string) => void;
+  insertToken: (text: string) => void;
   onClose: () => void;
   isFolder?: boolean;
   stashBoxes: any[];
@@ -180,7 +180,7 @@ function TokenTable({
   label: string;
   hint?: string;
   rows: any[];
-  insertToken: (token: string) => void;
+  insertToken: (text: string) => void;
 }) {
   return (
     <>
@@ -193,10 +193,10 @@ function TokenTable({
               <td>
                 <span
                   className="librarian-token-chip badge badge-secondary"
-                  onClick={() => insertToken(t.name)}
+                  onClick={() => insertToken(t.insert)}
                   title="click to insert"
                 >
-                  {"{" + t.name + "}"}
+                  {t.spelling}
                 </span>
               </td>
               <td>{t.description}</td>

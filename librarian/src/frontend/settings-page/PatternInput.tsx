@@ -4,7 +4,7 @@ import { adapterFor } from "../../core/entity-adapter.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 import { TextSettingModal } from "./TextSettingModal.js";
 import { PatternReference } from "./PatternReference.js";
-import { describeToken } from "../../core/token-docs.js";
+import { describeTokens } from "../../core/token-docs.js";
 import { blankPatternToCurrent } from "../../core/config-schema.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -45,8 +45,7 @@ function PatternModalField({
   const blockingCount = problems.filter((p) => p.blocking).length;
   const unsafeBasename = !!validate && !validate(pattern);
 
-  function insertToken(token: string) {
-    const tokenText = "{" + token + "}";
+  function insertToken(tokenText: string) {
     const input = inputRef.current;
     if (!input) {
       setValue(pattern + tokenText);
@@ -60,7 +59,9 @@ function PatternModalField({
     setValue(next);
     requestAnimationFrame(() => {
       input.focus();
-      const pos = start + tokenText.length;
+      const caret =
+        tokenText.slice(-2) === "@}" ? tokenText.length - 1 : tokenText.length;
+      const pos = start + caret;
       input.setSelectionRange(pos, pos);
     });
   }
@@ -143,7 +144,7 @@ function PatternModalField({
 function renderTokenGroup(
   label: string,
   tokens: string[],
-  insertToken: (token: string) => void,
+  insertToken: (text: string) => void,
   noun: string,
   hint?: string,
 ) {
@@ -151,18 +152,17 @@ function renderTokenGroup(
     <div className="librarian-token-group">
       <div className="librarian-token-group-label text-muted">{label}</div>
       {hint && <div className="librarian-token-hint text-muted">{hint}</div>}
-      {tokens.map((token) => (
+      {describeTokens(tokens, noun).map((token: any) => (
         <span
-          key={token}
+          key={token.name}
           className="librarian-token-chip badge badge-secondary"
-          onClick={() => insertToken(token)}
+          onClick={() => insertToken(token.insert)}
           title={
-            (describeToken(token, noun)
-              ? describeToken(token, noun) + " "
-              : "") + "(click to insert)"
+            (token.description ? token.description + " " : "") +
+            "(click to insert)"
           }
         >
-          {"{" + token + "}"}
+          {token.spelling}
         </span>
       ))}
     </div>

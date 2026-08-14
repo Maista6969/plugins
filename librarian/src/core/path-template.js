@@ -1,10 +1,12 @@
 import { sortEntities } from "./entity-sort.js";
+import { customFieldText } from "./custom-fields.js";
 import {
   scanPattern,
   splitTopLevel,
   applyListModifiers,
   applyValueModifiers,
   modifierValue,
+  CUSTOM_FIELD_TOKEN,
   MODIFIERS,
   MODIFIER_GROUPS,
   knownModifierNames,
@@ -34,6 +36,7 @@ export const KNOWN_TOKENS = [
   // the pattern writes, so it is the only token that can fail to settle: see
   // currentUsage and the fixed-point check in plan-scene
   "current",
+  CUSTOM_FIELD_TOKEN,
   // Optional file metadata
   "phash",
   // Core file metadata, should always be available
@@ -211,8 +214,10 @@ function renderTokenValue(value, parsed) {
       filteredEmpty: false,
     };
   }
-  // plain strings, and the probe maps filenameHasContentWithout builds
-  const source = String(value);
+  const source =
+    value && value.__customField
+      ? sanitizeTokenValue(customFieldText(value.fields[parsed.arg]))
+      : String(value);
   const text = resanitize(applyValueModifiers(source, parsed), parsed);
   return {
     // a regex that matches everything empties a token that did have data, which
@@ -290,6 +295,10 @@ export function resolveSceneGroup(sceneView) {
     ambiguous: groups.length > 1,
     all: groups,
   };
+}
+
+function customFieldValue(fields) {
+  return { __customField: true, fields: fields || {} };
 }
 
 function stashIdValue(stashIds, matchedIds) {
@@ -376,6 +385,7 @@ export function buildTokens(sceneView, config, matchedIds) {
     rating:
       sceneView.rating100 != null ? (sceneView.rating100 / 10).toFixed(1) : "",
     stash_id: stashIdValue(sceneView.stashIds, matched),
+    custom_field: customFieldValue(sceneView.customFields),
     group: chosenGroup.group ? sanitizeTokenValue(chosenGroup.group.name) : "",
     group_idx:
       chosenGroup.group && chosenGroup.group.sceneIndex != null
@@ -493,6 +503,18 @@ const TOKEN_REQUIREMENTS = {
       return chosen
         ? '{noun} has no place in the running order of "' + chosen.name + '"'
         : "{noun} does not belong to any group";
+    },
+  },
+  // named rather than generic: a custom field that is empty on one item and
+  // missing everywhere are the same skip, and only the name tells them apart
+  custom_field: {
+    isMissing: (view, matchedIds, parsed) => {
+      return (
+        customFieldText((view.customFields || {})[parsed.arg]).trim() === ""
+      );
+    },
+    message: (view, matchedIds, parsed) => {
+      return '{noun} has no value for the custom field "' + parsed.arg + '"';
     },
   },
   // all three hooks go through resolveStashIdSource so the reported reason can
@@ -664,12 +686,19 @@ const TOKEN_ENTITY_KINDS = {
 const LIST_TOKEN_NAMES = Object.keys(TOKEN_ENTITY_KINDS);
 
 // Kinds that exist purely so a modifier can say what it applies to
-const NON_LIST_TOKEN_KINDS = { stash_id: "stash_id" };
+const NON_LIST_TOKEN_KINDS = {
+  stash_id: "stash_id",
+  custom_field: "custom_field",
+};
 
 function modifierKindOf(tokenName) {
   return (
     TOKEN_ENTITY_KINDS[tokenName] || NON_LIST_TOKEN_KINDS[tokenName] || null
   );
+}
+
+export function tokenLabel(token) {
+  return "{" + (token.arg == null ? token.name : "@" + token.arg) + "}";
 }
 
 export function patternsNeedStashIdDefault(patterns) {
@@ -773,9 +802,9 @@ export function findPatternProblems(pattern, allowedTokens, options) {
             : modifier.name +
                 " only works on " +
                 spec.appliesTo.join("/") +
-                " tokens, and {" +
-                token.name +
-                "} is not one",
+                " tokens, and " +
+                tokenLabel(token) +
+                " is not one",
           spec.misuseBlocks !== false,
         );
         return;
@@ -801,11 +830,8 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         add(
           token.raw,
           modifier.name +
-            " needs a value, as in {" +
-            token.name +
-            "|" +
-            modifier.name +
-            "=...}",
+            " needs a value, as in " +
+            tokenLabel(token).replace("}", "|" + modifier.name + "=...}"),
           true,
         );
         return;
@@ -814,11 +840,8 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         add(
           token.raw,
           modifier.name +
-            " takes no value, write {" +
-            token.name +
-            "|" +
-            modifier.name +
-            "}",
+            " takes no value, write " +
+            tokenLabel(token).replace("}", "|" + modifier.name + "}"),
           true,
         );
         return;
@@ -934,12 +957,13 @@ export function hasUnsafeOptionalOnlyBasename(filenamePattern) {
 function tokenSignature(token) {
   return (
     token.name +
-    " " +
+    (token.arg == null ? "" : "@" + token.arg) +
+    "\u0000" +
     (token.modifiers || [])
       .map((m) => {
         return m.raw;
       })
-      .join(" ")
+      .join("\u0000")
   );
 }
 
