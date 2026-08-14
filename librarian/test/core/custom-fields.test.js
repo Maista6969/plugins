@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   evaluateCustomField,
-  someEntityCustomField,
   criterionValue,
   customFieldText,
 } from "../../src/core/custom-fields.js";
@@ -194,31 +193,6 @@ test("a boolean written into the map reads as Stash stores it", () => {
   );
 });
 
-test("a performer condition asks whether ANY performer matches", () => {
-  const performers = [
-    { customFields: { Agency: "Star Models" } },
-    { customFields: { Agency: "Talent Co" } },
-  ];
-  assert.equal(
-    someEntityCustomField(performers, "Agency", "EQUALS", "Talent Co"),
-    true,
-  );
-  assert.equal(
-    someEntityCustomField(performers, "Agency", "EQUALS", "Nobody"),
-    false,
-  );
-  assert.equal(someEntityCustomField(performers, "Agency", "IS_NULL"), false);
-  assert.equal(
-    someEntityCustomField(
-      performers.concat([{ customFields: {} }]),
-      "Agency",
-      "IS_NULL",
-    ),
-    true,
-  );
-  assert.equal(someEntityCustomField([], "Agency", "IS_NULL"), false);
-});
-
 test("normalizeScene keeps custom field values at their original type", () => {
   const view = normalizeScene({
     custom_fields: { Episode: 3, Series: "Anita's Adventures" },
@@ -250,9 +224,10 @@ test("the conditions reach the right map", () => {
     value: "Anita's Adventures",
   };
   const theirs = {
-    field: "performer_custom_field",
+    field: "performer",
+    op: "custom_field",
     key: "Agency",
-    op: "EQUALS",
+    valueOp: "EQUALS",
     value: "Talent Co",
   };
   assert.equal(evaluateCondition(view, own), true);
@@ -292,15 +267,6 @@ test("a matched condition says which field and how", () => {
     }),
     'custom field "Series" is set',
   );
-  assert.equal(
-    describeCondition(view, {
-      field: "performer_custom_field",
-      key: "Agency",
-      op: "EQUALS",
-      value: "Talent Co",
-    }),
-    "a performer's custom field \"Agency\" is 'Talent Co'",
-  );
 });
 
 test("a custom field condition becomes the criterion Stash takes", () => {
@@ -324,25 +290,6 @@ test("a custom field condition becomes the criterion Stash takes", () => {
     }),
     { custom_fields: [{ field: "Series", modifier: "IS_NULL" }] },
   );
-  assert.deepEqual(
-    ruleToSceneFilter({
-      conditions: [
-        {
-          field: "performer_custom_field",
-          key: "Agency",
-          op: "INCLUDES",
-          value: "Talent",
-        },
-      ],
-    }),
-    {
-      performers_filter: {
-        custom_fields: [
-          { field: "Agency", modifier: "INCLUDES", value: ["Talent"] },
-        ],
-      },
-    },
-  );
 });
 
 // A rule that cannot be turned into a filter is unpreviewable, which is loud.
@@ -361,14 +308,6 @@ test("an unnamed or valueless custom field condition refuses to become a filter"
     ruleToSceneFilter({
       conditions: [
         { field: "custom_field", key: "Episode", op: "EQUALS", value: "" },
-      ],
-    }),
-    null,
-  );
-  assert.equal(
-    ruleToSceneFilter({
-      conditions: [
-        { field: "performer_custom_field", key: "", op: "NOT_NULL", value: "" },
       ],
     }),
     null,

@@ -1,4 +1,6 @@
 import { criterionValue, isPresenceOp } from "./custom-fields.js";
+import { isPerformerOp } from "./performer-condition.js";
+import { ratingRangeCriterion } from "./rating-range.js";
 
 function asList(value) {
   return Array.isArray(value) ? value : [value];
@@ -46,12 +48,8 @@ function multiCriterionFilter(key, condition) {
 }
 
 function ratingFilter(value) {
-  if (!value || (value.min == null && value.max == null)) {
-    return null;
-  }
-  const min100 = value.min != null ? Math.round(value.min * 10) : 0;
-  const max100 = value.max != null ? Math.round(value.max * 10) : 100;
-  return { rating100: { value: min100, value2: max100, modifier: "BETWEEN" } };
+  const criterion = ratingRangeCriterion(value);
+  return criterion ? { rating100: criterion } : null;
 }
 
 function pathFilter(condition) {
@@ -72,14 +70,18 @@ function groupPresenceFilter(condition) {
   return hierarchicalFilter("groups", condition, 0);
 }
 
-function customFieldCriterion(condition) {
+// `op` is passed in rather than read off the condition because the two custom
+// field conditions keep it in different places: the item's own spends `op` on
+// the comparison, while a performer's spends it on saying which kind of
+// performer condition it is and keeps the comparison in `valueOp`
+function customFieldCriterion(condition, op) {
   const key = String(condition.key == null ? "" : condition.key);
   if (!key) {
     return null;
   }
-  const criterion = { field: key, modifier: condition.op };
-  if (!isPresenceOp(condition.op)) {
-    const values = criterionValue(condition.op, condition.value);
+  const criterion = { field: key, modifier: op };
+  if (!isPresenceOp(op)) {
+    const values = criterionValue(op, condition.value);
     if (!values) {
       return null;
     }
@@ -89,15 +91,28 @@ function customFieldCriterion(condition) {
 }
 
 function customFieldFilter(condition) {
-  const criterion = customFieldCriterion(condition);
+  const criterion = customFieldCriterion(condition, condition.op);
   return criterion ? { custom_fields: [criterion] } : null;
 }
 
-// performers_filter is a full PerformerFilterType joined with EXISTS, so this
+// performers_filter is a full PerformerFilterType joined with EXISTS, so it
 // asks "does any performer on this item match", which is exactly what
-// someEntityCustomField answers locally
-function performerCustomFieldFilter(condition) {
-  const criterion = customFieldCriterion(condition);
+// performersMatching answers locally.
+//
+// filter_favorites is deliberate rather than the scene-level performer_favorite
+// shortcut: the two agree on true and disagree on false, where the shortcut
+// means "no performer is a favourite" and also matches items with no performers
+// at all. Going through performers_filter keeps every performer condition on
+// the same EXISTS semantics
+function performerSubFilter(condition) {
+  if (condition.op === "favorite") {
+    return { performers_filter: { filter_favorites: true } };
+  }
+  if (condition.op === "rating") {
+    const criterion = ratingRangeCriterion(condition.value);
+    return criterion ? { performers_filter: { rating100: criterion } } : null;
+  }
+  const criterion = customFieldCriterion(condition, condition.valueOp);
   return criterion
     ? { performers_filter: { custom_fields: [criterion] } }
     : null;
@@ -107,8 +122,6 @@ function conditionToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
       return customFieldFilter(condition);
-    case "performer_custom_field":
-      return performerCustomFieldFilter(condition);
     case "group":
       return groupPresenceFilter(condition);
     case "studio":
@@ -118,7 +131,9 @@ function conditionToFilter(condition) {
         condition.op === "any_of_or_descendant" ? -1 : 0,
       );
     case "performer":
-      return multiCriterionFilter("performers", condition);
+      return isPerformerOp(condition.op)
+        ? performerSubFilter(condition)
+        : multiCriterionFilter("performers", condition);
     case "tag":
       return hierarchicalFilter("tags", condition, 0);
     case "rating":

@@ -13,10 +13,7 @@ const FIELD_OPTIONS = [
   { value: "rating", label: "Rating" },
   { value: "path", label: "File path" },
   { value: "custom_field", label: "Custom field" },
-  { value: "performer_custom_field", label: "Performer custom field" },
 ];
-
-const CUSTOM_FIELD_FIELDS = ["custom_field", "performer_custom_field"];
 
 // Only scenes have groups
 function fieldOptionsFor(entityType?: string) {
@@ -55,6 +52,35 @@ const ANY_OR_ALL_MODIFIERS = [
   ANY_ONLY_MODIFIERS[2],
 ];
 
+// Each is satisfied by ONE performer, so an item matches as soon as any of its
+// performers does, and that performer is the one {matched_performers} names
+const PERFORMER_ONLY_MODIFIERS = [
+  {
+    value: "favorite",
+    label: "is a favourite",
+    title:
+      "Matches if at least one of the {noun}'s performers is marked as a favourite",
+  },
+  {
+    value: "rating",
+    label: "is rated",
+    title:
+      "Matches if at least one of the {noun}'s performers has a rating in this range. Unrated performers never match",
+  },
+  {
+    value: "custom_field",
+    label: "has a custom field",
+    title:
+      "Matches if at least one of the {noun}'s performers has a custom field that compares this way",
+  },
+];
+
+const PERFORMER_MODIFIERS = ANY_OR_ALL_MODIFIERS.concat(
+  PERFORMER_ONLY_MODIFIERS,
+);
+
+const PERFORMER_ONLY_OPS = PERFORMER_ONLY_MODIFIERS.map((m) => m.value);
+
 const STUDIO_MODIFIERS = [
   ANY_ONLY_MODIFIERS[0],
   {
@@ -82,7 +108,7 @@ const GROUP_MODIFIERS = [
 
 const LIST_MODIFIERS_BY_FIELD: Record<string, typeof ANY_ONLY_MODIFIERS> = {
   studio: STUDIO_MODIFIERS,
-  performer: ANY_OR_ALL_MODIFIERS,
+  performer: PERFORMER_MODIFIERS,
   tag: ANY_OR_ALL_MODIFIERS,
   group: GROUP_MODIFIERS,
 };
@@ -213,12 +239,46 @@ export interface Condition {
   value: string[] | RatingRange | string;
   // custom fields only: which field, since the name is the user's own
   key?: string;
+  // custom fields only: op is taken so we need valueOp
+  valueOp?: string;
+}
+
+function valueShape(field: string, op: string): string {
+  if (field === "rating" || op === "rating") return "range";
+  if (field === "path" || field === "custom_field" || op === "custom_field")
+    return "text";
+  return "ids";
+}
+
+function defaultValue(
+  field: string,
+  op: string,
+): string[] | RatingRange | string {
+  const shape = valueShape(field, op);
+  if (shape === "range") return { min: null, max: null };
+  if (shape === "text") return "";
+  return [];
 }
 
 function defaultValueForField(field: string): string[] | RatingRange | string {
-  if (field === "rating") return { min: null, max: null };
-  if (field === "path" || CUSTOM_FIELD_FIELDS.indexOf(field) !== -1) return "";
-  return [];
+  return defaultValue(field, "");
+}
+
+function withOp(condition: Condition, nextOp: string): Condition {
+  const next: Condition = { ...condition, op: nextOp };
+  if (
+    valueShape(condition.field, condition.op) !==
+    valueShape(condition.field, nextOp)
+  ) {
+    next.value = defaultValue(condition.field, nextOp);
+  }
+  if (nextOp === "custom_field") {
+    next.valueOp = condition.valueOp || "EQUALS";
+  } else {
+    delete next.key;
+    delete next.valueOp;
+  }
+  return next;
 }
 
 function nextOpForFieldChange(
@@ -226,19 +286,14 @@ function nextOpForFieldChange(
   newField: string,
   currentOp: string,
 ): string {
-  if (CUSTOM_FIELD_FIELDS.indexOf(newField) !== -1) {
-    // the two custom field conditions differ only in whose fields they read,
-    // so switching between them keeps the operator that was already chosen
-    return CUSTOM_FIELD_MODIFIERS.some((m) => m.value === currentOp)
-      ? currentOp
-      : "EQUALS";
+  if (newField === "custom_field") {
+    return "EQUALS";
   }
   if (newField === "path") {
     return "INCLUDES";
   }
   const newOptions = LIST_MODIFIERS_BY_FIELD[newField];
   if (!newOptions) {
-    // rating has no op of its own, the range is the whole condition
     return "any_of";
   }
   if (
@@ -348,17 +403,21 @@ function withNoun(text: string | undefined, noun: string): string {
 // spelling matters -- "series" finds nothing when the field is called "Series"
 function CustomFieldEditor({
   condition,
+  op,
+  onChangeOp,
   onChange,
   noun,
 }: {
   condition: Condition;
+  op: string;
+  onChangeOp: (next: string) => void;
   onChange: (next: Condition) => void;
   noun: string;
 }) {
   const current =
-    CUSTOM_FIELD_MODIFIERS.find((m) => m.value === condition.op) ||
+    CUSTOM_FIELD_MODIFIERS.find((m) => m.value === op) ||
     CUSTOM_FIELD_MODIFIERS[0];
-  const takesValue = CUSTOM_FIELD_PRESENCE_OPS.indexOf(condition.op) === -1;
+  const takesValue = CUSTOM_FIELD_PRESENCE_OPS.indexOf(op) === -1;
   return (
     <>
       <Form.Control
@@ -373,8 +432,8 @@ function CustomFieldEditor({
         as="select"
         className="librarian-inline-select input-control"
         title={withNoun(current.title, noun)}
-        value={condition.op}
-        onChange={(e: any) => onChange({ ...condition, op: e.target.value })}
+        value={op}
+        onChange={(e: any) => onChangeOp(e.target.value)}
       >
         {CUSTOM_FIELD_MODIFIERS.map((m) => (
           <option key={m.value} value={m.value} title={withNoun(m.title, noun)}>
@@ -471,12 +530,21 @@ export function ConditionRow({
     "performer",
     "tag",
   ]);
-  const isRating = condition.field === "rating";
+  // a performer condition that asks what a performer is like
+  // rather than which performers there are
+  const performerOp =
+    condition.field === "performer" &&
+    PERFORMER_ONLY_OPS.indexOf(condition.op) !== -1
+      ? condition.op
+      : "";
+  const isRating = condition.field === "rating" || performerOp === "rating";
   const isPath = condition.field === "path";
-  const isCustomField = CUSTOM_FIELD_FIELDS.indexOf(condition.field) !== -1;
+  const isCustomField =
+    condition.field === "custom_field" || performerOp === "custom_field";
   const isListField = LIST_FIELDS.indexOf(condition.field) !== -1;
   const isPresenceOp =
     condition.field === "group" ||
+    performerOp === "favorite" ||
     condition.op === "is_null" ||
     condition.op === "not_null";
   const ids =
@@ -492,17 +560,10 @@ export function ConditionRow({
         field={condition.field}
         entityType={entityType}
         onChange={(newField) => {
-          const staysCustom =
-            isCustomField && CUSTOM_FIELD_FIELDS.indexOf(newField) !== -1;
           onChange({
             field: newField,
             op: nextOpForFieldChange(condition.field, newField, condition.op),
-            // only the two custom field entries share a value shape, so
-            // everything else starts over rather than carrying a stale one
-            value: staysCustom
-              ? condition.value
-              : defaultValueForField(newField),
-            key: staysCustom ? condition.key : undefined,
+            value: defaultValueForField(newField),
           });
         }}
       />
@@ -510,13 +571,21 @@ export function ConditionRow({
         <ListModifierSelect
           field={condition.field}
           op={condition.op}
-          onChange={(nextOp) => onChange({ ...condition, op: nextOp })}
+          onChange={(nextOp) => onChange(withOp(condition, nextOp))}
           noun={noun}
         />
       )}
       {isCustomField ? (
         <CustomFieldEditor
           condition={condition}
+          op={(performerOp ? condition.valueOp : condition.op) || "EQUALS"}
+          onChangeOp={(nextOp) =>
+            onChange(
+              performerOp
+                ? { ...condition, valueOp: nextOp }
+                : { ...condition, op: nextOp },
+            )
+          }
           onChange={onChange}
           noun={noun}
         />

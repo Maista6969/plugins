@@ -1,9 +1,7 @@
 import { matchesAnyPath } from "./string-criterion.js";
-import {
-  evaluateCustomField,
-  someEntityCustomField,
-  isPresenceOp,
-} from "./custom-fields.js";
+import { evaluateCustomField, isPresenceOp } from "./custom-fields.js";
+import { isPerformerOp, performersMatching } from "./performer-condition.js";
+import { ratingInRange, describeRatingRange } from "./rating-range.js";
 
 function applyListOp(list, op, value) {
   if (op === "is_null") {
@@ -35,21 +33,6 @@ function applyListOp(list, op, value) {
   return list.indexOf(value) !== -1;
 }
 
-function evaluateRating(sceneView, value) {
-  if (sceneView.rating100 == null) {
-    return false;
-  }
-  const min = value && value.min != null ? value.min * 10 : null;
-  const max = value && value.max != null ? value.max * 10 : null;
-  if (min != null && sceneView.rating100 < min) {
-    return false;
-  }
-  if (max != null && sceneView.rating100 > max) {
-    return false;
-  }
-  return min != null || max != null;
-}
-
 function evaluateGroup(sceneView, condition) {
   if (condition.op !== "is_null" && condition.op !== "not_null") {
     return false;
@@ -69,13 +52,6 @@ export function evaluateCondition(sceneView, condition) {
         condition.op,
         condition.value,
       );
-    case "performer_custom_field":
-      return someEntityCustomField(
-        sceneView.performers,
-        condition.key,
-        condition.op,
-        condition.value,
-      );
     case "group":
       return evaluateGroup(sceneView, condition);
     case "studio": {
@@ -88,11 +64,13 @@ export function evaluateCondition(sceneView, condition) {
       return applyListOp(leafIds, condition.op, condition.value);
     }
     case "performer":
-      return applyListOp(sceneView.performerIds, condition.op, condition.value);
+      return isPerformerOp(condition.op)
+        ? performersMatching(sceneView.performers, condition).length > 0
+        : applyListOp(sceneView.performerIds, condition.op, condition.value);
     case "tag":
       return applyListOp(sceneView.tagIds, condition.op, condition.value);
     case "rating":
-      return evaluateRating(sceneView, condition.value);
+      return ratingInRange(sceneView.rating100, condition.value);
     case "path": {
       const paths = (sceneView.files || []).map((f) => {
         return f.path;
@@ -114,6 +92,11 @@ export function getMatchedEntityIds(sceneView, rule, field) {
   const sceneIds =
     field === "performer" ? sceneView.performerIds : sceneView.tagIds;
   const matched = [];
+  const add = (id) => {
+    if (sceneIds.indexOf(id) !== -1 && matched.indexOf(id) === -1) {
+      matched.push(id);
+    }
+  };
   (rule.conditions || []).forEach((condition) => {
     if (condition.field !== field) {
       return;
@@ -121,14 +104,20 @@ export function getMatchedEntityIds(sceneView, rule, field) {
     if (!evaluateCondition(sceneView, condition)) {
       return;
     }
+    // A condition that names nobody still has an answer to "who matched": the
+    // performers that satisfied it. Taken from the same predicate the match
+    // itself used, so {matched_performers} cannot name someone the rule did
+    // not actually match on
+    if (field === "performer" && isPerformerOp(condition.op)) {
+      performersMatching(sceneView.performers, condition).forEach((p) => {
+        add(String(p.id));
+      });
+      return;
+    }
     const values = Array.isArray(condition.value)
       ? condition.value
       : [condition.value];
-    values.forEach((v) => {
-      if (sceneIds.indexOf(v) !== -1 && matched.indexOf(v) === -1) {
-        matched.push(v);
-      }
-    });
+    values.forEach(add);
   });
   return matched;
 }
@@ -238,12 +227,32 @@ function describeCustomField(prefix, condition) {
     : named + " '" + condition.value + "'";
 }
 
+function describePerformerCondition(sceneView, condition) {
+  const names = performersMatching(sceneView.performers, condition)
+    .map((p) => {
+      return p.name;
+    })
+    .filter((name) => {
+      return !!name;
+    });
+  const who = names.length ? "'" + names.join("', '") + "'" : "a performer";
+  if (condition.op === "favorite") {
+    return who + " is a favourite";
+  }
+  if (condition.op === "rating") {
+    return who + " is rated " + describeRatingRange(condition.value);
+  }
+  const label = CUSTOM_FIELD_OP_LABEL[condition.valueOp] || condition.valueOp;
+  const named = who + '’s custom field "' + condition.key + '" ' + label;
+  return isPresenceOp(condition.valueOp)
+    ? named
+    : named + " '" + condition.value + "'";
+}
+
 export function describeCondition(sceneView, condition) {
   switch (condition.field) {
     case "custom_field":
       return describeCustomField("custom field", condition);
-    case "performer_custom_field":
-      return describeCustomField("a performer's custom field", condition);
     case "group": {
       if (condition.op === "is_null") {
         return "belongs to no group";
@@ -269,12 +278,16 @@ export function describeCondition(sceneView, condition) {
         condition,
       );
     case "performer":
-      return describeListField(
-        "performer",
-        sceneView.performerIds,
-        sceneView.performerNames,
-        condition,
-      );
+      // names whoever satisfied it rather than restating the condition: those
+      // are the performers {matched_performers} is about to put in the path
+      return isPerformerOp(condition.op)
+        ? describePerformerCondition(sceneView, condition)
+        : describeListField(
+            "performer",
+            sceneView.performerIds,
+            sceneView.performerNames,
+            condition,
+          );
     case "tag":
       return describeListField(
         "tag",
@@ -283,17 +296,8 @@ export function describeCondition(sceneView, condition) {
         condition,
       );
     case "rating": {
-      const value = condition.value || {};
-      if (value.min != null && value.max != null) {
-        return "rating is between " + value.min + " and " + value.max;
-      }
-      if (value.min != null) {
-        return "rating is at least " + value.min;
-      }
-      if (value.max != null) {
-        return "rating is at most " + value.max;
-      }
-      return "rating";
+      const described = describeRatingRange(condition.value);
+      return described ? "rating is " + described : "rating";
     }
     case "path": {
       const label = PATH_MODIFIER_LABEL[condition.op] || condition.op;
