@@ -19,7 +19,7 @@ export const STUDIO_FIELDS = `
   }
 `;
 
-export const PERFORMER_FIELDS = `id name favorite rating100 gender`;
+export const PERFORMER_FIELDS = `id name favorite rating100 gender custom_fields`;
 
 export const TAG_FIELDS = `id name sort_name`;
 

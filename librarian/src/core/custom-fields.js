@@ -157,3 +157,9 @@ export function evaluateCustomField(fields, key, op, value) {
       return found && likeContains(asText, text);
   }
 }
+
+export function someEntityCustomField(entities, key, op, value) {
+  return (entities || []).some((entity) => {
+    return evaluateCustomField(customFieldsOf(entity), key, op, value);
+  });
+}

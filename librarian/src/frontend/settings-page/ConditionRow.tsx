@@ -13,7 +13,10 @@ const FIELD_OPTIONS = [
   { value: "rating", label: "Rating" },
   { value: "path", label: "File path" },
   { value: "custom_field", label: "Custom field" },
+  { value: "performer_custom_field", label: "Performer custom field" },
 ];
+
+const CUSTOM_FIELD_FIELDS = ["custom_field", "performer_custom_field"];
 
 // Only scenes have groups
 function fieldOptionsFor(entityType?: string) {
@@ -214,7 +217,7 @@ export interface Condition {
 
 function defaultValueForField(field: string): string[] | RatingRange | string {
   if (field === "rating") return { min: null, max: null };
-  if (field === "path" || field === "custom_field") return "";
+  if (field === "path" || CUSTOM_FIELD_FIELDS.indexOf(field) !== -1) return "";
   return [];
 }
 
@@ -223,8 +226,12 @@ function nextOpForFieldChange(
   newField: string,
   currentOp: string,
 ): string {
-  if (newField === "custom_field") {
-    return "EQUALS";
+  if (CUSTOM_FIELD_FIELDS.indexOf(newField) !== -1) {
+    // the two custom field conditions differ only in whose fields they read,
+    // so switching between them keeps the operator that was already chosen
+    return CUSTOM_FIELD_MODIFIERS.some((m) => m.value === currentOp)
+      ? currentOp
+      : "EQUALS";
   }
   if (newField === "path") {
     return "INCLUDES";
@@ -466,7 +473,7 @@ export function ConditionRow({
   ]);
   const isRating = condition.field === "rating";
   const isPath = condition.field === "path";
-  const isCustomField = condition.field === "custom_field";
+  const isCustomField = CUSTOM_FIELD_FIELDS.indexOf(condition.field) !== -1;
   const isListField = LIST_FIELDS.indexOf(condition.field) !== -1;
   const isPresenceOp =
     condition.field === "group" ||
@@ -485,10 +492,17 @@ export function ConditionRow({
         field={condition.field}
         entityType={entityType}
         onChange={(newField) => {
+          const staysCustom =
+            isCustomField && CUSTOM_FIELD_FIELDS.indexOf(newField) !== -1;
           onChange({
             field: newField,
             op: nextOpForFieldChange(condition.field, newField, condition.op),
-            value: defaultValueForField(newField),
+            // only the two custom field entries share a value shape, so
+            // everything else starts over rather than carrying a stale one
+            value: staysCustom
+              ? condition.value
+              : defaultValueForField(newField),
+            key: staysCustom ? condition.key : undefined,
           });
         }}
       />

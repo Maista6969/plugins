@@ -132,7 +132,7 @@ test("organized coerces to a real boolean", () => {
   assert.equal(normalizeScene({ organized: true }).organized, true);
 });
 
-test("performers expose favorite, rating100 and gender alongside id/name", () => {
+test("performers expose favorite, rating100, gender and custom fields alongside id/name", () => {
   const raw = {
     performers: [
       {
@@ -141,13 +141,21 @@ test("performers expose favorite, rating100 and gender alongside id/name", () =>
         favorite: true,
         rating100: 90,
         gender: "FEMALE",
+        custom_fields: { Agency: "Talent Co" },
       },
     ],
     tags: [{ id: "t1", name: "Rock", favorite: true }],
   };
   const view = normalizeScene(raw);
   assert.deepEqual(view.performers, [
-    { id: "p1", name: "Amy", favorite: true, rating100: 90, gender: "female" },
+    {
+      id: "p1",
+      name: "Amy",
+      favorite: true,
+      rating100: 90,
+      gender: "female",
+      customFields: { Agency: "Talent Co" },
+    },
   ]);
   assert.deepEqual(view.tags, [{ id: "t1", name: "Rock" }]);
 });

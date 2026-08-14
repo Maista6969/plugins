@@ -135,8 +135,10 @@ their own without writing a rule per movie: set the **Group** condition to _is s
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
 
 **Custom fields** work as both a condition and a token. The **Custom field** condition asks about the scene's, gallery's or
-image's own custom fields. In a pattern, write `{@Series}` for the custom field named `Series`; the name can contain
-spaces (`{@Release Group}`) and takes `?` and modifiers like any other token (`{@Episode?}`, `{@Series|uppercase}`).
+image's own custom fields, and **Performer custom field** asks whether _any_ of its performers has a matching one, so
+"anything featuring a performer whose Agency is Talent Co" is a single condition. In a pattern, write `{@Series}` for the
+custom field named `Series`; the name can contain spaces (`{@Release Group}`) and takes `?` and modifiers like any other
+token (`{@Episode?}`, `{@Series|uppercase}`).
 
 Custom fields have no schema, so a few things follow from how Stash stores them, and Librarian matches all of them exactly:
 

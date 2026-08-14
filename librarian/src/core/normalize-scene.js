@@ -77,6 +77,7 @@ export function normalizeScene(rawScene, entityType) {
         favorite: !!p.favorite,
         rating100: p.rating100 != null ? p.rating100 : null,
         gender: normalizeGender(p.gender),
+        customFields: p.custom_fields || {},
       };
     }),
     tags: tags.map((t) => {

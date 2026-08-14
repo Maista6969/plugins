@@ -72,7 +72,7 @@ function groupPresenceFilter(condition) {
   return hierarchicalFilter("groups", condition, 0);
 }
 
-function customFieldFilter(condition) {
+function customFieldCriterion(condition) {
   const key = String(condition.key == null ? "" : condition.key);
   if (!key) {
     return null;
@@ -85,13 +85,30 @@ function customFieldFilter(condition) {
     }
     criterion.value = values;
   }
-  return { custom_fields: [criterion] };
+  return criterion;
+}
+
+function customFieldFilter(condition) {
+  const criterion = customFieldCriterion(condition);
+  return criterion ? { custom_fields: [criterion] } : null;
+}
+
+// performers_filter is a full PerformerFilterType joined with EXISTS, so this
+// asks "does any performer on this item match", which is exactly what
+// someEntityCustomField answers locally
+function performerCustomFieldFilter(condition) {
+  const criterion = customFieldCriterion(condition);
+  return criterion
+    ? { performers_filter: { custom_fields: [criterion] } }
+    : null;
 }
 
 function conditionToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
       return customFieldFilter(condition);
+    case "performer_custom_field":
+      return performerCustomFieldFilter(condition);
     case "group":
       return groupPresenceFilter(condition);
     case "studio":

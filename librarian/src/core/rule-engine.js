@@ -1,5 +1,9 @@
 import { matchesAnyPath } from "./string-criterion.js";
-import { evaluateCustomField, isPresenceOp } from "./custom-fields.js";
+import {
+  evaluateCustomField,
+  someEntityCustomField,
+  isPresenceOp,
+} from "./custom-fields.js";
 
 function applyListOp(list, op, value) {
   if (op === "is_null") {
@@ -61,6 +65,13 @@ export function evaluateCondition(sceneView, condition) {
     case "custom_field":
       return evaluateCustomField(
         sceneView.customFields,
+        condition.key,
+        condition.op,
+        condition.value,
+      );
+    case "performer_custom_field":
+      return someEntityCustomField(
+        sceneView.performers,
         condition.key,
         condition.op,
         condition.value,
@@ -219,9 +230,9 @@ function describeListField(label, sceneIds, sceneNames, condition) {
   );
 }
 
-function describeCustomField(condition) {
+function describeCustomField(prefix, condition) {
   const label = CUSTOM_FIELD_OP_LABEL[condition.op] || condition.op;
-  const named = 'custom field "' + condition.key + '" ' + label;
+  const named = prefix + ' "' + condition.key + '" ' + label;
   return isPresenceOp(condition.op)
     ? named
     : named + " '" + condition.value + "'";
@@ -230,7 +241,9 @@ function describeCustomField(condition) {
 export function describeCondition(sceneView, condition) {
   switch (condition.field) {
     case "custom_field":
-      return describeCustomField(condition);
+      return describeCustomField("custom field", condition);
+    case "performer_custom_field":
+      return describeCustomField("a performer's custom field", condition);
     case "group": {
       if (condition.op === "is_null") {
         return "belongs to no group";
