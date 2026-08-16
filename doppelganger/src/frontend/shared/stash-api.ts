@@ -41,6 +41,16 @@ const PERFORMER_DUPES_SQL = `
   ORDER BY st.stash_id, st.endpoint, p.id
 `;
 
+const TAG_DUPES_SQL = `
+  SELECT st.stash_id, st.endpoint, t.id, t.name
+  FROM tag_stash_ids st
+  JOIN tags t ON t.id = st.tag_id
+  JOIN (
+    SELECT stash_id, endpoint FROM tag_stash_ids GROUP BY stash_id, endpoint HAVING COUNT(*) > 1
+  ) dupes ON dupes.stash_id = st.stash_id AND dupes.endpoint = st.endpoint
+  ORDER BY st.stash_id, st.endpoint, t.id
+`;
+
 const STUDIO_DUPES_SQL = `
   SELECT st.stash_id, st.endpoint, s.id, s.name
   FROM studio_stash_ids st
@@ -68,41 +78,70 @@ export function findDuplicatePerformers(client: any) {
   return runDuplicateQuery(client, PERFORMER_DUPES_SQL);
 }
 
+export function findDuplicateTags(client: any) {
+  return runDuplicateQuery(client, TAG_DUPES_SQL);
+}
+
 export function findDuplicateStudios(client: any) {
   return runDuplicateQuery(client, STUDIO_DUPES_SQL);
 }
 
-const SCENE_MERGE_MUTATION = gql`
-  mutation DoppelgangerSceneMerge($source: [ID!]!, $destination: ID!) {
-    sceneMerge(input: { source: $source, destination: $destination }) {
-      id
+// Seed data for Stash's own merge modals. Both modals re-query full records
+// themselves once the user picks a destination, so these only need to cover
+// what the first step renders.
+//
+// `files { path }` backfills a display title for scenes with no title of their
+// own -- the same fallback Stash applies via objectTitle() before handing
+// scenes to SceneMergeModal.
+export const SCENES_FOR_MERGE = gql`
+  query DoppelgangerScenesForMerge($ids: [ID!]) {
+    findScenes(ids: $ids, filter: { per_page: -1 }) {
+      scenes {
+        id
+        title
+        files {
+          path
+        }
+      }
     }
   }
 `;
 
-// `sceneMerge` returns a nullable Scene (confirmed via
-// graphql/schema/schema.graphql: `sceneMerge(input: SceneMergeInput!): Scene`,
-// no `!`) -- callers should treat a null-but-no-error result the same as
-// success, same as this function does by simply not inspecting the return
-// value beyond letting a thrown GraphQL error propagate.
-export async function mergeScenes(client: any, source: string[], destination: string) {
-  await client.mutate({
-    mutation: SCENE_MERGE_MUTATION,
-    variables: { source, destination },
-  });
-}
-
-const PERFORMER_MERGE_MUTATION = gql`
-  mutation DoppelgangerPerformerMerge($source: [ID!]!, $destination: ID!) {
-    performerMerge(input: { source: $source, destination: $destination }) {
-      id
+// Mirrors the Tag type TagMergeModal types its `tags` prop against
+// (Pick<GQL.Tag, "id" | "name" | "sort_name" | "aliases" | "image_path" |
+// "stash_ids">, exported from TagSelect).
+export const TAGS_FOR_MERGE = gql`
+  query DoppelgangerTagsForMerge($ids: [ID!]) {
+    findTags(ids: $ids, filter: { per_page: -1 }) {
+      tags {
+        id
+        name
+        sort_name
+        aliases
+        image_path
+        stash_ids {
+          stash_id
+          endpoint
+        }
+      }
     }
   }
 `;
 
-export async function mergePerformers(client: any, source: string[], destination: string) {
-  await client.mutate({
-    mutation: PERFORMER_MERGE_MUTATION,
-    variables: { source, destination },
-  });
-}
+// Mirrors Stash's SelectPerformerData fragment, which is what
+// PerformerMergeModal types its `performers` prop against.
+export const PERFORMERS_FOR_MERGE = gql`
+  query DoppelgangerPerformersForMerge($ids: [ID!]) {
+    findPerformers(ids: $ids, filter: { per_page: -1 }) {
+      performers {
+        id
+        name
+        disambiguation
+        alias_list
+        image_path
+        birthdate
+        death_date
+      }
+    }
+  }
+`;

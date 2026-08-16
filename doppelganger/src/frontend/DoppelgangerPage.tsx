@@ -3,9 +3,8 @@ import { useApolloClient } from "@apollo/client";
 import {
   findDuplicateScenes,
   findDuplicatePerformers,
+  findDuplicateTags,
   findDuplicateStudios,
-  mergeScenes,
-  mergePerformers,
 } from "./shared/stash-api.js";
 import { DuplicateGroupList, DuplicateGroup } from "./DuplicateGroupList.js";
 
@@ -16,30 +15,23 @@ export function DoppelgangerPage() {
   const client = useApolloClient();
   const [scenes, setScenes] = useState<DuplicateGroup[] | null>(null);
   const [performers, setPerformers] = useState<DuplicateGroup[] | null>(null);
+  const [tags, setTags] = useState<DuplicateGroup[] | null>(null);
   const [studios, setStudios] = useState<DuplicateGroup[] | null>(null);
 
   const refresh = useCallback(() => {
     setScenes(null);
     setPerformers(null);
+    setTags(null);
     setStudios(null);
     findDuplicateScenes(client).then(setScenes);
     findDuplicatePerformers(client).then(setPerformers);
+    findDuplicateTags(client).then(setTags);
     findDuplicateStudios(client).then(setStudios);
   }, [client]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
-
-  async function handleMergeScenes(source: string[], destination: string) {
-    await mergeScenes(client, source, destination);
-    refresh();
-  }
-
-  async function handleMergePerformers(source: string[], destination: string) {
-    await mergePerformers(client, source, destination);
-    refresh();
-  }
 
   return (
     <div className="doppelganger-page">
@@ -55,7 +47,8 @@ export function DoppelgangerPage() {
         description="Scenes matched to the same stash-box entry more than once."
         entityPath="scenes"
         groups={scenes}
-        onMerge={handleMergeScenes}
+        mergeKind="scene"
+        onMerged={refresh}
       />
 
       <DuplicateGroupList
@@ -63,7 +56,17 @@ export function DoppelgangerPage() {
         description="Performers matched to the same stash-box entry more than once."
         entityPath="performers"
         groups={performers}
-        onMerge={handleMergePerformers}
+        mergeKind="performer"
+        onMerged={refresh}
+      />
+
+      <DuplicateGroupList
+        title="Duplicate tags"
+        description="Tags matched to the same stash-box entry more than once."
+        entityPath="tags"
+        groups={tags}
+        mergeKind="tag"
+        onMerged={refresh}
       />
 
       <DuplicateGroupList

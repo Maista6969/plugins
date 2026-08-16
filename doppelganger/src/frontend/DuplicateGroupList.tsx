@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ConfirmModal } from "./shared/ConfirmModal.js";
+import {
+  SceneMergeLauncher,
+  PerformerMergeLauncher,
+  TagMergeLauncher,
+} from "./MergeLauncher.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
-const { faCodeMerge } = PluginApi.libraries.FontAwesomeSolid;
 
 export interface DuplicateGroup {
   stashId: string;
@@ -12,12 +15,21 @@ export interface DuplicateGroup {
   items: { id: string; label: string }[];
 }
 
+export type MergeKind = "scene" | "performer" | "tag";
+
+const LAUNCHERS = {
+  scene: SceneMergeLauncher,
+  performer: PerformerMergeLauncher,
+  tag: TagMergeLauncher,
+};
+
 interface DuplicateGroupListProps {
   title: string;
   description: string;
   entityPath: string;
   groups: DuplicateGroup[] | null;
-  onMerge?: (sourceIds: string[], destinationId: string) => Promise<void>;
+  mergeKind?: MergeKind;
+  onMerged?: () => void;
 }
 
 export function DuplicateGroupList({
@@ -25,25 +37,17 @@ export function DuplicateGroupList({
   description,
   entityPath,
   groups,
-  onMerge,
+  mergeKind,
+  onMerged,
 }: DuplicateGroupListProps) {
   const [merging, setMerging] = useState<DuplicateGroup | null>(null);
-  const [pending, setPending] = useState(false);
 
-  async function handleConfirmedMerge() {
-    if (!merging || !onMerge) return;
-    setPending(true);
-    try {
-      const [destination, ...rest] = merging.items;
-      await onMerge(
-        rest.map((i) => i.id),
-        destination.id,
-      );
-      setMerging(null);
-    } finally {
-      setPending(false);
-    }
+  function handleClose(merged: boolean) {
+    setMerging(null);
+    if (merged) onMerged?.();
   }
+
+  const Launcher = mergeKind ? LAUNCHERS[mergeKind] : null;
 
   return (
     <div className="doppelganger-section">
@@ -77,13 +81,13 @@ export function DuplicateGroupList({
               <div className="doppelganger-group-meta text-muted">
                 {group.endpoint}
               </div>
-              {onMerge && (
+              {Launcher && (
                 <Button
-                  variant="danger"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setMerging(group)}
                 >
-                  Merge
+                  Merge...
                 </Button>
               )}
             </li>
@@ -91,28 +95,12 @@ export function DuplicateGroupList({
         </ul>
       )}
 
-      {merging && (
-        <ConfirmModal
-          show
-          icon={faCodeMerge}
-          header="Merge duplicates?"
-          cancel={{ text: "Cancel", onClick: () => setMerging(null) }}
-          accept={{
-            text: pending ? "Merging..." : "Merge",
-            variant: "danger",
-            onClick: handleConfirmedMerge,
-          }}
-        >
-          <p>
-            {merging.items
-              .slice(1)
-              .map((i) => i.label || `#${i.id}`)
-              .join(", ")}{" "}
-            will be merged into{" "}
-            {merging.items[0].label || `#${merging.items[0].id}`} and no longer
-            exist as separate entries. This cannot be undone by this plugin.
-          </p>
-        </ConfirmModal>
+      {Launcher && merging && (
+        <Launcher
+          key={merging.stashId + merging.endpoint}
+          group={merging}
+          onClose={handleClose}
+        />
       )}
     </div>
   );
