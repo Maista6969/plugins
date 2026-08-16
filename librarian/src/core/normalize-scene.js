@@ -74,6 +74,7 @@ export function normalizeScene(rawScene, entityType) {
       return {
         id: String(p.id),
         name: p.name,
+        disambiguation: p.disambiguation || "",
         favorite: !!p.favorite,
         rating100: p.rating100 != null ? p.rating100 : null,
         gender: normalizeGender(p.gender),

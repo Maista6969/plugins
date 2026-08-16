@@ -153,20 +153,37 @@ Custom fields have no schema, so a few things follow from how Stash stores them,
 - **Only use the regex operators on fields holding text.** If any item stores that field as a number, Stash fails the whole
   query rather than returning nothing, and the preview will report an error.
 
+**Folders named after performers**
+
+Stash does not require performer names to be unique. It requires the pair of _name_ and _disambiguation_ to be unique, which
+is not the same thing: it will refuse a second `Alex` with no disambiguation, but it will happily hold `Alex` (Blonde) and
+`Alex` (Brunette) side by side, and scrapers set that field for exactly this reason. `{performers}` renders the name alone, so
+those two performers name the same folder and their files pile up together.
+
+Add `|disambiguate` to any of the performer tokens to include the disambiguation, in parentheses, for the performers who have
+one. Nobody else is affected: `{performers|disambiguate}` on a scene with `Alex` (Blonde) and `Marcus Chen` gives
+`Alex (Blonde), Marcus Chen`. A folder pattern of `{performers|limit=1|disambiguate}` therefore gives the two Alexes a folder
+each rather than one shared one.
+
+It is opt-in because turning it on changes filenames, and worth turning on before you build a performer folder tree rather
+than after. Two caveats: the disambiguation is sanitised like any other path text, so `II / the sequel` lands as `II the sequel`; and a
+performer literally named `Alex (Blonde)` with no disambiguation still collides with `Alex` (Blonde).
+
 **Token modifiers**
 
 <!-- BEGIN GENERATED: modifiers -->
 
-| Modifier    | Works on             | Effect                                                                                                                                                | Example                                       |
-| ----------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `limit=`    | list tokens          | Joins at most the first N values                                                                                                                      | `{performers\|limit=2}`                       |
-| `gender=`   | the performer tokens | Keeps only performers of the gender(s) named, comma-separated. One or more of female, male, trans_female, trans_male, intersex, non_binary, unknown   | `{performers\|gender=female}`                 |
-| `uppercase` | any token            | Upper-cases the value                                                                                                                                 | `{title\|uppercase}`                          |
-| `lowercase` | any token            | Lower-cases the value                                                                                                                                 | `{title\|lowercase}`                          |
-| `titlecase` | any token            | Capitalises the first letter of each word and lower-cases the rest. Meant for scraped ALL-CAPS titles, not for names: it turns McDonald into Mcdonald | `{title\|titlecase}`                          |
-| `compact`   | any token            | Removes the spaces from the value                                                                                                                     | `{title\|compact}`                            |
-| `regex=`    | any token            | Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \/ for a literal slash                                              | `{title\|regex=/(?:\D*(\d+).*)/Time for $1/}` |
-| `from=`     | {stash_id}           | Which stash-box source the StashID comes from, by name or endpoint URL. Without it the rule's default source is used                                  | `{stash_id\|from=StashDB}`                    |
+| Modifier       | Works on             | Effect                                                                                                                                                                                  | Example                                       |
+| -------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `limit=`       | list tokens          | Joins at most the first N values                                                                                                                                                        | `{performers\|limit=2}`                       |
+| `gender=`      | the performer tokens | Keeps only performers of the gender(s) named, comma-separated. One or more of female, male, trans_female, trans_male, intersex, non_binary, unknown                                     | `{performers\|gender=female}`                 |
+| `disambiguate` | the performer tokens | Appends a performer's disambiguation, in parentheses, when they have one. Stash lets two performers share a name only if their disambiguations differ, so this is what tells them apart | `{performers\|disambiguate}`                  |
+| `uppercase`    | any token            | Upper-cases the value                                                                                                                                                                   | `{title\|uppercase}`                          |
+| `lowercase`    | any token            | Lower-cases the value                                                                                                                                                                   | `{title\|lowercase}`                          |
+| `titlecase`    | any token            | Capitalises the first letter of each word and lower-cases the rest. Meant for scraped ALL-CAPS titles, not for names: it turns McDonald into Mcdonald                                   | `{title\|titlecase}`                          |
+| `compact`      | any token            | Removes the spaces from the value                                                                                                                                                       | `{title\|compact}`                            |
+| `regex=`       | any token            | Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \/ for a literal slash                                                                                | `{title\|regex=/(?:\D*(\d+).*)/Time for $1/}` |
+| `from=`        | {stash_id}           | Which stash-box source the StashID comes from, by name or endpoint URL. Without it the rule's default source is used                                                                    | `{stash_id\|from=StashDB}`                    |
 
 <!-- END GENERATED: modifiers -->
 
@@ -176,6 +193,7 @@ Worked examples, one per modifier:
 
 - `{performers|limit=2}` - `Ava Kensington, Marcus Chen, Joy Adeyemi` becomes `Ava Kensington, Marcus Chen`
 - `{performers|gender=female}` - `Ava Kensington, Marcus Chen` becomes `Ava Kensington`
+- `{performers|disambiguate}` - `Alex, Marcus Chen` becomes `Alex (Blonde), Marcus Chen`
 - `{title|uppercase}` - `Sunflower Fields` becomes `SUNFLOWER FIELDS`
 - `{title|lowercase}` - `Sunflower Fields` becomes `sunflower fields`
 - `{title|titlecase}` - `SUNFLOWER FIELDS` becomes `Sunflower Fields`

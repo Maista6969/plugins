@@ -19,7 +19,10 @@ export const STUDIO_FIELDS = `
   }
 `;
 
-export const PERFORMER_FIELDS = `id name favorite rating100 gender custom_fields`;
+// Stash allows two performers to share a name only when their disambiguations
+// differ, so the name alone does not identify a performer and cannot safely
+// name a folder on its own
+export const PERFORMER_FIELDS = `id name disambiguation favorite rating100 gender custom_fields`;
 
 export const TAG_FIELDS = `id name sort_name`;
 

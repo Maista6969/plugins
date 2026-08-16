@@ -820,6 +820,102 @@ test("|gender= accepts the longer spellings and ignores surrounding spaces", () 
   );
 });
 
+// pairs of [name, disambiguation]; "" means the performer has none
+function disambiguationView(pairs, overrides) {
+  return sceneView(
+    Object.assign(
+      {
+        performerNames: pairs.map((p) => p[0]),
+        performers: pairs.map((p, i) => ({
+          id: "p" + i,
+          name: p[0],
+          disambiguation: p[1],
+          favorite: false,
+          rating100: null,
+        })),
+      },
+      overrides,
+    ),
+  );
+}
+
+// The reason the modifier exists: Stash's uniqueness constraint is on the
+// (name, disambiguation) pair, so these two really are different people and a
+// folder pattern that renders them identically merges their files
+test("|disambiguate keeps two performers who share a name apart", () => {
+  const view = disambiguationView([
+    ["Alex", "Blonde"],
+    ["Alex", "Brunette"],
+  ]);
+  assert.equal(render("{performers}", view), "Alex, Alex");
+  assert.equal(
+    render("{performers|disambiguate}", view),
+    "Alex (Blonde), Alex (Brunette)",
+  );
+  // one folder each, rather than one folder for both
+  assert.equal(
+    render("{performers|limit=1|disambiguate}", view),
+    "Alex (Blonde)",
+  );
+});
+
+test("|disambiguate leaves a performer without one exactly as they were", () => {
+  const view = disambiguationView([
+    ["Alex", "Blonde"],
+    ["Marcus Chen", ""],
+    ["Zed", undefined],
+  ]);
+  assert.equal(
+    render("{performers|disambiguate}", view),
+    "Alex (Blonde), Marcus Chen, Zed",
+  );
+});
+
+test("|disambiguate sanitizes the disambiguation like any other path text", () => {
+  const view = disambiguationView([["Alex", "II / the?sequel"]]);
+  assert.equal(
+    render("{performers|disambiguate}", view),
+    "Alex (II the sequel)",
+  );
+});
+
+test("|disambiguate composes with the other performer modifiers", () => {
+  const view = sceneView({
+    performerNames: ["Ava", "Marcus"],
+    performers: [
+      { id: "1", name: "Ava", disambiguation: "I", gender: "female" },
+      { id: "2", name: "Marcus", disambiguation: "II", gender: "male" },
+    ],
+  });
+  assert.equal(
+    render("{performers|gender=female|disambiguate}", view),
+    "Ava (I)",
+  );
+  // applied to the rendered name, so a later value modifier sees the suffix
+  assert.equal(
+    render("{performers|disambiguate|uppercase}", view),
+    "AVA (I), MARCUS (II)",
+  );
+});
+
+test("|disambiguate is refused on a token that has no performers", () => {
+  const messageFor = (pattern) =>
+    findPatternProblems(pattern)
+      .map((p) => p.message)
+      .join(" | ");
+  assert.match(messageFor("{title|disambiguate}"), /only works on performer/);
+  assert.match(messageFor("{tags|disambiguate}"), /only works on performer/);
+  assert.match(messageFor("{performers|disambiguate=yes}"), /takes no value/);
+  assert.deepEqual(
+    findPatternProblems("{matched_performers|disambiguate}"),
+    [],
+  );
+  assert.deepEqual(
+    findPatternProblems("{performers_not_in_title|disambiguate}"),
+    [],
+  );
+});
+
 test("modifiers apply in the order they are written", () => {
   const view = genderView([
     ["Marcus", "male"],

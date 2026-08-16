@@ -79,6 +79,7 @@ function targetLabel(spec) {
 const MODIFIER_ORDER = [
   "limit",
   "gender",
+  "disambiguate",
   "uppercase",
   "lowercase",
   "titlecase",

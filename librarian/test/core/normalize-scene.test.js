@@ -132,12 +132,13 @@ test("organized coerces to a real boolean", () => {
   assert.equal(normalizeScene({ organized: true }).organized, true);
 });
 
-test("performers expose favorite, rating100, gender and custom fields alongside id/name", () => {
+test("performers expose disambiguation, favorite, rating100, gender and custom fields alongside id/name", () => {
   const raw = {
     performers: [
       {
         id: "p1",
         name: "Amy",
+        disambiguation: "Blonde",
         favorite: true,
         rating100: 90,
         gender: "FEMALE",
@@ -151,6 +152,7 @@ test("performers expose favorite, rating100, gender and custom fields alongside 
     {
       id: "p1",
       name: "Amy",
+      disambiguation: "Blonde",
       favorite: true,
       rating100: 90,
       gender: "female",
@@ -160,15 +162,25 @@ test("performers expose favorite, rating100, gender and custom fields alongside 
   assert.deepEqual(view.tags, [{ id: "t1", name: "Rock" }]);
 });
 
-test("performers default favorite to false and rating100/gender to null when absent", () => {
+test("performers default favorite to false, disambiguation to empty and rating100/gender to null when absent", () => {
   const raw = {
     performers: [{ id: "p1", name: "Amy" }],
     tags: [{ id: "t1", name: "Rock" }],
   };
   const view = normalizeScene(raw);
   assert.equal(view.performers[0].favorite, false);
+  assert.equal(view.performers[0].disambiguation, "");
   assert.equal(view.performers[0].rating100, null);
   assert.equal(view.performers[0].gender, null);
+});
+
+// performerNames feeds {performers_not_in_title}, which compares against the
+// scene title: the title carries the name, never the disambiguation
+test("performerNames stays the bare name even when a disambiguation is set", () => {
+  const view = normalizeScene({
+    performers: [{ id: "p1", name: "Alex", disambiguation: "Blonde" }],
+  });
+  assert.deepEqual(view.performerNames, ["Alex"]);
 });
 
 test("canonicalises every GenderEnum value to its pattern spelling", () => {

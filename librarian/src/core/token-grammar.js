@@ -227,6 +227,29 @@ export const MODIFIERS = {
       });
     },
   },
+  disambiguate: {
+    input: "list",
+    appliesTo: ["performer"],
+    takesValue: "none",
+    summary:
+      "Appends a performer's disambiguation, in parentheses, when they have one. Stash lets two performers share a name only if their disambiguations differ, so this is what tells them apart",
+    example: {
+      pattern: "{performers|disambiguate}",
+      before: "Alex, Marcus Chen",
+      after: "Alex (Blonde), Marcus Chen",
+    },
+    // A performer with no disambiguation renders exactly as before: the point
+    // is to separate the performers Stash could not, not to decorate the rest
+    applyList: function (pairs) {
+      return pairs.map((pair) => {
+        const suffix = String(pair.entity.disambiguation || "").trim();
+        return {
+          entity: pair.entity,
+          name: suffix ? pair.name + " (" + suffix + ")" : pair.name,
+        };
+      });
+    },
+  },
   uppercase: valueModifier(
     function (text) {
       return text.toUpperCase();
