@@ -5,6 +5,8 @@ import {
   findDuplicatePerformers,
   findDuplicateTags,
   findDuplicateStudios,
+  fetchStashBoxes,
+  StashBoxSummary,
 } from "./shared/stash-api.js";
 import { DuplicateGroupList, DuplicateGroup } from "./DuplicateGroupList.js";
 
@@ -17,6 +19,17 @@ export function DoppelgangerPage() {
   const [performers, setPerformers] = useState<DuplicateGroup[] | null>(null);
   const [tags, setTags] = useState<DuplicateGroup[] | null>(null);
   const [studios, setStudios] = useState<DuplicateGroup[] | null>(null);
+  const [stashBoxes, setStashBoxes] = useState<StashBoxSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStashBoxes(client).then((boxes) => {
+      if (!cancelled) setStashBoxes(boxes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
 
   const refresh = useCallback(() => {
     setScenes(null);
@@ -47,6 +60,7 @@ export function DoppelgangerPage() {
         description="Scenes matched to the same stash-box entry more than once."
         entityPath="scenes"
         groups={scenes}
+        stashBoxes={stashBoxes}
         mergeKind="scene"
         onMerged={refresh}
       />
@@ -56,6 +70,7 @@ export function DoppelgangerPage() {
         description="Performers matched to the same stash-box entry more than once."
         entityPath="performers"
         groups={performers}
+        stashBoxes={stashBoxes}
         mergeKind="performer"
         onMerged={refresh}
       />
@@ -65,6 +80,7 @@ export function DoppelgangerPage() {
         description="Tags matched to the same stash-box entry more than once."
         entityPath="tags"
         groups={tags}
+        stashBoxes={stashBoxes}
         mergeKind="tag"
         onMerged={refresh}
       />
@@ -74,6 +90,7 @@ export function DoppelgangerPage() {
         description="Studios matched to the same stash-box entry more than once. Stash has no built-in studio merge, so these need to be resolved manually."
         entityPath="studios"
         groups={studios}
+        stashBoxes={stashBoxes}
       />
     </div>
   );

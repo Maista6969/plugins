@@ -32,13 +32,22 @@
 }
 
 .doppelganger-group-items {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
   min-width: 0;
 }
 
-.doppelganger-group-separator {
-  margin: 0 0.4rem;
-  opacity: 0.6;
+/* Scene labels are full file paths, which are long and only differ towards
+   the end -- truncate at the start so the distinguishing part stays visible. */
+.doppelganger-group-item {
+  direction: rtl;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  white-space: nowrap;
 }
 
 .doppelganger-group-meta {

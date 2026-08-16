@@ -5,6 +5,7 @@ import {
   PerformerMergeLauncher,
   TagMergeLauncher,
 } from "./MergeLauncher.js";
+import { stashBoxLabel, StashBoxSummary } from "./shared/stash-api.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -28,6 +29,7 @@ interface DuplicateGroupListProps {
   description: string;
   entityPath: string;
   groups: DuplicateGroup[] | null;
+  stashBoxes: StashBoxSummary[];
   mergeKind?: MergeKind;
   onMerged?: () => void;
 }
@@ -37,6 +39,7 @@ export function DuplicateGroupList({
   description,
   entityPath,
   groups,
+  stashBoxes,
   mergeKind,
   onMerged,
 }: DuplicateGroupListProps) {
@@ -67,19 +70,19 @@ export function DuplicateGroupList({
               className="doppelganger-group"
             >
               <div className="doppelganger-group-items">
-                {group.items.map((item, i) => (
-                  <React.Fragment key={item.id}>
-                    {i > 0 && (
-                      <span className="doppelganger-group-separator">=</span>
-                    )}
-                    <Link to={`/${entityPath}/${item.id}`}>
-                      {item.label || `#${item.id}`}
-                    </Link>
-                  </React.Fragment>
+                {group.items.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={`/${entityPath}/${item.id}`}
+                    className="doppelganger-group-item"
+                    title={item.label}
+                  >
+                    {item.label || `#${item.id}`}
+                  </Link>
                 ))}
               </div>
               <div className="doppelganger-group-meta text-muted">
-                {group.endpoint}
+                {stashBoxLabel(group.endpoint, stashBoxes)}
               </div>
               {Launcher && (
                 <Button
