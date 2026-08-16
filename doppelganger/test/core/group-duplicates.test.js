@@ -13,10 +13,7 @@ test("groups rows sharing the same stash_id and endpoint together", () => {
   const groups = groupDuplicateRows(rows);
 
   assert.equal(groups.length, 2);
-  assert.deepEqual(
-    groups.map((g) => g.stashId).sort(),
-    ["abc", "def"],
-  );
+  assert.deepEqual(groups.map((g) => g.stashId).sort(), ["abc", "def"]);
 });
 
 test("keeps groups separate when the same stash_id comes from different endpoints", () => {
@@ -31,7 +28,10 @@ test("keeps groups separate when the same stash_id comes from different endpoint
 
   assert.equal(groups.length, 2);
   const endpoints = groups.map((g) => g.endpoint).sort();
-  assert.deepEqual(endpoints, ["https://fansdb.cc/graphql", "https://stashdb.org/graphql"]);
+  assert.deepEqual(endpoints, [
+    "https://fansdb.cc/graphql",
+    "https://stashdb.org/graphql",
+  ]);
 });
 
 test("sorts each group's items by id ascending, oldest first", () => {

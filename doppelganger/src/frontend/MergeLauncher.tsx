@@ -114,10 +114,7 @@ export function TagMergeLauncher({ group, onClose }: MergeLauncherProps) {
   return <Component show tags={tags} onClose={handleClose} />;
 }
 
-export function PerformerMergeLauncher({
-  group,
-  onClose,
-}: MergeLauncherProps) {
+export function PerformerMergeLauncher({ group, onClose }: MergeLauncherProps) {
   const handleClose = useSettledClose(onClose);
   const { loading, Component } = useMergeComponent(
     "PerformerMergeDialog",

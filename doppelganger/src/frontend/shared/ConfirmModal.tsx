@@ -25,9 +25,21 @@ interface ConfirmModalProps {
 // `ModalComponent` itself isn't exposed via `PluginApi`, so this rebuilds
 // just its Header/Body/Footer structure from the same underlying
 // react-bootstrap `Modal`/`Button` pieces plus `PluginApi.components.Icon`.
-export function ConfirmModal({ show, icon, header, cancel, accept, children }: ConfirmModalProps) {
+export function ConfirmModal({
+  show,
+  icon,
+  header,
+  cancel,
+  accept,
+  children,
+}: ConfirmModalProps) {
   return (
-    <Modal className="ModalComponent" keyboard={false} onHide={cancel.onClick} show={show}>
+    <Modal
+      className="ModalComponent"
+      keyboard={false}
+      onHide={cancel.onClick}
+      show={show}
+    >
       <Modal.Header>
         {icon ? <Icon icon={icon} /> : ""}
         <span>{header ?? ""}</span>
@@ -36,10 +48,18 @@ export function ConfirmModal({ show, icon, header, cancel, accept, children }: C
       <Modal.Footer className="ModalFooter">
         <div />
         <div>
-          <Button variant={cancel.variant ?? "secondary"} onClick={cancel.onClick} className="ml-2">
+          <Button
+            variant={cancel.variant ?? "secondary"}
+            onClick={cancel.onClick}
+            className="ml-2"
+          >
             {cancel.text}
           </Button>
-          <Button variant={accept.variant ?? "primary"} onClick={accept.onClick} className="ml-2">
+          <Button
+            variant={accept.variant ?? "primary"}
+            onClick={accept.onClick}
+            className="ml-2"
+          >
             {accept.text}
           </Button>
         </div>
