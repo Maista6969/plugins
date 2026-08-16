@@ -434,6 +434,16 @@ export function modifierValue(parsed, name) {
   return found.length > 0 ? found[0].value : null;
 }
 
+// modifierValue cannot answer this for a modifier that takes no value: its
+// value is null whether it was written or not
+export function hasModifier(parsed, name) {
+  return (
+    ((parsed && parsed.modifiers) || []).filter((m) => {
+      return m.name === name;
+    }).length > 0
+  );
+}
+
 export function splitTopLevel(text, separator) {
   const parts = [];
   let current = "";

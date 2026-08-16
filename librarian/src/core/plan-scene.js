@@ -14,6 +14,7 @@ import {
   patternsNeedStashIdDefault,
   patternsUseStashIdSource,
   patternUsesAnyToken,
+  findDisambiguationRisks,
   resolveSceneGroup,
   describePatternPair,
   folderPatternMode,
@@ -564,6 +565,28 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
           .slice(1)
           .map((g) => g.name)
           .join(", "),
+    );
+  }
+
+  const disambiguationRisks = findDisambiguationRisks(
+    [folderPattern, filenamePattern],
+    sceneView,
+    renderConfig,
+    matchedIds,
+  );
+  if (disambiguationRisks.length > 0) {
+    const one = disambiguationRisks.length === 1;
+    warnings.push(
+      disambiguationRisks
+        .map((risk) => {
+          return risk.name + " (" + risk.disambiguation + ")";
+        })
+        .join(", ") +
+        (one ? " has a disambiguation" : " have disambiguations") +
+        ", so Stash allows another performer to use " +
+        (one ? "that name" : "those names") +
+        ". This pattern renders the name alone, which would send both to the" +
+        " same place: add |disambiguate to tell them apart",
     );
   }
 

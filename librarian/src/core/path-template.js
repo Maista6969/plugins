@@ -6,6 +6,7 @@ import {
   applyListModifiers,
   applyValueModifiers,
   modifierValue,
+  hasModifier,
   CUSTOM_FIELD_TOKEN,
   MODIFIERS,
   MODIFIER_GROUPS,
@@ -1010,6 +1011,56 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
     });
   });
   return missing;
+}
+
+// A performer's name is not what identifies them: Stash's unique key is the
+// name and disambiguation together, so two performers can share a name and a
+// pattern rendering the name alone sends both to the same place. Advisory
+// rather than blocking, because the pattern is ambiguous, not wrong, and only
+// the user knows whether they care.
+//
+// Each token is asked what it actually renders, so a performer that gender= or
+// limit= dropped raises nothing: the question is which names reach the path,
+// not who is on the scene.
+export function findDisambiguationRisks(
+  patterns,
+  sceneView,
+  config,
+  matchedIds,
+) {
+  const tokens = buildTokens(sceneView, config, matchedIds);
+  const risks = [];
+  const seen = {};
+  (patterns || []).forEach((pattern) => {
+    scanPattern(pattern).forEach((token) => {
+      if (
+        modifierKindOf(token.name) !== "performer" ||
+        hasModifier(token, "disambiguate")
+      ) {
+        return;
+      }
+      const value = tokens[token.name];
+      if (!value || !value.__list) {
+        return;
+      }
+      const pairs = value.entities.map((e) => {
+        return { entity: e, name: sanitizeTokenValue(e.name) };
+      });
+      applyListModifiers(pairs, token).forEach((pair) => {
+        const disambiguation = String(pair.entity.disambiguation || "").trim();
+        if (!disambiguation || seen[pair.entity.id]) {
+          return;
+        }
+        seen[pair.entity.id] = true;
+        risks.push({
+          token: token.name,
+          name: pair.entity.name,
+          disambiguation: disambiguation,
+        });
+      });
+    });
+  });
+  return risks;
 }
 
 export function joinPath(root, folder) {

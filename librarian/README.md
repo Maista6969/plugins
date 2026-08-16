@@ -166,7 +166,11 @@ one. Nobody else is affected: `{performers|disambiguate}` on a scene with `Alex`
 each rather than one shared one.
 
 It is opt-in because turning it on changes filenames, and worth turning on before you build a performer folder tree rather
-than after. Two caveats: the disambiguation is sanitised like any other path text, so `II / the sequel` lands as `II the sequel`; and a
+than after. You don't have to spot the problem yourself: any preview row whose pattern renders a disambiguated performer by
+name alone says so, naming who, and the warning goes away once you add `|disambiguate`. It follows what the token actually
+renders, so a performer already dropped by `|gender=` or `|limit=` is not warned about.
+
+Two caveats: the disambiguation is sanitised like any other path text, so `II / the sequel` lands as `II the sequel`; and a
 performer literally named `Alex (Blonde)` with no disambiguation still collides with `Alex` (Blonde).
 
 **Token modifiers**

@@ -1636,6 +1636,111 @@ test("a single group plans with no warning at all", () => {
   assert.deepEqual(result.warnings, []);
 });
 
+// Stash's unique key is name+disambiguation, so a pattern rendering the name
+// alone can send two different performers to one folder. The plan still runs:
+// it is ambiguous, not wrong
+function disambiguationScene(performers) {
+  return Object.assign({}, normalOrganizedScene, { performers: performers });
+}
+
+const AMBIGUOUS_PERFORMERS = [
+  { id: "p1", name: "Alex Rivera", disambiguation: "Blonde" },
+  { id: "p2", name: "Marcus Chen" },
+];
+
+test("a disambiguated performer warns when the pattern renders the name alone", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers}",
+      filenamePattern: "{title}",
+    },
+  });
+  const result = planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Alex Rivera \(Blonde\)/);
+  assert.match(result.warnings[0], /\|disambiguate/);
+  // the performer with no disambiguation is nobody's problem
+  assert.equal(result.warnings[0].includes("Marcus Chen"), false);
+  // and it stays a warning: the rename still happens
+  assert.equal(result.files[0].folder, "/data/Alex Rivera, Marcus Chen");
+});
+
+test("using |disambiguate is the fix, so it silences the warning", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers|disambiguate}",
+      filenamePattern: "{title}",
+    },
+  });
+  const result = planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config);
+  assert.deepEqual(result.warnings, []);
+  assert.equal(
+    result.files[0].folder,
+    "/data/Alex Rivera (Blonde), Marcus Chen",
+  );
+});
+
+test("no performer token means the ambiguity cannot reach the path", () => {
+  const config = baseConfig({
+    defaultPattern: { folderPattern: "{studio}", filenamePattern: "{title}" },
+  });
+  assert.deepEqual(
+    planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config).warnings,
+    [],
+  );
+});
+
+// The warning follows what the token renders, not who is on the scene: a
+// performer a modifier already dropped cannot collide with anyone
+test("a performer filtered out of the token raises no warning", () => {
+  const performers = [
+    { id: "p1", name: "Alex Rivera", disambiguation: "Blonde", gender: "MALE" },
+    { id: "p2", name: "Zara", gender: "FEMALE" },
+  ];
+  const filtered = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers|gender=female}",
+      filenamePattern: "{title}",
+    },
+  });
+  assert.deepEqual(
+    planScene(disambiguationScene(performers), filtered).warnings,
+    [],
+  );
+
+  const limited = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers|limit=1}",
+      filenamePattern: "{title}",
+    },
+  });
+  // sorted by name, so Alex is the one that survives limit=1 and does warn
+  assert.match(
+    planScene(disambiguationScene(performers), limited).warnings[0],
+    /Alex Rivera \(Blonde\)/,
+  );
+});
+
+test("one warning names every performer at risk, listing each once", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers}",
+      filenamePattern: "{performers} - {title}",
+    },
+  });
+  const result = planScene(
+    disambiguationScene([
+      { id: "p1", name: "Alex Rivera", disambiguation: "Blonde" },
+      { id: "p2", name: "Jo", disambiguation: "II" },
+    ]),
+    config,
+  );
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Alex Rivera \(Blonde\), Jo \(II\)/);
+  assert.match(result.warnings[0], /have disambiguations/);
+});
+
 // no group token in the pattern means the ambiguity cannot affect the name, so
 // warning about it would be noise on every row
 test("several groups warn only when the pattern actually uses one", () => {
