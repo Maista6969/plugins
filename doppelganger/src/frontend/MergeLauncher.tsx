@@ -1,10 +1,6 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@apollo/client";
-import {
-  SCENES_FOR_MERGE,
-  PERFORMERS_FOR_MERGE,
-  TAGS_FOR_MERGE,
-} from "./shared/stash-api.js";
+import { PERFORMERS_FOR_MERGE, TAGS_FOR_MERGE } from "./shared/stash-api.js";
 import type { DuplicateGroup } from "./DuplicateGroupList.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -41,10 +37,6 @@ function useMergeComponent(loadableKey: string, componentKey: string) {
   return { loading, Component: PluginApi.components[componentKey] };
 }
 
-function fileNameFromPath(path: string) {
-  return path.split(/[\\/]/).pop() ?? path;
-}
-
 function UnsupportedNotice() {
   return (
     <p className="text-muted">
@@ -60,29 +52,21 @@ export function SceneMergeLauncher({ group, onClose }: MergeLauncherProps) {
     "SceneMergeModal",
   );
 
-  const ids = useMemo(() => group.items.map((i) => i.id), [group]);
-  const { data, loading: fetching } = useQuery(SCENES_FOR_MERGE, {
-    variables: { ids },
-    fetchPolicy: "network-only",
-  });
+  // The modal only uses `title` to label the two pickers in its first step --
+  // the second step re-queries full scenes itself -- and duplicates share a
+  // title by definition, so it gets the file path the list already resolved.
+  // Group order puts the lowest id first, which the modal takes as the default
+  // destination.
+  const scenes = useMemo(
+    () =>
+      group.items.map((i) => ({
+        id: i.id,
+        title: i.label || `#${i.id}`,
+      })),
+    [group],
+  );
 
-  // findScenes does not preserve the requested id order, but the modal takes
-  // scenes[0] as the default destination -- so reorder back to the group's
-  // order, which puts the lowest id (the oldest entry) first.
-  const scenes = useMemo(() => {
-    const byId = new Map<string, any>(
-      (data?.findScenes?.scenes ?? []).map((s: any) => [s.id, s]),
-    );
-    return group.items
-      .map((i) => byId.get(i.id))
-      .filter(Boolean)
-      .map((s: any) => ({
-        id: s.id,
-        title: s.title || fileNameFromPath(s.files?.[0]?.path ?? "") || "",
-      }));
-  }, [data, group]);
-
-  if (loading || fetching) return <Spinner animation="border" size="sm" />;
+  if (loading) return <Spinner animation="border" size="sm" />;
   if (!Component) return <UnsupportedNotice />;
 
   return <Component show scenes={scenes} onClose={handleClose} />;

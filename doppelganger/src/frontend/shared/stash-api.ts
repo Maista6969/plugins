@@ -131,24 +131,8 @@ export function findDuplicateStudios(client: any) {
 
 // Seed data for Stash's own merge modals. Both modals re-query full records
 // themselves once the user picks a destination, so these only need to cover
-// what the first step renders.
-//
-// `files { path }` backfills a display title for scenes with no title of their
-// own -- the same fallback Stash applies via objectTitle() before handing
-// scenes to SceneMergeModal.
-export const SCENES_FOR_MERGE = gql`
-  query DoppelgangerScenesForMerge($ids: [ID!]) {
-    findScenes(ids: $ids, filter: { per_page: -1 }) {
-      scenes {
-        id
-        title
-        files {
-          path
-        }
-      }
-    }
-  }
-`;
+// what the first step renders. Scenes need no query at all -- the detection
+// query already resolved everything the scene modal displays.
 
 // Mirrors the Tag type TagMergeModal types its `tags` prop against
 // (Pick<GQL.Tag, "id" | "name" | "sort_name" | "aliases" | "image_path" |
