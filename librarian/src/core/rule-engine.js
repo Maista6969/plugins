@@ -1,6 +1,11 @@
 import { matchesAnyPath } from "./string-criterion.js";
 import { evaluateCustomField, isPresenceOp } from "./custom-fields.js";
-import { isPerformerOp, performersMatching } from "./performer-condition.js";
+import {
+  isPerformerOp,
+  performersMatching,
+  performerConditionHolds,
+  isAllQuantifier,
+} from "./performer-condition.js";
 import { ratingInRange, describeRatingRange } from "./rating-range.js";
 
 function applyListOp(list, op, value) {
@@ -65,7 +70,7 @@ export function evaluateCondition(sceneView, condition) {
     }
     case "performer":
       return isPerformerOp(condition.op)
-        ? performersMatching(sceneView.performers, condition).length > 0
+        ? performerConditionHolds(sceneView.performers, condition)
         : applyListOp(sceneView.performerIds, condition.op, condition.value);
     case "tag":
       return applyListOp(sceneView.tagIds, condition.op, condition.value);
@@ -235,7 +240,14 @@ function describePerformerCondition(sceneView, condition) {
     .filter((name) => {
       return !!name;
     });
-  const who = names.length ? "'" + names.join("', '") + "'" : "a performer";
+  const listed = names.length ? "'" + names.join("', '") + "'" : "";
+  // For "every", naming the matches alone would read as if only they were
+  // asked about, when the point is that nobody was left out
+  const who = isAllQuantifier(condition)
+    ? listed
+      ? "every performer (" + listed + ")"
+      : "every performer"
+    : listed || "a performer";
   if (condition.op === "favorite") {
     return who + " is a favourite";
   }

@@ -9,6 +9,7 @@ import { TextSettingModal } from "./TextSettingModal.js";
 import {
   ruleToPreviewFilter,
   stashIdGateIsApproximate,
+  ruleFilterIsApproximate,
 } from "../../core/rule-to-filter.js";
 import { useEntityCount } from "./useEntityCount.js";
 import { adapterFor } from "../../core/entity-adapter.js";
@@ -79,7 +80,9 @@ export function RuleEditModal({
   // With several StashID sources accepted, Stash cannot filter on all of them
   // at once, so the query over-selects and the count is only an upper bound
   const gateApproximate = stashIdGateIsApproximate(config[type]);
-  const countIsUpperBound = hasEarlierActiveRule || gateApproximate;
+  const quantifierApproximate = ruleFilterIsApproximate(rule);
+  const countIsUpperBound =
+    hasEarlierActiveRule || gateApproximate || quantifierApproximate;
   const ruleFilter = ruleToPreviewFilter(rule, config[type]);
   const matchCount = useEntityCount(
     type,
@@ -220,6 +223,10 @@ export function RuleEditModal({
                   "an earlier rule may claim some of these first",
                 gateApproximate &&
                   "more than one StashID source is accepted, which Stash cannot filter on all at once",
+                quantifierApproximate &&
+                  "an “every performer” condition cannot be expressed as a Stash filter, so the count includes " +
+                    adapter.plural +
+                    " where only some performers match",
               ]
                 .filter(Boolean)
                 .join(", and ")}

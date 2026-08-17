@@ -4,13 +4,17 @@ import {
   isPerformerOp,
   performerMatches,
   performersMatching,
+  isAllQuantifier,
 } from "../../src/core/performer-condition.js";
 import {
   evaluateCondition,
   describeCondition,
   getMatchedEntityIds,
 } from "../../src/core/rule-engine.js";
-import { ruleToSceneFilter } from "../../src/core/rule-to-filter.js";
+import {
+  ruleToSceneFilter,
+  ruleFilterIsApproximate,
+} from "../../src/core/rule-to-filter.js";
 import { normalizeScene } from "../../src/core/normalize-scene.js";
 import { ratingInRange } from "../../src/core/rating-range.js";
 
@@ -195,6 +199,165 @@ test("an item matches as soon as ANY of its performers does", () => {
       customField("Agency", "IS_NULL", ""),
     ),
     true,
+  );
+});
+
+const every = (condition) => {
+  return Object.assign({}, condition, { quantifier: "all" });
+};
+
+test("every performer requires all of them, not just one", () => {
+  const mixed = sceneWith([RAW_AVA, RAW_MARCUS]);
+  // Ava is 7.0 and Marcus 9.5, so "any is rated 9-10" holds and "every" does not
+  assert.equal(evaluateCondition(mixed, rating(9, 10)), true);
+  assert.equal(evaluateCondition(mixed, every(rating(9, 10))), false);
+  assert.equal(evaluateCondition(mixed, every(rating(7, 10))), true);
+  assert.equal(
+    evaluateCondition(sceneWith([RAW_MARCUS]), every(rating(9, 10))),
+    true,
+  );
+});
+
+test("one unrated performer rules an item out of every-performer rating", () => {
+  const withUnrated = sceneWith([RAW_MARCUS, RAW_NOBODY]);
+  assert.equal(evaluateCondition(withUnrated, every(rating(0, 10))), false);
+  assert.equal(evaluateCondition(withUnrated, rating(0, 10)), true);
+  // and the widest possible range does not rescue them
+  assert.equal(
+    evaluateCondition(sceneWith([RAW_NOBODY]), every(rating(0, 10))),
+    false,
+  );
+});
+
+test("an item with no performers never satisfies every", () => {
+  assert.equal(evaluateCondition(sceneWith([]), every(rating(0, 10))), false);
+  assert.equal(evaluateCondition(sceneWith([]), every(favorite)), false);
+  assert.equal(evaluateCondition(sceneWith([]), every(notFavorite)), false);
+});
+
+test("every works the same way for the non-rating performer ops", () => {
+  assert.equal(evaluateCondition(sceneWith([RAW_AVA]), every(favorite)), true);
+  assert.equal(
+    evaluateCondition(sceneWith([RAW_AVA, RAW_MARCUS]), every(favorite)),
+    false,
+  );
+  assert.equal(
+    evaluateCondition(sceneWith([RAW_MARCUS, RAW_NOBODY]), every(notFavorite)),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(
+      sceneWith([RAW_AVA, RAW_MARCUS]),
+      every(customField("Agency", "NOT_NULL", "")),
+    ),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(
+      sceneWith([RAW_AVA, RAW_MARCUS, RAW_NOBODY]),
+      every(customField("Agency", "NOT_NULL", "")),
+    ),
+    false,
+  );
+});
+
+test("a stored condition with no quantifier still means any", () => {
+  const stored = {
+    field: "performer",
+    op: "rating",
+    value: { min: 9, max: 10 },
+  };
+  assert.equal(stored.quantifier, undefined);
+  assert.equal(
+    evaluateCondition(sceneWith([RAW_AVA, RAW_MARCUS]), stored),
+    true,
+  );
+  assert.equal(isAllQuantifier(stored), false);
+  assert.equal(isAllQuantifier({ ...stored, quantifier: "any" }), false);
+  assert.equal(isAllQuantifier({ ...stored, quantifier: "all" }), true);
+});
+
+// The filter cannot express "every", so it asks the "any" question and the
+// local engine narrows. Anything counting off it has to say it is an upper bound
+test("every sends the any filter, and declares itself approximate", () => {
+  assert.deepEqual(
+    ruleToSceneFilter({ conditions: [every(rating(0, 5))] }),
+    ruleToSceneFilter({ conditions: [rating(0, 5)] }),
+  );
+  assert.equal(
+    ruleFilterIsApproximate({ conditions: [every(rating(0, 5))] }),
+    true,
+  );
+  assert.equal(ruleFilterIsApproximate({ conditions: [rating(0, 5)] }), false);
+  assert.equal(
+    ruleFilterIsApproximate({ conditions: [every(favorite)] }),
+    true,
+  );
+  // an id-list performer condition is exact whatever is stored on it
+  assert.equal(
+    ruleFilterIsApproximate({
+      conditions: [
+        { field: "performer", op: "any_of", value: ["2"], quantifier: "all" },
+      ],
+    }),
+    false,
+  );
+  assert.equal(ruleFilterIsApproximate({ conditions: [] }), false);
+});
+
+test("the any filter really is a superset of every", () => {
+  const scenes = [
+    sceneWith([RAW_AVA, RAW_MARCUS]),
+    sceneWith([RAW_MARCUS]),
+    sceneWith([RAW_AVA, RAW_NOBODY]),
+    sceneWith([RAW_NOBODY]),
+    sceneWith([]),
+  ];
+  [rating(0, 10), rating(7, 10), favorite, notFavorite, notRated].forEach(
+    (base) => {
+      scenes.forEach((view) => {
+        if (evaluateCondition(view, every(base))) {
+          assert.equal(
+            evaluateCondition(view, base),
+            true,
+            "every matched but any did not, so the filter would miss it",
+          );
+        }
+      });
+    },
+  );
+});
+
+test("every names all of them in the description", () => {
+  const view = sceneWith([RAW_AVA, RAW_MARCUS]);
+  assert.equal(
+    describeCondition(view, every(rating(7, 10))),
+    "every performer ('Ava Kensington', 'Marcus Chen') is rated between 7 and 10",
+  );
+  assert.equal(
+    describeCondition(view, rating(7, 10)),
+    "'Ava Kensington', 'Marcus Chen' is rated between 7 and 10",
+  );
+});
+
+test("{matched_performers} under every names everyone, since everyone matched", () => {
+  const view = sceneWith([RAW_AVA, RAW_MARCUS]);
+  assert.deepEqual(
+    getMatchedEntityIds(
+      view,
+      { conditions: [every(rating(7, 10))] },
+      "performer",
+    ),
+    ["2", "3"],
+  );
+  // and nobody when the condition does not hold
+  assert.deepEqual(
+    getMatchedEntityIds(
+      view,
+      { conditions: [every(rating(9, 10))] },
+      "performer",
+    ),
+    [],
   );
 });
 

@@ -45,3 +45,15 @@ export function performersMatching(performers, condition) {
     return performerMatches(performer, condition);
   });
 }
+
+export function isAllQuantifier(condition) {
+  return !!condition && condition.quantifier === "all";
+}
+
+export function performerConditionHolds(performers, condition) {
+  const list = performers || [];
+  const matched = performersMatching(list, condition);
+  return isAllQuantifier(condition)
+    ? list.length > 0 && matched.length === list.length
+    : matched.length > 0;
+}

@@ -36,21 +36,27 @@ export function RulePreviewPanel({
   const notReady = sceneFilter === null;
   const visible = rows !== null && !closed;
 
-  function isStolenByAnotherRule(plan: any): boolean {
-    return (
-      plan.status === "ok" &&
-      plan.reason.indexOf("rule:") === 0 &&
-      plan.reason !== "rule:" + rule.id
-    );
+  // An "every performer" condition cannot be expressed as a filter
+  // so the query over-selects and some rows are claimed by no rule at all
+  function isNotThisRulesWork(plan: any): boolean {
+    if (plan.status !== "ok") {
+      return false;
+    }
+    if (rule.enabled === false) {
+      return (
+        plan.reason.indexOf("rule:") === 0 && plan.reason !== "rule:" + rule.id
+      );
+    }
+    return plan.reason !== "rule:" + rule.id;
   }
 
   function handlePreviewClick() {
     setClosed(false);
-    run(sceneFilter, sort, isStolenByAnotherRule);
+    run(sceneFilter, sort, isNotThisRulesWork);
   }
 
   function handleReshuffle() {
-    run(sceneFilter, sort, isStolenByAnotherRule);
+    run(sceneFilter, sort, isNotThisRulesWork);
   }
 
   // Two kinds of invalidation. A different filter means a different set of
@@ -71,7 +77,7 @@ export function RulePreviewPanel({
       return;
     }
     const timer = setTimeout(() => {
-      run(sceneFilter, sort, isStolenByAnotherRule);
+      run(sceneFilter, sort, isNotThisRulesWork);
     }, PREVIEW_REFRESH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,7 +93,7 @@ export function RulePreviewPanel({
   const sortKey = JSON.stringify(sort);
   useEffect(() => {
     if (rows !== null && !closed) {
-      run(sceneFilter, sort, isStolenByAnotherRule);
+      run(sceneFilter, sort, isNotThisRulesWork);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortKey]);

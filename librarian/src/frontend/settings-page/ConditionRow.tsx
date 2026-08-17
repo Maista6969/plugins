@@ -52,38 +52,51 @@ const ANY_OR_ALL_MODIFIERS = [
   ANY_ONLY_MODIFIERS[2],
 ];
 
-// Each is satisfied by ONE performer, so an item matches as soon as any of its
-// performers does, and that performer is the one {matched_performers} names
+// These ask what a performer is like rather than which performers there are.
+// How many of them have to answer yes is the quantifier's job, so the wording
+// here stays about the one performer
 const PERFORMER_ONLY_MODIFIERS = [
   {
     value: "favorite",
     label: "is a favourite",
-    title:
-      "Matches if at least one of the {noun}'s performers is marked as a favourite",
+    title: "Whether the performer is marked as a favourite",
   },
   {
     value: "not_favorite",
     label: "is not a favourite",
-    title:
-      "Matches if at least one of the {noun}'s performers is not marked as a favourite",
+    title: "Whether the performer is not marked as a favourite",
   },
   {
     value: "rating",
     label: "is rated",
     title:
-      "Matches if at least one of the {noun}'s performers has a rating in this range. Unrated performers never match",
+      "Whether the performer's rating falls in this range. An unrated performer never matches, however wide the range is",
   },
   {
     value: "not_rated",
     label: "has no rating",
     title:
-      "Matches if at least one of the {noun}'s performers has no rating at all. A rating range never matches these, however wide it is",
+      "Whether the performer has no rating at all. A rating range never reaches these, so this is the only way to ask for them",
   },
   {
     value: "custom_field",
     label: "has a custom field",
+    title: "Whether the performer has a custom field that compares this way",
+  },
+];
+
+const PERFORMER_QUANTIFIERS = [
+  {
+    value: "any",
+    label: "any performer",
     title:
-      "Matches if at least one of the {noun}'s performers has a custom field that compares this way",
+      "Matches as soon as one of the {noun}'s performers satisfies this, and that performer is the one {matched_performers} names",
+  },
+  {
+    value: "all",
+    label: "every performer",
+    title:
+      "Matches only if every one of the {noun}'s performers satisfies this. A {noun} with no performers never matches, and one unrated performer is enough to rule a {noun} out of a rating range",
   },
 ];
 
@@ -256,6 +269,8 @@ export interface Condition {
   key?: string;
   // custom fields only: op is taken so we need valueOp
   valueOp?: string;
+  // performer-only ops: how many performers must satisfy it. Absent means "any"
+  quantifier?: string;
 }
 
 function valueShape(field: string, op: string): string {
@@ -293,7 +308,21 @@ function withOp(condition: Condition, nextOp: string): Condition {
     delete next.key;
     delete next.valueOp;
   }
+  // an op that is not about what a performer is like has nothing to quantify
+  if (PERFORMER_ONLY_OPS.indexOf(nextOp) === -1) {
+    delete next.quantifier;
+  }
   return next;
+}
+
+function withQuantifier(condition: Condition, next: string): Condition {
+  const updated: Condition = { ...condition };
+  if (next === "all") {
+    updated.quantifier = "all";
+  } else {
+    delete updated.quantifier;
+  }
+  return updated;
 }
 
 function nextOpForFieldChange(
@@ -471,6 +500,35 @@ function CustomFieldEditor({
   );
 }
 
+function QuantifierSelect({
+  value,
+  onChange,
+  noun,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  noun: string;
+}) {
+  const current =
+    PERFORMER_QUANTIFIERS.find((q) => q.value === value) ||
+    PERFORMER_QUANTIFIERS[0];
+  return (
+    <Form.Control
+      as="select"
+      className="librarian-inline-select input-control"
+      title={withNoun(current.title, noun)}
+      value={current.value}
+      onChange={(e: any) => onChange(e.target.value)}
+    >
+      {PERFORMER_QUANTIFIERS.map((q) => (
+        <option key={q.value} value={q.value} title={withNoun(q.title, noun)}>
+          {q.label}
+        </option>
+      ))}
+    </Form.Control>
+  );
+}
+
 function ListModifierSelect({
   field,
   op,
@@ -582,6 +640,13 @@ export function ConditionRow({
           });
         }}
       />
+      {performerOp && (
+        <QuantifierSelect
+          value={condition.quantifier || "any"}
+          onChange={(next) => onChange(withQuantifier(condition, next))}
+          noun={noun}
+        />
+      )}
       {isListField && (
         <ListModifierSelect
           field={condition.field}

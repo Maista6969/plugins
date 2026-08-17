@@ -1,5 +1,5 @@
 import { criterionValue, isPresenceOp } from "./custom-fields.js";
-import { isPerformerOp } from "./performer-condition.js";
+import { isPerformerOp, isAllQuantifier } from "./performer-condition.js";
 import { ratingRangeCriterion } from "./rating-range.js";
 
 function asList(value) {
@@ -194,6 +194,17 @@ export function stashIdGate(endpoints) {
     };
   }
   return { stash_id_count: { value: 0, modifier: "GREATER_THAN" } };
+}
+
+export function ruleFilterIsApproximate(rule) {
+  return ((rule && rule.conditions) || []).some((condition) => {
+    return (
+      condition &&
+      condition.field === "performer" &&
+      isPerformerOp(condition.op) &&
+      isAllQuantifier(condition)
+    );
+  });
 }
 
 export function stashIdGateIsApproximate(config) {
