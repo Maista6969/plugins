@@ -239,8 +239,14 @@ function describePerformerCondition(sceneView, condition) {
   if (condition.op === "favorite") {
     return who + " is a favourite";
   }
+  if (condition.op === "not_favorite") {
+    return who + " is not a favourite";
+  }
   if (condition.op === "rating") {
     return who + " is rated " + describeRatingRange(condition.value);
+  }
+  if (condition.op === "not_rated") {
+    return who + " has no rating";
   }
   const label = CUSTOM_FIELD_OP_LABEL[condition.valueOp] || condition.valueOp;
   const named = who + '’s custom field "' + condition.key + '" ' + label;

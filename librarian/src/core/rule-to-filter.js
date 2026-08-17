@@ -108,6 +108,14 @@ function performerSubFilter(condition) {
   if (condition.op === "favorite") {
     return { performers_filter: { filter_favorites: true } };
   }
+  if (condition.op === "not_favorite") {
+    return { performers_filter: { filter_favorites: false } };
+  }
+  if (condition.op === "not_rated") {
+    return {
+      performers_filter: { rating100: { value: 0, modifier: "IS_NULL" } },
+    };
+  }
   if (condition.op === "rating") {
     const criterion = ratingRangeCriterion(condition.value);
     return criterion ? { performers_filter: { rating100: criterion } } : null;

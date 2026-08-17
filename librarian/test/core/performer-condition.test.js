@@ -57,9 +57,14 @@ const customField = (key, valueOp, value) => {
   };
 };
 
+const notFavorite = { field: "performer", op: "not_favorite", value: [] };
+const notRated = { field: "performer", op: "not_rated", value: [] };
+
 test("only the ops that speak about a performer are performer ops", () => {
   assert.equal(isPerformerOp("favorite"), true);
+  assert.equal(isPerformerOp("not_favorite"), true);
   assert.equal(isPerformerOp("rating"), true);
+  assert.equal(isPerformerOp("not_rated"), true);
   assert.equal(isPerformerOp("custom_field"), true);
   // these ask which performers the item has, and are still answered from ids
   assert.equal(isPerformerOp("any_of"), false);
@@ -84,6 +89,70 @@ test("a rating range excludes an unrated performer", () => {
   assert.equal(ratingInRange(null, { min: 0, max: 10 }), false);
   // and a range with neither side set matches nobody rather than everybody
   assert.equal(performerMatches(MARCUS, rating(null, null)), false);
+});
+
+// "has no rating" is the one question a range cannot ask: ratingInRange refuses
+// null, so an unrated performer is unreachable however wide the range is
+test("has no rating asks about the absence of a rating, not a low one", () => {
+  assert.equal(performerMatches(NOBODY, notRated), true);
+  assert.equal(performerMatches(AVA, notRated), false);
+  assert.equal(performerMatches(MARCUS, notRated), false);
+  // the two are complementary, which is the point of adding it
+  [AVA, MARCUS, NOBODY].forEach((performer) => {
+    assert.equal(
+      performerMatches(performer, notRated) !==
+        performerMatches(performer, rating(0, 10)),
+      true,
+      (performer.name || "?") + " should satisfy exactly one of the two",
+    );
+  });
+});
+
+test("not a favourite is the complement of favourite, per performer", () => {
+  assert.equal(performerMatches(AVA, notFavorite), false);
+  assert.equal(performerMatches(MARCUS, notFavorite), true);
+  // no favourite flag at all reads as not a favourite
+  assert.equal(performerMatches(NOBODY, notFavorite), true);
+});
+
+// Both are still EXISTS questions: an item with no performers has nobody to
+// satisfy them, so a negative op does not sweep it up
+test("the new negative ops still need a performer to be true of", () => {
+  assert.equal(evaluateCondition(sceneWith([RAW_MARCUS]), notFavorite), true);
+  assert.equal(evaluateCondition(sceneWith([RAW_AVA]), notFavorite), false);
+  assert.equal(evaluateCondition(sceneWith([]), notFavorite), false);
+  assert.equal(evaluateCondition(sceneWith([RAW_NOBODY]), notRated), true);
+  assert.equal(
+    evaluateCondition(sceneWith([RAW_AVA, RAW_NOBODY]), notRated),
+    true,
+  );
+  assert.equal(evaluateCondition(sceneWith([RAW_AVA]), notRated), false);
+  assert.equal(evaluateCondition(sceneWith([]), notRated), false);
+});
+
+test("the new negative ops become the filters measured against Stash", () => {
+  assert.deepEqual(ruleToSceneFilter({ conditions: [notFavorite] }), {
+    performers_filter: { filter_favorites: false },
+  });
+  assert.deepEqual(ruleToSceneFilter({ conditions: [notRated] }), {
+    performers_filter: { rating100: { value: 0, modifier: "IS_NULL" } },
+  });
+});
+
+test("the new negative ops name who satisfied them", () => {
+  const view = sceneWith([RAW_AVA, RAW_MARCUS, RAW_NOBODY]);
+  assert.equal(
+    describeCondition(view, notFavorite),
+    "'Marcus Chen', 'Performer for scraping' is not a favourite",
+  );
+  assert.equal(
+    describeCondition(view, notRated),
+    "'Performer for scraping' has no rating",
+  );
+  assert.deepEqual(
+    getMatchedEntityIds(view, { conditions: [notRated] }, "performer"),
+    ["1"],
+  );
 });
 
 test("a performer custom field takes its comparison from valueOp", () => {

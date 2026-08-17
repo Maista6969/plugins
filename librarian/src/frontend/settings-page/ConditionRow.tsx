@@ -62,10 +62,22 @@ const PERFORMER_ONLY_MODIFIERS = [
       "Matches if at least one of the {noun}'s performers is marked as a favourite",
   },
   {
+    value: "not_favorite",
+    label: "is not a favourite",
+    title:
+      "Matches if at least one of the {noun}'s performers is not marked as a favourite",
+  },
+  {
     value: "rating",
     label: "is rated",
     title:
       "Matches if at least one of the {noun}'s performers has a rating in this range. Unrated performers never match",
+  },
+  {
+    value: "not_rated",
+    label: "has no rating",
+    title:
+      "Matches if at least one of the {noun}'s performers has no rating at all. A rating range never matches these, however wide it is",
   },
   {
     value: "custom_field",
@@ -80,6 +92,9 @@ const PERFORMER_MODIFIERS = ANY_OR_ALL_MODIFIERS.concat(
 );
 
 const PERFORMER_ONLY_OPS = PERFORMER_ONLY_MODIFIERS.map((m) => m.value);
+
+// Ask something about the performer that needs no value from the user
+const PERFORMER_PRESENCE_OPS = ["favorite", "not_favorite", "not_rated"];
 
 const STUDIO_MODIFIERS = [
   ANY_ONLY_MODIFIERS[0],
@@ -544,7 +559,7 @@ export function ConditionRow({
   const isListField = LIST_FIELDS.indexOf(condition.field) !== -1;
   const isPresenceOp =
     condition.field === "group" ||
-    performerOp === "favorite" ||
+    PERFORMER_PRESENCE_OPS.indexOf(performerOp) !== -1 ||
     condition.op === "is_null" ||
     condition.op === "not_null";
   const ids =

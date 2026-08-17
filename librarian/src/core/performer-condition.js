@@ -3,7 +3,9 @@ import { ratingInRange } from "./rating-range.js";
 
 const PERFORMER_OPS = {
   favorite: true,
+  not_favorite: true,
   rating: true,
+  not_rated: true,
   custom_field: true,
 };
 
@@ -18,8 +20,12 @@ export function performerMatches(performer, condition) {
   switch (condition.op) {
     case "favorite":
       return !!performer.favorite;
+    case "not_favorite":
+      return !performer.favorite;
     case "rating":
       return ratingInRange(performer.rating100, condition.value);
+    case "not_rated":
+      return performer.rating100 == null;
     case "custom_field":
       // the comparison lives in valueOp, op having been spent on saying which
       // kind of performer condition this is
