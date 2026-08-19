@@ -554,13 +554,11 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
     ])
   ) {
     warnings.push(
-      "this " +
-        adapter.noun +
-        " is in " +
+      "in " +
         groupChoice.all.length +
-        ' groups; used "' +
+        ' groups; {group} used "' +
         groupChoice.group.name +
-        '" (the earliest created). The others: ' +
+        '" (earliest created). Others: ' +
         groupChoice.all
           .slice(1)
           .map((g) => g.name)
@@ -575,18 +573,15 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
     matchedIds,
   );
   if (disambiguationRisks.length > 0) {
-    const one = disambiguationRisks.length === 1;
     warnings.push(
       disambiguationRisks
         .map((risk) => {
           return risk.name + " (" + risk.disambiguation + ")";
         })
         .join(", ") +
-        (one ? " has a disambiguation" : " have disambiguations") +
-        ", so Stash allows another performer to use " +
-        (one ? "that name" : "those names") +
-        ". This pattern renders the name alone, which would send both to the" +
-        " same place: add |disambiguate to tell them apart",
+        " may need |disambiguate: this pattern renders the " +
+        (disambiguationRisks.length === 1 ? "name" : "names") +
+        " alone",
     );
   }
 

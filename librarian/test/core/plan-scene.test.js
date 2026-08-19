@@ -1738,7 +1738,7 @@ test("one warning names every performer at risk, listing each once", () => {
   );
   assert.equal(result.warnings.length, 1);
   assert.match(result.warnings[0], /Alex Rivera \(Blonde\), Jo \(II\)/);
-  assert.match(result.warnings[0], /have disambiguations/);
+  assert.match(result.warnings[0], /renders the names alone/);
 });
 
 // Repeating a performer's bare name below a folder that already told them

@@ -179,12 +179,16 @@
   font-size: 0.8rem;
 }
 
-/* .table-list td is nowrap, and this warning lives in the name cell rather
-   than one of the cells that opt out below, so without this it renders as one
-   unbroken line and widens the column until the paths scroll off screen */
-.librarian-plan-warning {
+.librarian-plan-warnings {
   white-space: normal;
   max-width: 22rem;
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+
+.librarian-plan-warnings li {
+  margin-top: 0.15rem;
 }
 
 .librarian-token-chip {

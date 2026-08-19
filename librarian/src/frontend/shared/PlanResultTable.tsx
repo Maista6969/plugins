@@ -211,14 +211,13 @@ export function PlanResultTable({
                       </td>
                       <td>
                         {entityLink(scene, entityType)}
-                        {(plan.warnings || []).map((w: string, i: number) => (
-                          <div
-                            key={i}
-                            className="librarian-plan-warning librarian-token-hint text-warning"
-                          >
-                            {w}
-                          </div>
-                        ))}
+                        {(plan.warnings || []).length > 0 && (
+                          <ul className="librarian-plan-warnings text-warning">
+                            {plan.warnings.map((w: string, i: number) => (
+                              <li key={i}>{w}</li>
+                            ))}
+                          </ul>
+                        )}
                       </td>
                       <td className="librarian-path-diff">
                         {f.unchanged ? (
