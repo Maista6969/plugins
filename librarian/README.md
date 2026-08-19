@@ -168,7 +168,10 @@ each rather than one shared one.
 It is opt-in because turning it on changes filenames, and worth turning on before you build a performer folder tree rather
 than after. You don't have to spot the problem yourself: any preview row whose pattern renders a disambiguated performer by
 name alone says so, naming who, and the warning goes away once you add `|disambiguate`. It follows what the token actually
-renders, so a performer already dropped by `|gender=` or `|limit=` is not warned about.
+renders, so a performer already dropped by `|gender=` or `|limit=` is not warned about, and one `|disambiguate` is enough:
+once a folder has told two performers apart, their bare name in a subfolder or in the filename cannot send them anywhere
+they don't already have to themselves. `{performers|disambiguate|limit=1}/[{studio}] - {performers|limit=1}` is therefore
+quiet, while disambiguating only in the filename is not since those two would still share a folder.
 
 Two caveats: the disambiguation is sanitised like any other path text, so `II / the sequel` lands as `II the sequel`; and a
 performer literally named `Alex (Blonde)` with no disambiguation still collides with `Alex` (Blonde).

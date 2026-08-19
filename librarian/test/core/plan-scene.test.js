@@ -1741,6 +1741,88 @@ test("one warning names every performer at risk, listing each once", () => {
   assert.match(result.warnings[0], /have disambiguations/);
 });
 
+// Repeating a performer's bare name below a folder that already told them
+// apart is harmless: the subfolder is already somewhere only they can reach
+test("a disambiguated folder silences the bare names nested under it", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern:
+        "{performers|disambiguate|limit=1}/[{studio}] - {performers|limit=1}",
+      filenamePattern: "{performers} - {title}",
+    },
+  });
+  const result = planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config);
+  assert.deepEqual(result.warnings, []);
+  // the repeated bare name is still rendered: it is redundant, not removed
+  assert.equal(
+    result.files[0].folder,
+    "/data/Alex Rivera (Blonde)/[Leaf Studio] - Alex Rivera",
+  );
+});
+
+// and the order the tokens appear in is not the order of the nesting, so the
+// disambiguating one settles the pattern wherever it sits
+test("the disambiguating token can come second in the folder pattern", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers|limit=1}/{performers|disambiguate|limit=1}",
+      filenamePattern: "{title}",
+    },
+  });
+  assert.deepEqual(
+    planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config).warnings,
+    [],
+  );
+});
+
+// The filename cannot settle a folder: two performers of one name still share
+// the folder, which is the thing the folder was supposed to separate
+test("disambiguating only in the filename still warns about the folder", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers}",
+      filenamePattern: "{performers|disambiguate} - {title}",
+    },
+  });
+  const result = planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config);
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Alex Rivera \(Blonde\)/);
+});
+
+test("a bare name in the filename is settled by the filename itself", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{studio}",
+      filenamePattern: "{performers|disambiguate} - {performers} - {title}",
+    },
+  });
+  assert.deepEqual(
+    planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config).warnings,
+    [],
+  );
+});
+
+// Settling is per performer, not per pattern: limit=1 disambiguates only the
+// performer it renders
+test("only the performers the disambiguated token renders are settled", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{performers|disambiguate|limit=1}/{performers}",
+      filenamePattern: "{title}",
+    },
+  });
+  const result = planScene(
+    disambiguationScene([
+      { id: "p1", name: "Alex Rivera", disambiguation: "Blonde" },
+      { id: "p2", name: "Jo", disambiguation: "II" },
+    ]),
+    config,
+  );
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Jo \(II\)/);
+  assert.equal(result.warnings[0].includes("Alex Rivera"), false);
+});
+
 // no group token in the pattern means the ambiguity cannot affect the name, so
 // warning about it would be noise on every row
 test("several groups warn only when the pattern actually uses one", () => {

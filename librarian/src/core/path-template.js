@@ -1030,30 +1030,55 @@ export function findDisambiguationRisks(
 ) {
   const tokens = buildTokens(sceneView, config, matchedIds);
   const risks = [];
-  const seen = {};
+  const disambiguated = {};
+  const warned = {};
+  // The patterns are visited outermost first, and each is settled before the
+  // next: a performer told apart by the folder is already in a folder of their
+  // own, so repeating their bare name deeper down or in the filename cannot
+  // send anyone anywhere new. The reverse does not hold, which is why the
+  // filename cannot settle a folder that shares its name between two people
   (patterns || []).forEach((pattern) => {
-    scanPattern(pattern).forEach((token) => {
-      if (
-        modifierKindOf(token.name) !== "performer" ||
-        hasModifier(token, "disambiguate")
-      ) {
-        return;
-      }
-      const value = tokens[token.name];
-      if (!value || !value.__list) {
-        return;
-      }
-      const pairs = value.entities.map((e) => {
-        return { entity: e, name: sanitizeTokenValue(e.name) };
+    const rendered = scanPattern(pattern)
+      .filter((token) => {
+        return modifierKindOf(token.name) === "performer";
+      })
+      .map((token) => {
+        const value = tokens[token.name];
+        const pairs =
+          value && value.__list
+            ? value.entities.map((e) => {
+                return { entity: e, name: sanitizeTokenValue(e.name) };
+              })
+            : [];
+        return { token: token, pairs: applyListModifiers(pairs, token) };
       });
-      applyListModifiers(pairs, token).forEach((pair) => {
+    // Within one pattern the order of the tokens is not the order of the
+    // nesting, so every disambiguating token has its say before anything is
+    // held against a bare one
+    rendered.forEach((entry) => {
+      if (!hasModifier(entry.token, "disambiguate")) {
+        return;
+      }
+      entry.pairs.forEach((pair) => {
+        disambiguated[pair.entity.id] = true;
+      });
+    });
+    rendered.forEach((entry) => {
+      if (hasModifier(entry.token, "disambiguate")) {
+        return;
+      }
+      entry.pairs.forEach((pair) => {
         const disambiguation = String(pair.entity.disambiguation || "").trim();
-        if (!disambiguation || seen[pair.entity.id]) {
+        if (
+          !disambiguation ||
+          disambiguated[pair.entity.id] ||
+          warned[pair.entity.id]
+        ) {
           return;
         }
-        seen[pair.entity.id] = true;
+        warned[pair.entity.id] = true;
         risks.push({
-          token: token.name,
+          token: entry.token.name,
           name: pair.entity.name,
           disambiguation: disambiguation,
         });
