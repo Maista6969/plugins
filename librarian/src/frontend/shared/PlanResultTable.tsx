@@ -214,7 +214,7 @@ export function PlanResultTable({
                         {(plan.warnings || []).map((w: string, i: number) => (
                           <div
                             key={i}
-                            className="librarian-token-hint text-warning"
+                            className="librarian-plan-warning librarian-token-hint text-warning"
                           >
                             {w}
                           </div>
