@@ -39,14 +39,12 @@
   min-width: 0;
 }
 
-/* Scene labels are full file paths, which are long and only differ towards
-   the end -- truncate at the start so the distinguishing part stays visible. */
+/* Scene labels are file paths with the part they share already stripped, so
+   what remains differs from its first segment onwards -- truncating at the end
+   keeps the distinguishing part visible. The full path is in the title. */
 .doppelganger-group-item {
-  direction: rtl;
   overflow: hidden;
-  text-align: left;
   text-overflow: ellipsis;
-  unicode-bidi: plaintext;
   white-space: nowrap;
 }
 

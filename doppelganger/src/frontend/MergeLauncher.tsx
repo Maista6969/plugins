@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@apollo/client";
 import { PERFORMERS_FOR_MERGE, TAGS_FOR_MERGE } from "./shared/stash-api.js";
-import type { DuplicateGroup } from "./DuplicateGroupList.js";
+import { groupLabels, type DuplicateGroup } from "./DuplicateGroupList.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Spinner } = PluginApi.libraries.Bootstrap;
@@ -55,16 +55,16 @@ export function SceneMergeLauncher({ group, onClose }: MergeLauncherProps) {
   // The modal only uses `title` to label the two pickers in its first step --
   // the second step re-queries full scenes itself -- and duplicates share a
   // title by definition, so it gets the file path the list already resolved.
-  // Group order puts the lowest id first, which the modal takes as the default
+  // Shortened through the same helper the list uses, so both agree. Group
+  // order puts the lowest id first, which the modal takes as the default
   // destination.
-  const scenes = useMemo(
-    () =>
-      group.items.map((i) => ({
-        id: i.id,
-        title: i.label || `#${i.id}`,
-      })),
-    [group],
-  );
+  const scenes = useMemo(() => {
+    const labels = groupLabels(group, "scene");
+    return group.items.map((i, idx) => ({
+      id: i.id,
+      title: labels[idx] || `#${i.id}`,
+    }));
+  }, [group]);
 
   if (loading) return <Spinner animation="border" size="sm" />;
   if (!Component) return <UnsupportedNotice />;

@@ -6,6 +6,7 @@ import {
   TagMergeLauncher,
 } from "./MergeLauncher.js";
 import { stashBoxLabel, StashBoxSummary } from "./shared/stash-api.js";
+import { stripCommonPrefix } from "../core/strip-common-prefix.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -17,6 +18,13 @@ export interface DuplicateGroup {
 }
 
 export type MergeKind = "scene" | "performer" | "tag";
+
+// Only scene labels are paths; performer and tag labels are names, which have
+// no meaningful prefix to share.
+export function groupLabels(group: DuplicateGroup, mergeKind?: MergeKind) {
+  const labels = group.items.map((i) => i.label);
+  return mergeKind === "scene" ? stripCommonPrefix(labels) : labels;
+}
 
 const LAUNCHERS = {
   scene: SceneMergeLauncher,
@@ -64,37 +72,40 @@ export function DuplicateGroupList({
 
       {groups !== null && groups.length > 0 && (
         <ul className="doppelganger-group-list">
-          {groups.map((group) => (
-            <li
-              key={group.stashId + group.endpoint}
-              className="doppelganger-group"
-            >
-              <div className="doppelganger-group-items">
-                {group.items.map((item) => (
-                  <Link
-                    key={item.id}
-                    to={`/${entityPath}/${item.id}`}
-                    className="doppelganger-group-item"
-                    title={item.label}
+          {groups.map((group) => {
+            const labels = groupLabels(group, mergeKind);
+            return (
+              <li
+                key={group.stashId + group.endpoint}
+                className="doppelganger-group"
+              >
+                <div className="doppelganger-group-items">
+                  {group.items.map((item, i) => (
+                    <Link
+                      key={item.id}
+                      to={`/${entityPath}/${item.id}`}
+                      className="doppelganger-group-item"
+                      title={item.label}
+                    >
+                      {labels[i] || `#${item.id}`}
+                    </Link>
+                  ))}
+                </div>
+                <div className="doppelganger-group-meta text-muted">
+                  {stashBoxLabel(group.endpoint, stashBoxes)}
+                </div>
+                {Launcher && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setMerging(group)}
                   >
-                    {item.label || `#${item.id}`}
-                  </Link>
-                ))}
-              </div>
-              <div className="doppelganger-group-meta text-muted">
-                {stashBoxLabel(group.endpoint, stashBoxes)}
-              </div>
-              {Launcher && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setMerging(group)}
-                >
-                  Merge...
-                </Button>
-              )}
-            </li>
-          ))}
+                    Merge...
+                  </Button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
