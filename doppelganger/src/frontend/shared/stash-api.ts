@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 import { groupDuplicateRows } from "../../core/group-duplicates.js";
+import { groupIdenticalCopyRows } from "../../core/group-identical-copies.js";
 
 const QUERY_SQL = gql`
   mutation DoppelgangerQuerySQL($sql: String!) {
@@ -71,6 +72,29 @@ const STUDIO_DUPES_SQL = `
   ORDER BY st.stash_id, st.endpoint, s.id
 `;
 
+// A scan attaches a new file to an existing scene when its oshash (or MD5)
+// matches a file already on that scene -- pkg/scene/scan.go's
+// matchableFingerprintTypes -- so a scene whose files share an oshash holds
+// byte-identical copies, not alternate encodes. oshash is the file size plus
+// checksums of the first and last 64 KB, so a re-encode or a different cut
+// cannot share one. Column order matches group-identical-copies.js.
+const IDENTICAL_COPIES_SQL = `
+  SELECT sf.scene_id, s.title, fp.fingerprint, fi.id, sf.\`primary\`,
+         fo.path || '/' || fi.basename, fi.size, fi.mod_time
+  FROM scenes_files sf
+  JOIN scenes s ON s.id = sf.scene_id
+  JOIN files fi ON fi.id = sf.file_id
+  JOIN folders fo ON fo.id = fi.parent_folder_id
+  JOIN files_fingerprints fp ON fp.file_id = fi.id AND fp.type = 'oshash'
+  JOIN (
+    SELECT sf2.scene_id, fp2.fingerprint
+    FROM scenes_files sf2
+    JOIN files_fingerprints fp2 ON fp2.file_id = sf2.file_id AND fp2.type = 'oshash'
+    GROUP BY sf2.scene_id, fp2.fingerprint HAVING COUNT(*) > 1
+  ) dupes ON dupes.scene_id = sf.scene_id AND dupes.fingerprint = fp.fingerprint
+  ORDER BY sf.scene_id, fp.fingerprint, sf.\`primary\` DESC, fi.id
+`;
+
 const CONFIGURATION_QUERY = gql`
   query DoppelgangerGetConfiguration {
     configuration {
@@ -127,6 +151,80 @@ export function findDuplicateTags(client: any) {
 
 export function findDuplicateStudios(client: any) {
   return runDuplicateQuery(client, STUDIO_DUPES_SQL);
+}
+
+export async function findIdenticalCopies(client: any) {
+  const { data } = await client.mutate({
+    mutation: QUERY_SQL,
+    variables: { sql: IDENTICAL_COPIES_SQL },
+  });
+  return groupIdenticalCopyRows(data?.querySQL?.rows ?? []);
+}
+
+// Kept separate from CONFIGURATION_QUERY: the field only exists on newer
+// Stash builds, and an unknown field fails the whole query. `undefined` means
+// this Stash has no trash feature, "" means it has one but it is disabled.
+const TRASH_PATH_QUERY = gql`
+  query DoppelgangerTrashPath {
+    configuration {
+      general {
+        deleteTrashPath
+      }
+    }
+  }
+`;
+
+export async function fetchDeleteTrashPath(
+  client: any,
+): Promise<string | undefined> {
+  try {
+    const { data } = await client.query({
+      query: TRASH_PATH_QUERY,
+      fetchPolicy: "no-cache",
+    });
+    return data?.configuration?.general?.deleteTrashPath ?? "";
+  } catch {
+    return undefined;
+  }
+}
+
+const SET_PRIMARY_FILE = gql`
+  mutation DoppelgangerSetPrimaryFile($id: ID!, $fileId: ID!) {
+    sceneUpdate(input: { id: $id, primary_file_id: $fileId }) {
+      id
+    }
+  }
+`;
+
+// Stash refuses to delete a primary file server-side
+// (internal/api/resolver_mutation_file.go), so a plan that keeps a non-primary
+// copy promotes it first. The files go through Stash's own deleter, which
+// honours the configured trash path.
+const DELETE_FILES = gql`
+  mutation DoppelgangerDeleteFiles($ids: [ID!]!) {
+    deleteFiles(ids: $ids)
+  }
+`;
+
+export interface CopyDeletionPlan {
+  sceneId: string;
+  setPrimaryFileId: string | null;
+  deleteFileIds: string[];
+}
+
+export async function executeCopyDeletion(client: any, plan: CopyDeletionPlan) {
+  if (plan.setPrimaryFileId) {
+    await client.mutate({
+      mutation: SET_PRIMARY_FILE,
+      variables: { id: plan.sceneId, fileId: plan.setPrimaryFileId },
+    });
+  }
+  if (plan.deleteFileIds.length) {
+    await client.mutate({
+      mutation: DELETE_FILES,
+      variables: { ids: plan.deleteFileIds },
+    });
+  }
 }
 
 // Seed data for Stash's own merge modals. Both modals re-query full records

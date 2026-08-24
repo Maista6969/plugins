@@ -9,8 +9,9 @@ export function PluginSettingsSummary() {
   return (
     <div className="plugin-settings doppelganger-plugin-settings-summary">
       <p className="text-muted">
-        Finds scenes, performers, and studios matched to the same stash-box
-        entry more than once.
+        Finds scenes, performers, tags, and studios matched to the same
+        stash-box entry more than once, and scenes hiding identical copies of
+        the same file.
       </p>
       <Button as={Link as any} to={SETTINGS_ROUTE} variant="primary">
         Find duplicates

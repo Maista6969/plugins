@@ -5,10 +5,16 @@ import {
   findDuplicatePerformers,
   findDuplicateTags,
   findDuplicateStudios,
+  findIdenticalCopies,
   fetchStashBoxes,
+  fetchDeleteTrashPath,
   StashBoxSummary,
 } from "./shared/stash-api.js";
 import { DuplicateGroupList, DuplicateGroup } from "./DuplicateGroupList.js";
+import {
+  IdenticalCopiesList,
+  IdenticalCopyGroup,
+} from "./IdenticalCopiesList.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -19,12 +25,17 @@ export function DoppelgangerPage() {
   const [performers, setPerformers] = useState<DuplicateGroup[] | null>(null);
   const [tags, setTags] = useState<DuplicateGroup[] | null>(null);
   const [studios, setStudios] = useState<DuplicateGroup[] | null>(null);
+  const [copies, setCopies] = useState<IdenticalCopyGroup[] | null>(null);
   const [stashBoxes, setStashBoxes] = useState<StashBoxSummary[]>([]);
+  const [trashPath, setTrashPath] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
     fetchStashBoxes(client).then((boxes) => {
       if (!cancelled) setStashBoxes(boxes);
+    });
+    fetchDeleteTrashPath(client).then((path) => {
+      if (!cancelled) setTrashPath(path);
     });
     return () => {
       cancelled = true;
@@ -33,10 +44,12 @@ export function DoppelgangerPage() {
 
   const refresh = useCallback(() => {
     setScenes(null);
+    setCopies(null);
     setPerformers(null);
     setTags(null);
     setStudios(null);
     findDuplicateScenes(client).then(setScenes);
+    findIdenticalCopies(client).then(setCopies);
     findDuplicatePerformers(client).then(setPerformers);
     findDuplicateTags(client).then(setTags);
     findDuplicateStudios(client).then(setStudios);
@@ -63,6 +76,12 @@ export function DoppelgangerPage() {
         stashBoxes={stashBoxes}
         mergeKind="scene"
         onMerged={refresh}
+      />
+
+      <IdenticalCopiesList
+        groups={copies}
+        trashPath={trashPath}
+        onDeleted={refresh}
       />
 
       <DuplicateGroupList
