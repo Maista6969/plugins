@@ -351,6 +351,14 @@ export function buildTokens(sceneView, config, matchedIds) {
   );
   const matchedTags = entitiesForIds(sortedTags, matched.tagIds);
 
+  const tagBlacklist = new Set((config.tagBlacklist || []).map(String));
+  const visibleTags = tagBlacklist.size
+    ? sortedTags.filter((t) => !tagBlacklist.has(String(t.id)))
+    : sortedTags;
+  const visibleMatchedTags = tagBlacklist.size
+    ? matchedTags.filter((t) => !tagBlacklist.has(String(t.id)))
+    : matchedTags;
+
   return {
     studio: sanitizeTokenValue(studio),
     studio_root: sanitizeTokenValue(studioRoot),
@@ -366,8 +374,12 @@ export function buildTokens(sceneView, config, matchedIds) {
       matchedPerformers,
       delimiters.performers || ", ",
     ),
-    tags: listValue(sortedTags, delimiters.tags || ", "),
-    matched_tags: listValue(matchedTags, delimiters.tags || ", "),
+    tags: listValue(visibleTags, delimiters.tags || ", ", sortedTags.length),
+    matched_tags: listValue(
+      visibleMatchedTags,
+      delimiters.tags || ", ",
+      matchedTags.length,
+    ),
     title: sanitizeTokenValue(sceneView.title || ""),
     code: sanitizeTokenValue(sceneView.code || ""),
     director: sanitizeTokenValue(sceneView.director || ""),

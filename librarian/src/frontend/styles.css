@@ -153,8 +153,12 @@
 
 .librarian-inline-select {
   width: auto;
+  max-width: 11rem;
   padding-right: 1.5rem;
   display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .librarian-rating-range {

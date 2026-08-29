@@ -129,6 +129,8 @@
   "librarian.entitySettingsPanel.autoRename.subHeading": "每次{entityNoun}更新时都运行此插件",
   "librarian.entitySettingsPanel.onlyOrganized.heading": "仅重命名已整理的{entityNoun}",
   "librarian.entitySettingsPanel.onlyOrganized.subHeading": "避免修改您尚未查看过的{entityNoun}",
+  "librarian.entitySettingsPanel.tagBlacklist.heading": "标签黑名单",
+  "librarian.entitySettingsPanel.tagBlacklist.subHeading": "这些标签永远不会出现在文件夹或文件名中",
   "librarian.entitySettingsPanel.onlyWithStashId.heading": "仅重命名至少有一个 StashID 的短片",
   "librarian.entitySettingsPanel.onlyWithStashId.subHeading": "避免修改尚未与 stash-box 匹配的短片",
   "librarian.entitySettingsPanel.acceptedSources.heading": "接受的来源",

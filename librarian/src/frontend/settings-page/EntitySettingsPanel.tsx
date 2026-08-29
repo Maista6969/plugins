@@ -11,6 +11,7 @@ import { SettingsSection } from "./SettingsSection.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
 import { useEntityCount } from "./useEntityCount.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
+import { useLoadSelectComponents } from "../shared/useLoadSelectComponents.js";
 import {
   ruleToPreviewFilter,
   stashIdGateIsApproximate,
@@ -66,8 +67,9 @@ export function EntitySettingsPanel({
 }: EntitySettingsPanelProps) {
   const intl = useIntl();
   const [confirmingReset, setConfirmingReset] = useState(false);
-  const { BooleanSetting } = PluginApi.components;
+  const { BooleanSetting, TagIDSelect } = PluginApi.components;
   const { stashBoxes } = useStashBoxes();
+  useLoadSelectComponents(["tag"]);
   const section = config[entityType];
   const defaultPattern = section.defaultPattern || {};
   const noun = countableNoun(intl, entityType, false);
@@ -151,6 +153,32 @@ export function EntitySettingsPanel({
           checked={!!section.onlyOrganized}
           onChange={(v: boolean) => update({ onlyOrganized: v })}
         />
+        <div className="setting">
+          <div>
+            <h3>
+              {intl.formatMessage({
+                id: "librarian.entitySettingsPanel.tagBlacklist.heading",
+              })}
+            </h3>
+            <div className="sub-heading">
+              {intl.formatMessage({
+                id: "librarian.entitySettingsPanel.tagBlacklist.subHeading",
+              })}
+            </div>
+          </div>
+          <div className="librarian-tag-blacklist-select">
+            {TagIDSelect && (
+              <TagIDSelect
+                ids={section.tagBlacklist || []}
+                isMulti
+                menuPortalTarget={document.body}
+                onSelect={(items: { id: string }[]) =>
+                  update({ tagBlacklist: items.map((i) => String(i.id)) })
+                }
+              />
+            )}
+          </div>
+        </div>
         {/* Only scenes have stash_ids */}
         {entityType === "scenes" && (
           <div className="setting-group">

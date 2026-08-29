@@ -129,6 +129,8 @@
   "librarian.entitySettingsPanel.autoRename.subHeading": "Führt das Plugin bei jeder Aktualisierung einer/eines {entityNoun} aus",
   "librarian.entitySettingsPanel.onlyOrganized.heading": "Nur als {organized} markierte {entityNoun} umbenennen",
   "librarian.entitySettingsPanel.onlyOrganized.subHeading": "Vermeidet die Änderung von {entityNoun}, die Sie noch nicht überprüft haben",
+  "librarian.entitySettingsPanel.tagBlacklist.heading": "Tag-Sperrliste",
+  "librarian.entitySettingsPanel.tagBlacklist.subHeading": "Diese erscheinen nie in Ordner- oder Dateinamen",
   "librarian.entitySettingsPanel.onlyWithStashId.heading": "Nur Szenen mit mindestens einer StashID umbenennen",
   "librarian.entitySettingsPanel.onlyWithStashId.subHeading": "Vermeidet die Änderung von Szenen, die keiner Stash-Box zugeordnet wurden",
   "librarian.entitySettingsPanel.acceptedSources.heading": "Akzeptierte Quellen",

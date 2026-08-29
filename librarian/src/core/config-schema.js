@@ -27,6 +27,7 @@ const DEFAULT_SCENES = {
   stashIdEndpoints: [],
   rules: [],
   excludeConditions: { conditionLogic: "OR", conditions: [] },
+  tagBlacklist: [],
   defaultPattern: {
     folderPattern: "{studio_hierarchy}",
     filenamePattern: "{studio} - {date} - {title}",
@@ -41,6 +42,7 @@ const DEFAULT_GALLERIES = {
   onlyOrganized: true,
   rules: [],
   excludeConditions: { conditionLogic: "OR", conditions: [] },
+  tagBlacklist: [],
   defaultPattern: {
     folderPattern: "{current}",
     filenamePattern: "{title}",
@@ -54,6 +56,7 @@ const DEFAULT_IMAGES = {
   onlyOrganized: true,
   rules: [],
   excludeConditions: { conditionLogic: "OR", conditions: [] },
+  tagBlacklist: [],
   defaultPattern: {
     folderPattern: "{current}",
     filenamePattern: "{title}",

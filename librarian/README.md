@@ -386,6 +386,13 @@ The table above is the scene's own token set. Galleries and images have the same
 `{group}`, `{group_idx}`, `{stash_id}` and `{director}`, which only scenes have, and in their place get
 `{photographer}`
 
+**Tag blacklist**: each tab's Options section has its own list of tags to leave out of `{tags}` and
+`{matched_tags}` wherever a pattern renders them. Great if for example you have a tag from another plugin
+that you never want turning up in a filename. It only affects what those two tokens render: a blacklisted
+tag still decides which rule matches, exactly as if it were not blacklisted. A tag list a blacklist empties
+out renders empty rather than being reported as missing data, the same way `{performers|gender=female}` renders empty on a
+scene with no female performers instead of erroring.
+
 _File metadata_
 
 <!-- BEGIN GENERATED: tokens-file -->

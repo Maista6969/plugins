@@ -129,6 +129,8 @@
   "librarian.entitySettingsPanel.autoRename.subHeading": "Run the plugin on every {entityNoun} update",
   "librarian.entitySettingsPanel.onlyOrganized.heading": "Only rename {entityNoun} marked {organized}",
   "librarian.entitySettingsPanel.onlyOrganized.subHeading": "Avoids modifying {entityNoun} you haven't reviewed yet",
+  "librarian.entitySettingsPanel.tagBlacklist.heading": "Tag blacklist",
+  "librarian.entitySettingsPanel.tagBlacklist.subHeading": "These will never appear in folder or file names",
   "librarian.entitySettingsPanel.onlyWithStashId.heading": "Only rename scenes with at least one StashID",
   "librarian.entitySettingsPanel.onlyWithStashId.subHeading": "Avoids modifying scenes have not been matched against a stash-box",
   "librarian.entitySettingsPanel.acceptedSources.heading": "Accepted sources",
