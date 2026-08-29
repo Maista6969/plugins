@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { KNOWN_TOKENS } from "../../src/core/path-template.js";
+import { KNOWN_TOKENS, ALL_TOKENS } from "../../src/core/path-template.js";
 import { MODIFIERS } from "../../src/core/token-grammar.js";
 import {
   TOKEN_DESCRIPTIONS,
@@ -14,7 +14,9 @@ import {
 // a modifier without describing it fails the build rather than shipping a blank
 // row that nobody notices
 test("every token has a description", () => {
-  const missing = KNOWN_TOKENS.filter((name) => {
+  // ALL_TOKENS, not KNOWN_TOKENS: a token that only exists for galleries/images
+  // (like photographer) is absent from KNOWN_TOKENS, which is the scene list
+  const missing = ALL_TOKENS.filter((name) => {
     return !TOKEN_DESCRIPTIONS[name];
   });
   assert.deepEqual(missing, [], "tokens with no entry in TOKEN_DESCRIPTIONS");
@@ -22,7 +24,7 @@ test("every token has a description", () => {
 
 test("no description is written for a token that does not exist", () => {
   const stale = Object.keys(TOKEN_DESCRIPTIONS).filter((name) => {
-    return KNOWN_TOKENS.indexOf(name) === -1;
+    return ALL_TOKENS.indexOf(name) === -1;
   });
   assert.deepEqual(stale, [], "descriptions for tokens that were removed");
 });

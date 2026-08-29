@@ -368,6 +368,7 @@ _Scene metadata_
 | `{matched_tags}`            | Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the scene                                                |
 | `{title}`                   | The scene's title                                                                                                                                |
 | `{code}`                    | The scene's own “Studio Code”, not that very few studios actually have these                                                                     |
+| `{director}`                | The scene's director                                                                                                                             |
 | `{date}`                    | The scene's date, can be partial                                                                                                                 |
 | `{date_year}`               | Just the year of the date, e.g. “2024”                                                                                                           |
 | `{date_month}`              | Just the month of the date, e.g. “05”, can be missing if date is partial                                                                         |
@@ -380,6 +381,10 @@ _Scene metadata_
 | `{@Custom Field}`           | One of the scene's own custom fields, named inside the token: {@Series} is the field called Series. Names are matched exactly, capitals included |
 
 <!-- END GENERATED: tokens-metadata -->
+
+The table above is the scene's own token set. Galleries and images have the same tokens except for
+`{group}`, `{group_idx}`, `{stash_id}` and `{director}`, which only scenes have, and in their place get
+`{photographer}`
 
 _File metadata_
 

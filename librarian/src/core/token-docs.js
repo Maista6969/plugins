@@ -30,6 +30,8 @@ export const TOKEN_DESCRIPTIONS = {
     "Only the tag(s) that actually satisfied THIS rule's own tag condition, not every tag on the {noun}",
   title: "The {noun}'s title",
   code: "The {noun}'s own “Studio Code”, not that very few studios actually have these",
+  director: "The scene's director",
+  photographer: "The {noun}'s photographer",
   date: "The {noun}'s date, can be partial",
   date_year: "Just the year of the date, e.g. “2024”",
   date_month:

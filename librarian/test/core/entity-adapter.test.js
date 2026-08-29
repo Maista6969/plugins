@@ -230,3 +230,12 @@ test("scenes and galleries have no relocation restriction", () => {
   assert.equal(adapterFor("scenes").relocationBlocked, undefined);
   assert.equal(adapterFor("galleries").relocationBlocked, undefined);
 });
+
+test("director and photographer are scoped to the type that actually has them", () => {
+  assert.ok(adapterFor("scenes").tokens.indexOf("director") !== -1);
+  assert.equal(adapterFor("scenes").tokens.indexOf("photographer"), -1);
+  ["galleries", "images"].forEach((type) => {
+    assert.ok(adapterFor(type).tokens.indexOf("photographer") !== -1);
+    assert.equal(adapterFor(type).tokens.indexOf("director"), -1);
+  });
+});

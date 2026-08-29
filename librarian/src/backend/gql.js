@@ -10,6 +10,7 @@ export const SCENE_FIELDS = `
   id
   title
   code
+  director
   date
   organized
   rating100
@@ -43,6 +44,7 @@ const COMMON_METADATA_FIELDS = `
   organized
   rating100
   custom_fields
+  photographer
   studio {
     ${STUDIO_FIELDS}
   }

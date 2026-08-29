@@ -24,6 +24,7 @@ export const KNOWN_TOKENS = [
   "matched_tags",
   "title",
   "code",
+  "director",
   "date",
   "date_year",
   "date_month",
@@ -369,6 +370,8 @@ export function buildTokens(sceneView, config, matchedIds) {
     matched_tags: listValue(matchedTags, delimiters.tags || ", "),
     title: sanitizeTokenValue(sceneView.title || ""),
     code: sanitizeTokenValue(sceneView.code || ""),
+    director: sanitizeTokenValue(sceneView.director || ""),
+    photographer: sanitizeTokenValue(sceneView.photographer || ""),
     date: sanitizeTokenValue(sceneView.date || ""),
     date_year: yearMatch ? yearMatch[1] : "",
     date_month: monthMatch ? monthMatch[2] : "",
@@ -441,6 +444,14 @@ const TOKEN_REQUIREMENTS = {
   code: {
     isMissing: (view) => !view.code,
     message: "{noun} has no code assigned",
+  },
+  director: {
+    isMissing: (view) => !view.director,
+    message: "{noun} has no director assigned",
+  },
+  photographer: {
+    isMissing: (view) => !view.photographer,
+    message: "{noun} has no photographer assigned",
   },
   date: {
     isMissing: (view) => !view.date,
@@ -934,16 +945,28 @@ export function findUnknownTokens(pattern, allowedTokens) {
 
 // Tokens that exist for every entity type. stash_id is excluded because only
 // scenes have stash_ids, and the file-tech tokens because what a file can
-// report differs per type
+// report differs per type. director drops out here because galleries and
+// images have the equivalent "photographer" field instead, added on below
 export const METADATA_TOKENS = KNOWN_TOKENS.filter((t) => {
   return (
     FILE_TECH_TOKENS.indexOf(t) === -1 &&
     t !== "phash" &&
     t !== "stash_id" &&
     t !== "group" &&
-    t !== "group_idx"
+    t !== "group_idx" &&
+    t !== "director"
   );
-});
+}).concat(["photographer"]);
+
+// The full token vocabulary across every entity type, scene-only and
+// gallery/image-only alike. KNOWN_TOKENS alone underclaims (it's the scene
+// list) and so does METADATA_TOKENS (it's missing director); doc coverage and
+// the pattern reference need the union so nothing goes undocumented
+export const ALL_TOKENS = KNOWN_TOKENS.concat(
+  METADATA_TOKENS.filter((t) => {
+    return KNOWN_TOKENS.indexOf(t) === -1;
+  }),
+);
 
 export function hasUnsafeOptionalOnlyBasename(filenamePattern) {
   const tokens = scanPattern(filenamePattern);

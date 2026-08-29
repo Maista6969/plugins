@@ -43,6 +43,7 @@ const TOKEN_CRITERIA = {
   tags: { type: "tags", modifier: "NOT_NULL" },
   title: { type: "title", modifier: "NOT_NULL" },
   code: { type: "code", modifier: "NOT_NULL" },
+  director: { type: "director", modifier: "NOT_NULL" },
   date: { type: "date", modifier: "NOT_NULL" },
   // a partial date still satisfies "has a date"; that {date_day} needs a full
   // one is not something the filter can ask for

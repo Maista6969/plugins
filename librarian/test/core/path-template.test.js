@@ -86,6 +86,14 @@ test("every documented token substitutes correctly", () => {
   assert.equal(render("{tags}", view), "Pop, Rock");
   assert.equal(render("{title}", view), "My Title");
   assert.equal(render("{code}", sceneView({ code: "ABC-123" })), "ABC-123");
+  assert.equal(
+    render("{director}", sceneView({ director: "Kelly Loveless" })),
+    "Kelly Loveless",
+  );
+  assert.equal(
+    render("{photographer}", sceneView({ photographer: "Jo Photo" })),
+    "Jo Photo",
+  );
   assert.equal(render("{date}", view), "2024-03-05");
   assert.equal(render("{date_year}", view), "2024");
   assert.equal(render("{date_month}", view), "03");
@@ -198,6 +206,17 @@ test("studio_hierarchy is just the studio name when there's no parent network", 
   const view = sceneView({ studioNames: ["OnlyOne"] });
   assert.equal(render("{studio}", view), "OnlyOne");
   assert.equal(render("{studio_hierarchy}", view), "OnlyOne");
+});
+
+test("{director} and {photographer} are each reported missing on their own, independent of the other", () => {
+  const view = sceneView({ director: "", photographer: "" });
+  assert.equal(findMissingRequiredData(["{director}"], view).length > 0, true);
+  assert.equal(
+    findMissingRequiredData(["{photographer}"], view).length > 0,
+    true,
+  );
+  assert.deepEqual(findMissingRequiredData(["{director?}"], view), []);
+  assert.deepEqual(findMissingRequiredData(["{photographer?}"], view), []);
 });
 
 test("{field?} renders empty rather than leaving literal text when data is missing", () => {

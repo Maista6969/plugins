@@ -56,6 +56,10 @@ export function normalizeScene(rawScene, entityType) {
     id: rawScene.id,
     title: rawScene.title || "",
     code: rawScene.code || "",
+    // director is scene-only, photographer is gallery/image-only: whichever
+    // one the query for this entity type didn't fetch is simply undefined
+    director: rawScene.director || "",
+    photographer: rawScene.photographer || "",
     date: rawScene.date || "",
     organized: !!rawScene.organized,
     rating100: rawScene.rating100 != null ? rawScene.rating100 : null,
