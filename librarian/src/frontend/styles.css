@@ -179,6 +179,33 @@
   font-size: 0.8rem;
 }
 
+.librarian-pattern-textarea {
+  font-family: monospace;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+/* Stash's .setting is built for a fixed-size control (a toggle, a button) as
+   the row's second column, sized by its own content. A tag multi-select has
+   no natural content width, so left alone it grows with however many tags
+   are picked and shoves the heading sideways. Pinning a width here keeps it
+   inside its own column instead: tags wrap inside the select, not the row */
+.librarian-tag-blacklist-select {
+  flex-shrink: 0;
+  /* the same technique Stash's own .setting-group .setting > div:last-child
+     uses to pin a control to the row's right edge: consumes all the free
+     space to its left regardless of how justify-content is behaving */
+  margin-left: auto;
+  width: 60%;
+}
+
+/* TagIDSelect's own root element does not stretch to fill its parent by
+   itself (confirmed by screenshot: it was sitting narrow and left-aligned
+   inside this wrapper's 60%-wide box, leaving the rest of the box empty) */
+.librarian-tag-blacklist-select > div {
+  width: 100%;
+}
+
 .librarian-plan-warnings {
   white-space: normal;
   max-width: 22rem;

@@ -36,7 +36,7 @@ function PatternModalField({
     (t: string) => fileTechTokens.indexOf(t) === -1,
   );
   const { stashBoxes, loading: boxesLoading } = useStashBoxes();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [referenceOpen, setReferenceOpen] = useState(false);
   const pattern = value || "";
   // null while loading, so a from= value is never flagged against a list we
@@ -73,12 +73,22 @@ function PatternModalField({
     <div className="librarian-pattern-input-wrapper">
       <Form.Control
         ref={inputRef}
-        type="text"
+        as="textarea"
+        rows={3}
         autoFocus
-        className="input-control"
+        className="input-control librarian-pattern-textarea"
         isInvalid={blockingCount > 0 || unsafeBasename}
         value={pattern}
-        onChange={(e: any) => setValue(e.target.value)}
+        // A pattern is one logical line that wraps for readability, not a
+        // multi-line value: Enter must not plant a literal newline in a
+        // folder/filename, so it's stripped here and blocked on keydown too
+        // (a paste only goes through onChange, Enter only through keydown)
+        onChange={(e: any) => setValue(e.target.value.replace(/[\r\n]+/g, ""))}
+        onKeyDown={(e: any) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+          }
+        }}
         placeholder="{studio_parent}/{studio}/{studio} - {date} - {title}"
       />
       {problems.map((problem, i) => (
