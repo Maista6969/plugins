@@ -216,6 +216,11 @@ test("the conditions reach the right map", () => {
     performers: [
       { id: "p1", name: "Amy", custom_fields: { Agency: "Talent Co" } },
     ],
+    studio: {
+      id: "s1",
+      name: "Leaf Studio",
+      custom_fields: { Network: "Betty Files" },
+    },
   });
   const own = {
     field: "custom_field",
@@ -230,9 +235,17 @@ test("the conditions reach the right map", () => {
     valueOp: "EQUALS",
     value: "Talent Co",
   };
+  const studios = {
+    field: "studio",
+    op: "custom_field",
+    key: "Network",
+    valueOp: "EQUALS",
+    value: "Betty Files",
+  };
   assert.equal(evaluateCondition(view, own), true);
   assert.equal(evaluateCondition(view, theirs), true);
-  // the item's own map and its performers' are never the same map
+  assert.equal(evaluateCondition(view, studios), true);
+  // the item's own map, its performers' and its studio's are never the same map
   assert.equal(
     evaluateCondition(view, { ...own, key: "Agency", value: "Talent Co" }),
     false,
@@ -242,6 +255,42 @@ test("the conditions reach the right map", () => {
       ...theirs,
       key: "Series",
       value: "Anita's Adventures",
+    }),
+    false,
+  );
+  assert.equal(evaluateCondition(view, { ...studios, key: "Series" }), false);
+});
+
+test("a studio custom field condition asks about the scene's own (leaf) studio, not an ancestor", () => {
+  const view = normalizeScene({
+    studio: {
+      id: "s-leaf",
+      name: "Leaf Studio",
+      custom_fields: { Network: "Leaf's Own" },
+      parent_studio: {
+        id: "s-parent",
+        name: "Parent Co",
+        custom_fields: { Network: "Parent's Own" },
+      },
+    },
+  });
+  assert.equal(
+    evaluateCondition(view, {
+      field: "studio",
+      op: "custom_field",
+      key: "Network",
+      valueOp: "EQUALS",
+      value: "Leaf's Own",
+    }),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(view, {
+      field: "studio",
+      op: "custom_field",
+      key: "Network",
+      valueOp: "EQUALS",
+      value: "Parent's Own",
     }),
     false,
   );
@@ -269,6 +318,32 @@ test("a matched condition says which field and how", () => {
   );
 });
 
+test("a matched studio custom field condition names the studio", () => {
+  const view = normalizeScene({
+    studio: { id: "s1", name: "Leaf Studio", custom_fields: {} },
+  });
+  assert.equal(
+    describeCondition(view, {
+      field: "studio",
+      op: "custom_field",
+      key: "Network",
+      valueOp: "INCLUDES",
+      value: "Betty",
+    }),
+    "studio 'Leaf Studio'’s custom field \"Network\" contains 'Betty'",
+  );
+  // no studio at all: falls back to a generic phrasing rather than quoting ''
+  assert.equal(
+    describeCondition(normalizeScene({}), {
+      field: "studio",
+      op: "custom_field",
+      key: "Network",
+      valueOp: "NOT_NULL",
+    }),
+    'the studio’s custom field "Network" is set',
+  );
+});
+
 test("a custom field condition becomes the criterion Stash takes", () => {
   assert.deepEqual(
     ruleToSceneFilter({
@@ -289,6 +364,29 @@ test("a custom field condition becomes the criterion Stash takes", () => {
       ],
     }),
     { custom_fields: [{ field: "Series", modifier: "IS_NULL" }] },
+  );
+});
+
+test("a studio custom field condition becomes a studios_filter criterion", () => {
+  assert.deepEqual(
+    ruleToSceneFilter({
+      conditions: [
+        {
+          field: "studio",
+          op: "custom_field",
+          key: "Network",
+          valueOp: "EQUALS",
+          value: "Indie",
+        },
+      ],
+    }),
+    {
+      studios_filter: {
+        custom_fields: [
+          { field: "Network", modifier: "EQUALS", value: ["Indie"] },
+        ],
+      },
+    },
   );
 });
 

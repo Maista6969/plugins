@@ -1,5 +1,6 @@
 import { criterionValue, isPresenceOp } from "./custom-fields.js";
 import { isPerformerOp, isAllQuantifier } from "./performer-condition.js";
+import { isStudioTraitOp } from "./studio-condition.js";
 import { ratingRangeCriterion } from "./rating-range.js";
 
 function asList(value) {
@@ -126,6 +127,30 @@ function performerSubFilter(condition) {
     : null;
 }
 
+// studios_filter mirrors performers_filter above, but a scene has only one
+// (direct) studio rather than a list, so there is no EXISTS ambiguity to
+// worry about: it is StudioFilterType's own "favorite", not a filter_favorites
+// shortcut
+function studioSubFilter(condition) {
+  if (condition.op === "favorite") {
+    return { studios_filter: { favorite: true } };
+  }
+  if (condition.op === "not_favorite") {
+    return { studios_filter: { favorite: false } };
+  }
+  if (condition.op === "not_rated") {
+    return {
+      studios_filter: { rating100: { value: 0, modifier: "IS_NULL" } },
+    };
+  }
+  if (condition.op === "rating") {
+    const criterion = ratingRangeCriterion(condition.value);
+    return criterion ? { studios_filter: { rating100: criterion } } : null;
+  }
+  const criterion = customFieldCriterion(condition, condition.valueOp);
+  return criterion ? { studios_filter: { custom_fields: [criterion] } } : null;
+}
+
 function conditionToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
@@ -133,11 +158,13 @@ function conditionToFilter(condition) {
     case "group":
       return groupPresenceFilter(condition);
     case "studio":
-      return hierarchicalFilter(
-        "studios",
-        condition,
-        condition.op === "any_of_or_descendant" ? -1 : 0,
-      );
+      return isStudioTraitOp(condition.op)
+        ? studioSubFilter(condition)
+        : hierarchicalFilter(
+            "studios",
+            condition,
+            condition.op === "any_of_or_descendant" ? -1 : 0,
+          );
     case "performer":
       return isPerformerOp(condition.op)
         ? performerSubFilter(condition)

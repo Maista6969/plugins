@@ -1,18 +1,33 @@
 export const STUDIO_FIELDS = `
   id
   name
+  custom_fields
+  favorite
+  rating100
   parent_studio {
     id
     name
+    custom_fields
+    favorite
+    rating100
     parent_studio {
       id
       name
+      custom_fields
+      favorite
+      rating100
       parent_studio {
         id
         name
+        custom_fields
+        favorite
+        rating100
         parent_studio {
           id
           name
+          custom_fields
+          favorite
+          rating100
         }
       }
     }

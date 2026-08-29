@@ -101,6 +101,8 @@ Both skips are reported per item in the preview and in the logs, with the reason
 
 Rules let you define new folder and filename patterns for a subset of your collection: they must have at least one condition
 that defines a subset, such as having a particular set of tags or performers, belonging to a set of studios, or having a certain rating.
+**Studio** also has _is a favourite_, _is not a favourite_, _is rated_ and _has no rating_, asking about the item's own
+studio the same way the **Performer** condition already can about a performer.
 
 Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
 their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.
@@ -135,10 +137,13 @@ their own without writing a rule per movie: set the **Group** condition to _is s
   alternative collapses and none is a guaranteed-content fallback, the whole group renders empty.
 
 **Custom fields** work as both a condition and a token. The **Custom field** condition asks about the scene's, gallery's or
-image's own custom fields, and **Performer** → _has a custom field_ asks whether any of its performers has a matching one, so
-"anything featuring a performer whose Agency is Talent Co" is a single condition. In a pattern, write `{@Series}` for the
-custom field named `Series`; the name can contain spaces (`{@Release Group}`) and takes `?` and modifiers like any other
-token (`{@Episode?}`, `{@Series|uppercase}`).
+image's own custom fields, **Performer** → _has a custom field_ asks whether any of its performers has a matching one, and
+**Studio** → _has a custom field_ asks the same about the item's own (direct) studio, not its parent studios, so
+"anything featuring a performer whose Agency is Talent Co" or "anything whose studio's Network is Indie" is each a single
+condition. In a pattern, write `{@Series}` for the custom field named `Series`; the name can contain spaces
+(`{@Release Group}`) and takes `?` and modifiers like any other token (`{@Episode?}`, `{@Series|uppercase}`). Only the
+item's own custom fields have a token: a performer's or studio's custom field can gate which rule applies, but there is no
+`{@...}` spelling to put its value in a path.
 
 Custom fields have no schema, so a few things follow from how Stash stores them, and Librarian matches all of them exactly:
 

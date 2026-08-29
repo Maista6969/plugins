@@ -114,6 +114,34 @@ const PERFORMER_ONLY_OPS = PERFORMER_ONLY_MODIFIERS.map((m) => m.value);
 // Ask something about the performer that needs no value from the user
 const PERFORMER_PRESENCE_OPS = ["favorite", "not_favorite", "not_rated"];
 
+const STUDIO_ONLY_MODIFIERS = [
+  {
+    value: "favorite",
+    label: "librarian.conditionRow.modifier.studioFavorite.label",
+    title: "librarian.conditionRow.modifier.studioFavorite.title",
+  },
+  {
+    value: "not_favorite",
+    label: "librarian.conditionRow.modifier.studioNotFavorite.label",
+    title: "librarian.conditionRow.modifier.studioNotFavorite.title",
+  },
+  {
+    value: "rating",
+    label: "librarian.conditionRow.modifier.studioRating.label",
+    title: "librarian.conditionRow.modifier.studioRating.title",
+  },
+  {
+    value: "not_rated",
+    label: "librarian.conditionRow.modifier.studioNotRated.label",
+    title: "librarian.conditionRow.modifier.studioNotRated.title",
+  },
+  {
+    value: "custom_field",
+    label: "librarian.conditionRow.modifier.studioCustomField.label",
+    title: "librarian.conditionRow.modifier.studioCustomField.title",
+  },
+];
+
 const STUDIO_MODIFIERS = [
   ANY_ONLY_MODIFIERS[0],
   {
@@ -123,7 +151,12 @@ const STUDIO_MODIFIERS = [
   },
   ANY_ONLY_MODIFIERS[1],
   ANY_ONLY_MODIFIERS[2],
-];
+].concat(STUDIO_ONLY_MODIFIERS);
+
+const STUDIO_ONLY_OPS = STUDIO_ONLY_MODIFIERS.map((m) => m.value);
+
+// Ask something about the studio that needs no value from the user
+const STUDIO_PRESENCE_OPS = ["favorite", "not_favorite", "not_rated"];
 
 const GROUP_MODIFIERS = [
   {
@@ -657,14 +690,24 @@ export function ConditionRow({
     PERFORMER_ONLY_OPS.indexOf(condition.op) !== -1
       ? condition.op
       : "";
-  const isRating = condition.field === "rating" || performerOp === "rating";
+  const studioOp =
+    condition.field === "studio" && STUDIO_ONLY_OPS.indexOf(condition.op) !== -1
+      ? condition.op
+      : "";
+  const isRating =
+    condition.field === "rating" ||
+    performerOp === "rating" ||
+    studioOp === "rating";
   const isPath = condition.field === "path";
   const isCustomField =
-    condition.field === "custom_field" || performerOp === "custom_field";
+    condition.field === "custom_field" ||
+    performerOp === "custom_field" ||
+    studioOp === "custom_field";
   const isListField = LIST_FIELDS.indexOf(condition.field) !== -1;
   const isPresenceOp =
     condition.field === "group" ||
     PERFORMER_PRESENCE_OPS.indexOf(performerOp) !== -1 ||
+    STUDIO_PRESENCE_OPS.indexOf(studioOp) !== -1 ||
     condition.op === "is_null" ||
     condition.op === "not_null";
   const ids =
@@ -705,10 +748,13 @@ export function ConditionRow({
       {isCustomField ? (
         <CustomFieldEditor
           condition={condition}
-          op={(performerOp ? condition.valueOp : condition.op) || "EQUALS"}
+          op={
+            (performerOp || studioOp ? condition.valueOp : condition.op) ||
+            "EQUALS"
+          }
           onChangeOp={(nextOp) =>
             onChange(
-              performerOp
+              performerOp || studioOp
                 ? { ...condition, valueOp: nextOp }
                 : { ...condition, op: nextOp },
             )

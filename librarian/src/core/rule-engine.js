@@ -7,6 +7,29 @@ import {
   isAllQuantifier,
 } from "./performer-condition.js";
 import { ratingInRange, describeRatingRange } from "./rating-range.js";
+import { isStudioTraitOp } from "./studio-condition.js";
+
+function evaluateStudioTrait(sceneView, condition) {
+  switch (condition.op) {
+    case "favorite":
+      return sceneView.studioFavorite;
+    case "not_favorite":
+      return !sceneView.studioFavorite;
+    case "rating":
+      return ratingInRange(sceneView.studioRating100, condition.value);
+    case "not_rated":
+      return sceneView.studioRating100 == null;
+    case "custom_field":
+      return evaluateCustomField(
+        sceneView.studioCustomFields,
+        condition.key,
+        condition.valueOp,
+        condition.value,
+      );
+    default:
+      return false;
+  }
+}
 
 function applyListOp(list, op, value) {
   if (op === "is_null") {
@@ -60,6 +83,9 @@ export function evaluateCondition(sceneView, condition) {
     case "group":
       return evaluateGroup(sceneView, condition);
     case "studio": {
+      if (isStudioTraitOp(condition.op)) {
+        return evaluateStudioTrait(sceneView, condition);
+      }
       if (condition.op === "any_of_or_descendant") {
         return applyListOp(sceneView.studioIds, "any_of", condition.value);
       }
@@ -232,6 +258,30 @@ function describeCustomField(prefix, condition) {
     : named + " '" + condition.value + "'";
 }
 
+function describeStudioCondition(sceneView, condition) {
+  const leafName = sceneView.studioNames.length
+    ? sceneView.studioNames[sceneView.studioNames.length - 1]
+    : "";
+  const who = leafName ? "studio '" + leafName + "'" : "the studio";
+  if (condition.op === "favorite") {
+    return who + " is a favourite";
+  }
+  if (condition.op === "not_favorite") {
+    return who + " is not a favourite";
+  }
+  if (condition.op === "rating") {
+    return who + " is rated " + describeRatingRange(condition.value);
+  }
+  if (condition.op === "not_rated") {
+    return who + " has no rating";
+  }
+  const label = CUSTOM_FIELD_OP_LABEL[condition.valueOp] || condition.valueOp;
+  const named = who + '’s custom field "' + condition.key + '" ' + label;
+  return isPresenceOp(condition.valueOp)
+    ? named
+    : named + " '" + condition.value + "'";
+}
+
 function describePerformerCondition(sceneView, condition) {
   const names = performersMatching(sceneView.performers, condition)
     .map((p) => {
@@ -289,12 +339,14 @@ export function describeCondition(sceneView, condition) {
         : "belongs to a group";
     }
     case "studio":
-      return describeListField(
-        FIELD_LABEL[condition.field],
-        sceneView.studioIds,
-        sceneView.studioNames,
-        condition,
-      );
+      return isStudioTraitOp(condition.op)
+        ? describeStudioCondition(sceneView, condition)
+        : describeListField(
+            FIELD_LABEL[condition.field],
+            sceneView.studioIds,
+            sceneView.studioNames,
+            condition,
+          );
     case "performer":
       // names whoever satisfied it rather than restating the condition: those
       // are the performers {matched_performers} is about to put in the path

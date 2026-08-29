@@ -74,6 +74,14 @@ export function normalizeScene(rawScene, entityType) {
     studioIds: studioChain.map((s) => {
       return s.id;
     }),
+    // the scene's own (leaf) studio only, not the whole chain
+    studioCustomFields:
+      (rawScene.studio && rawScene.studio.custom_fields) || {},
+    studioFavorite: !!(rawScene.studio && rawScene.studio.favorite),
+    studioRating100:
+      rawScene.studio && rawScene.studio.rating100 != null
+        ? rawScene.studio.rating100
+        : null,
     performers: performers.map((p) => {
       return {
         id: String(p.id),
