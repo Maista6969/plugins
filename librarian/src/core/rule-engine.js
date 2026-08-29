@@ -7,6 +7,7 @@ import {
   isAllQuantifier,
 } from "./performer-condition.js";
 import { ratingInRange, describeRatingRange } from "./rating-range.js";
+import { countInRange, describeCountRange } from "./count-range.js";
 import { isStudioTraitOp } from "./studio-condition.js";
 
 function evaluateStudioTrait(sceneView, condition) {
@@ -102,6 +103,10 @@ export function evaluateCondition(sceneView, condition) {
       return applyListOp(sceneView.tagIds, condition.op, condition.value);
     case "rating":
       return ratingInRange(sceneView.rating100, condition.value);
+    case "performer_count":
+      return countInRange(sceneView.performerIds.length, condition.value);
+    case "tag_count":
+      return countInRange(sceneView.tagIds.length, condition.value);
     case "path": {
       const paths = (sceneView.files || []).map((f) => {
         return f.path;
@@ -368,6 +373,14 @@ export function describeCondition(sceneView, condition) {
     case "rating": {
       const described = describeRatingRange(condition.value);
       return described ? "rating is " + described : "rating";
+    }
+    case "performer_count": {
+      const described = describeCountRange(condition.value);
+      return described ? "performer count is " + described : "performer count";
+    }
+    case "tag_count": {
+      const described = describeCountRange(condition.value);
+      return described ? "tag count is " + described : "tag count";
     }
     case "path": {
       const label = PATH_MODIFIER_LABEL[condition.op] || condition.op;

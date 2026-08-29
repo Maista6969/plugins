@@ -17,6 +17,14 @@ const FIELD_OPTIONS = [
   { value: "tag", label: "tag" },
   { value: "group", label: "group" },
   { value: "rating", label: "rating" },
+  {
+    value: "performer_count",
+    label: "librarian.conditionRow.field.performerCount",
+  },
+  {
+    value: "tag_count",
+    label: "librarian.conditionRow.field.tagCount",
+  },
   { value: "path", label: "librarian.conditionRow.field.path" },
   {
     value: "custom_field",
@@ -302,7 +310,13 @@ export interface Condition {
 }
 
 function valueShape(field: string, op: string): string {
-  if (field === "rating" || op === "rating") return "range";
+  if (
+    field === "rating" ||
+    field === "performer_count" ||
+    field === "tag_count" ||
+    op === "rating"
+  )
+    return "range";
   if (field === "path" || field === "custom_field" || op === "custom_field")
     return "text";
   return "ids";
@@ -428,6 +442,62 @@ function RatingRangeEditor({
       />
       <span className="librarian-token-hint text-muted">
         {intl.formatMessage({ id: "librarian.conditionRow.rating.hint" })}
+      </span>
+    </div>
+  );
+}
+
+function parseCountBound(text: string): number | null {
+  if (text === "") {
+    return null;
+  }
+  const n = parseInt(text, 10);
+  return Number.isNaN(n) || n < 0 ? null : n;
+}
+
+// Same layout as RatingRangeEditor, but for a plain whole-number count
+// (performers on a scene, tags on a scene) rather than a 0-10 rating
+function CountRangeEditor({
+  value,
+  onChange,
+}: {
+  value: RatingRange;
+  onChange: (next: RatingRange) => void;
+}) {
+  const intl = useIntl();
+  return (
+    <div className="librarian-rating-range">
+      <Form.Control
+        className="input-control"
+        type="number"
+        min={0}
+        step={1}
+        placeholder={intl.formatMessage({
+          id: "librarian.conditionRow.rating.min",
+        })}
+        value={value.min == null ? "" : value.min}
+        onChange={(e: any) =>
+          onChange({ ...value, min: parseCountBound(e.target.value) })
+        }
+      />
+      <span>
+        {intl.formatMessage({ id: "librarian.conditionRow.rating.to" })}
+      </span>
+      <Form.Control
+        className="input-control"
+        type="number"
+        min={0}
+        step={1}
+        placeholder={intl.formatMessage({
+          id: "librarian.conditionRow.rating.max",
+        })}
+        value={value.max == null ? "" : value.max}
+        onChange={(e: any) =>
+          onChange({ ...value, max: parseCountBound(e.target.value) })
+        }
+      />
+      <span className="librarian-token-hint text-muted">
+        {intl.formatMessage({ id: "librarian.conditionRow.count.hint" })}
       </span>
     </div>
   );
@@ -698,6 +768,8 @@ export function ConditionRow({
     condition.field === "rating" ||
     performerOp === "rating" ||
     studioOp === "rating";
+  const isCount =
+    condition.field === "performer_count" || condition.field === "tag_count";
   const isPath = condition.field === "path";
   const isCustomField =
     condition.field === "custom_field" ||
@@ -711,7 +783,11 @@ export function ConditionRow({
     condition.op === "is_null" ||
     condition.op === "not_null";
   const ids =
-    !isRating && !isPath && !isCustomField && Array.isArray(condition.value)
+    !isRating &&
+    !isCount &&
+    !isPath &&
+    !isCustomField &&
+    Array.isArray(condition.value)
       ? (condition.value as string[])
       : [];
   const SelectComponent =
@@ -764,6 +840,11 @@ export function ConditionRow({
         />
       ) : isRating ? (
         <RatingRangeEditor
+          value={(condition.value as RatingRange) || { min: null, max: null }}
+          onChange={(next) => onChange({ ...condition, value: next })}
+        />
+      ) : isCount ? (
+        <CountRangeEditor
           value={(condition.value as RatingRange) || { min: null, max: null }}
           onChange={(next) => onChange({ ...condition, value: next })}
         />

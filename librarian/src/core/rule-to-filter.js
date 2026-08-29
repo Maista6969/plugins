@@ -2,6 +2,7 @@ import { criterionValue, isPresenceOp } from "./custom-fields.js";
 import { isPerformerOp, isAllQuantifier } from "./performer-condition.js";
 import { isStudioTraitOp } from "./studio-condition.js";
 import { ratingRangeCriterion } from "./rating-range.js";
+import { countRangeCriterion } from "./count-range.js";
 
 function asList(value) {
   return Array.isArray(value) ? value : [value];
@@ -151,6 +152,11 @@ function studioSubFilter(condition) {
   return criterion ? { studios_filter: { custom_fields: [criterion] } } : null;
 }
 
+function countFilter(key, value) {
+  const criterion = countRangeCriterion(value);
+  return criterion ? { [key]: criterion } : null;
+}
+
 function conditionToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
@@ -173,6 +179,10 @@ function conditionToFilter(condition) {
       return hierarchicalFilter("tags", condition, 0);
     case "rating":
       return ratingFilter(condition.value);
+    case "performer_count":
+      return countFilter("performer_count", condition.value);
+    case "tag_count":
+      return countFilter("tag_count", condition.value);
     case "path":
       return pathFilter(condition);
     default:
