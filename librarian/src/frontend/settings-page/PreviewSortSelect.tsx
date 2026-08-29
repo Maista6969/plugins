@@ -1,4 +1,5 @@
 import React from "react";
+import { useIntl } from "react-intl";
 import { PREVIEW_SORT_FIELDS, SortDirection } from "./entity-preview-query.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -25,15 +26,18 @@ export function PreviewSortSelect({
   onReshuffle,
   reshuffling,
 }: PreviewSortSelectProps) {
+  const intl = useIntl();
   const current = PREVIEW_SORT_FIELDS.find((f) => f.value === field);
 
   return (
     <Dropdown as={ButtonGroup} className="librarian-sort-by-select">
       <Dropdown.Toggle
         variant="secondary"
-        title="Sort field for the sample fetched below"
+        title={intl.formatMessage({
+          id: "librarian.previewSortSelect.title",
+        })}
       >
-        {current ? current.label : ""}
+        {current ? intl.formatMessage({ id: current.label }) : ""}
       </Dropdown.Toggle>
       <Dropdown.Menu popperConfig={{ strategy: "fixed" }}>
         {PREVIEW_SORT_FIELDS.map((f) => (
@@ -42,14 +46,16 @@ export function PreviewSortSelect({
             active={f.value === field}
             onSelect={() => onChangeField(f.value)}
           >
-            {f.label}
+            {intl.formatMessage({ id: f.label })}
           </Dropdown.Item>
         ))}
       </Dropdown.Menu>
       <OverlayTrigger
         overlay={
           <Tooltip id="librarian-sort-direction-tooltip">
-            {direction === "ASC" ? "Ascending" : "Descending"}
+            {intl.formatMessage({
+              id: direction === "ASC" ? "ascending" : "descending",
+            })}
           </Tooltip>
         }
       >
@@ -60,7 +66,11 @@ export function PreviewSortSelect({
       {field === "random" && onReshuffle && (
         <OverlayTrigger
           overlay={
-            <Tooltip id="librarian-sort-reshuffle-tooltip">Reshuffle</Tooltip>
+            <Tooltip id="librarian-sort-reshuffle-tooltip">
+              {intl.formatMessage({
+                id: "actions.reshuffle",
+              })}
+            </Tooltip>
           }
         >
           <Button

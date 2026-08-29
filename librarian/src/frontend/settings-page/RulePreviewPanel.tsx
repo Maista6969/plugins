@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useIntl } from "react-intl";
 import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
 import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
 import { ApplyRuleButton } from "./ApplyRuleButton.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun } from "../shared/eligible-entities.js";
 import {
   DEFAULT_PREVIEW_SORT,
   PREVIEW_REFRESH_DEBOUNCE_MS,
@@ -26,6 +27,7 @@ export function RulePreviewPanel({
   config,
   entityType,
 }: RulePreviewPanelProps) {
+  const intl = useIntl();
   const type = entityType || "scenes";
   const sceneFilter = ruleToPreviewFilter(rule, config[type]);
   const { rows, loading, run, replan, handleEntityOrganized } =
@@ -117,22 +119,33 @@ export function RulePreviewPanel({
               onClick={handlePreviewClick}
             >
               {loading
-                ? "Previewing..."
-                : "Preview matching " + adapterFor(type).plural}
+                ? intl.formatMessage({
+                    id: "librarian.configPreviewPanel.previewing",
+                  })
+                : intl.formatMessage(
+                    { id: "librarian.configPreviewPanel.previewMatching" },
+                    { entityNoun: countableNoun(intl, type) },
+                  )}
             </Button>
           )}
           {visible && (
             <Button
               variant="secondary"
               onClick={() => setClosed(true)}
-              title="Close this preview"
+              title={intl.formatMessage({
+                id: "librarian.configPreviewPanel.closePreviewTitle",
+              })}
             >
-              Close preview
+              {intl.formatMessage({
+                id: "librarian.configPreviewPanel.closePreview",
+              })}
             </Button>
           )}
           {notReady && (
             <span className="librarian-token-hint text-muted">
-              Fill in this rule's conditions to enable preview
+              {intl.formatMessage({
+                id: "librarian.rulePreviewPanel.notReady",
+              })}
             </span>
           )}
         </div>
@@ -145,8 +158,10 @@ export function RulePreviewPanel({
         <div className="librarian-rule-preview-results">
           {rows.length === 0 ? (
             <div className="librarian-token-hint text-muted">
-              No {adapterFor(type).plural} currently match this rule's
-              conditions
+              {intl.formatMessage(
+                { id: "librarian.rulePreviewPanel.noneMatch" },
+                { entityNoun: countableNoun(intl, type) },
+              )}
             </div>
           ) : (
             <PlanResultTable

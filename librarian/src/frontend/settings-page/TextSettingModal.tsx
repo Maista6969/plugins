@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useIntl } from "react-intl";
 
 const PluginApi = (window as any).PluginApi;
 const { Form } = PluginApi.libraries.Bootstrap;
@@ -40,6 +41,7 @@ export function TextSettingModal({
   renderField,
   validate,
 }: TextSettingModalProps) {
+  const intl = useIntl();
   const { ChangeButtonSetting, SettingModal } = PluginApi.components;
   const [showModal, setShowModal] = useState(false);
 
@@ -69,7 +71,11 @@ export function TextSettingModal({
           value={value}
           onChange={() => setShowModal(true)}
           renderValue={(v: string | undefined) =>
-            v || <span className="text-muted">(not set)</span>
+            v || (
+              <span className="text-muted">
+                {intl.formatMessage({ id: "librarian.common.notSet" })}
+              </span>
+            )
           }
         />
       </div>

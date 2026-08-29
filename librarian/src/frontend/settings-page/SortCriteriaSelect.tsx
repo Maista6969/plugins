@@ -1,4 +1,5 @@
 import React from "react";
+import { useIntl } from "react-intl";
 import {
   normalizeSortCriteria,
   describeSortCriteria,
@@ -12,13 +13,18 @@ interface SortCriteriaSelectProps {
   onChange: (next: string[]) => void;
 }
 
-// sorting by name is not a choice, we need it for non-determinism
+// sorting by name is not a choice, we need it for non-determinism. label/title
+// are message ids, resolved at render time since this is a module-level
+// constant built before any component (and its useIntl()) exists.
 const CHOICES = [
-  { value: "favorite", label: "Favourites first" },
+  {
+    value: "favorite",
+    label: "librarian.sortCriteriaSelect.favoritesFirst.label",
+  },
   {
     value: "rating",
-    label: "Highest rated",
-    title: "Unrated performers go last",
+    label: "librarian.sortCriteriaSelect.highestRated.label",
+    title: "librarian.sortCriteriaSelect.highestRated.title",
   },
 ];
 
@@ -26,6 +32,7 @@ export function SortCriteriaSelect({
   value,
   onChange,
 }: SortCriteriaSelectProps) {
+  const intl = useIntl();
   // normalize appends "name"; the buttons only ever deal with the rest
   const selected = normalizeSortCriteria(value).filter((c) => c !== "name");
 
@@ -45,20 +52,26 @@ export function SortCriteriaSelect({
             <Button
               key={choice.value}
               variant={rank === -1 ? "secondary" : "primary"}
-              title={choice.title}
+              title={
+                choice.title
+                  ? intl.formatMessage({ id: choice.title })
+                  : undefined
+              }
               onClick={() => toggle(choice.value)}
             >
               {rank !== -1 && (
                 <span className="librarian-sort-rank">{rank + 1}</span>
               )}
-              {choice.label}
+              {intl.formatMessage({ id: choice.label })}
             </Button>
           );
         })}
       </ButtonGroup>
-      <span className="librarian-sort-tiebreak text-muted">then A→Z</span>
+      <span className="librarian-sort-tiebreak text-muted">
+        {intl.formatMessage({ id: "librarian.sortCriteriaSelect.tiebreak" })}
+      </span>
       <div className="librarian-token-hint text-muted">
-        {describeSortCriteria(value)}
+        {describeSortCriteria(intl, value)}
       </div>
     </>
   );

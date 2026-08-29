@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useIntl } from "react-intl";
 import { RuleEditor, Rule } from "./RuleEditor.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -12,6 +13,9 @@ function newRuleId(): string {
 function newRule(existingRules: Rule[]): Rule {
   return {
     id: newRuleId(),
+    // Stored in config and pattern-matched by PluginSettingsSummary's
+    // UNNAMED_RULE_RE, so this must stay a fixed English string, not a
+    // translated one, regardless of the active locale.
     name: "Unnamed rule " + (existingRules.length + 1),
     enabled: true,
     conditionLogic: "AND",
@@ -39,6 +43,7 @@ export function RuleList({
   config,
   entityType,
 }: RuleListProps) {
+  const intl = useIntl();
   const [tempRules, setTempRules] = useState(rules);
   const [dragIndex, setDragIndex] = useState<number | undefined>();
   const [mouseOverIndex, setMouseOverIndex] = useState<number | undefined>();
@@ -96,9 +101,7 @@ export function RuleList({
   return (
     <div className="librarian-rule-list-wrapper">
       <p className="librarian-token-hint text-muted">
-        Rules are evaluated in order and the first rule whose conditions match a
-        scene wins. If no rule matches, the default pattern below is used. Drag
-        a rule by its handle to reorder it
+        {intl.formatMessage({ id: "librarian.ruleList.hint" })}
       </p>
       <ListGroup
         as="ul"
@@ -128,7 +131,7 @@ export function RuleList({
         ))}
       </ListGroup>
       <Button variant="secondary" className="mt-2" onClick={addRule}>
-        + Add rule
+        {intl.formatMessage({ id: "librarian.ruleList.addRule" })}
       </Button>
     </div>
   );

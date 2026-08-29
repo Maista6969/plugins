@@ -1,10 +1,11 @@
 import React from "react";
+import { useIntl, IntlShape } from "react-intl";
 import { StatusBadge } from "./StatusBadge.js";
 import { OrganizeButton } from "./OrganizeButton.js";
 import { describeMissingData } from "./describe-missing.js";
 import { useStashBoxes } from "./StashBoxesContext.js";
 import { describePatternPair, joinBasename } from "../../core/path-template.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun } from "./eligible-entities.js";
 import { entityUI } from "./entity-ui.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -25,6 +26,7 @@ interface PlanResultTableProps {
 }
 
 function resolveMatchedRule(
+  intl: IntlShape,
   plan: any,
   rules: any[],
 ): { label: string; pattern?: string } | undefined {
@@ -39,7 +41,11 @@ function resolveMatchedRule(
       : plan.matchedRule;
 
   if (!ruleId) {
-    return { label: "Uses the default pattern" };
+    return {
+      label: intl.formatMessage({
+        id: "librarian.planResultTable.usesDefaultPattern",
+      }),
+    };
   }
   const index = (rules || []).findIndex((r) => r.id === ruleId);
   if (index === -1) {
@@ -47,50 +53,91 @@ function resolveMatchedRule(
   }
   const rule = rules[index];
   const label = rule.name
-    ? "Matched rule " + (index + 1) + " (" + rule.name + ")"
-    : "Matched rule " + (index + 1);
+    ? intl.formatMessage(
+        { id: "librarian.planResultTable.matchedRuleNamed" },
+        { index: index + 1, name: rule.name },
+      )
+    : intl.formatMessage(
+        { id: "librarian.planResultTable.matchedRule" },
+        { index: index + 1 },
+      );
   const pattern = describePatternPair(rule.folderPattern, rule.filenamePattern);
   return { label, pattern: pattern || undefined };
 }
 
-export function matchedRuleTitle(plan: any, rules: any[]): string | undefined {
-  const info = resolveMatchedRule(plan, rules);
+export function matchedRuleTitle(
+  intl: IntlShape,
+  plan: any,
+  rules: any[],
+): string | undefined {
+  const info = resolveMatchedRule(intl, plan, rules);
   if (!info) {
     return undefined;
   }
   return info.label + (info.pattern ? ": " + info.pattern : "");
 }
 
-export function matchedRuleLabel(plan: any, rules: any[]): string | undefined {
-  return resolveMatchedRule(plan, rules)?.label;
+export function matchedRuleLabel(
+  intl: IntlShape,
+  plan: any,
+  rules: any[],
+): string | undefined {
+  return resolveMatchedRule(intl, plan, rules)?.label;
 }
 
 export function skippedText(
+  intl: IntlShape,
   reason: string,
   excludedBy?: string[],
   entityType?: string,
   message?: string,
 ): string {
-  const noun = adapterFor(entityType).noun;
+  const noun = countableNoun(intl, entityType || "scenes", false);
   // folder_gallery and in_zip_gallery carry their own explanation from the adapter
   if (message) {
-    return "Skipped: " + message;
+    return intl.formatMessage(
+      { id: "librarian.planResultTable.skipped.withMessage" },
+      { message },
+    );
   }
   if (reason === "not_organized") {
-    return "Skipped: " + noun + " is not organized";
+    return intl.formatMessage(
+      { id: "librarian.planResultTable.skipped.notOrganized" },
+      {
+        entityNoun: noun,
+        organized: intl.formatMessage({ id: "organized" }).toLowerCase(),
+      },
+    );
   }
   if (reason === "no_stash_id") {
-    return "Skipped: " + noun + " has no StashID";
+    return intl.formatMessage(
+      { id: "librarian.planResultTable.skipped.noStashId" },
+      { entityNoun: noun },
+    );
   }
   if (reason === "no_files") {
-    return "Skipped: " + noun + " has no " + entityUI(entityType).fileNoun;
+    return intl.formatMessage(
+      { id: "librarian.planResultTable.skipped.noFiles" },
+      {
+        entityNoun: noun,
+        fileNoun: intl.formatMessage({ id: entityUI(entityType).fileNoun }),
+      },
+    );
   }
   if (reason === "excluded") {
     return excludedBy && excludedBy.length > 0
-      ? "Skipped: excluded because " + excludedBy.join(", ")
-      : "Skipped: matches an exclusion condition";
+      ? intl.formatMessage(
+          { id: "librarian.planResultTable.skipped.excludedBy" },
+          { excludedBy: excludedBy.join(", ") },
+        )
+      : intl.formatMessage({
+          id: "librarian.planResultTable.skipped.excludedGeneric",
+        });
   }
-  return `Skipped: ${reason}`;
+  return intl.formatMessage(
+    { id: "librarian.planResultTable.skipped.fallback" },
+    { reason },
+  );
 }
 
 function entityDisplayName(scene: any, entityType?: string): string {
@@ -149,6 +196,7 @@ export function PlanResultTable({
   rules,
   entityType,
 }: PlanResultTableProps) {
+  const intl = useIntl();
   // empty outside the settings page, where the message keeps the endpoint URL
   const { stashBoxes } = useStashBoxes();
 
@@ -158,17 +206,24 @@ export function PlanResultTable({
         <thead>
           <tr>
             <th className="cover_image-head">
-              {entityType === "images" ? "Thumbnail" : "Cover Image"}
+              {intl.formatMessage({
+                id:
+                  entityType === "images"
+                    ? "librarian.planResultTable.thumbnail"
+                    : "cover_image",
+              })}
             </th>
-            <th>Title</th>
-            <th>Path</th>
-            <th>Status</th>
+            <th>{intl.formatMessage({ id: "title" })}</th>
+            <th>{intl.formatMessage({ id: "path" })}</th>
+            <th>
+              {intl.formatMessage({ id: "librarian.planResultTable.status" })}
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map(({ scene, plan }) => {
             const pending = !!pendingSceneIds && pendingSceneIds.has(scene.id);
-            const ruleTitle = matchedRuleTitle(plan, rules || []);
+            const ruleTitle = matchedRuleTitle(intl, plan, rules || []);
             return (
               <React.Fragment key={scene.id}>
                 {plan.status !== "ok" ? (
@@ -179,11 +234,23 @@ export function PlanResultTable({
                     <td>{entityLink(scene, entityType)}</td>
                     <td className="librarian-message-cell">
                       {plan.status === "error" ? (
-                        "Error: " +
-                        describeMissingData(plan.missingData, stashBoxes)
+                        intl.formatMessage(
+                          { id: "librarian.planResultTable.errorPrefix" },
+                          {
+                            message: describeMissingData(
+                              plan.missingData,
+                              stashBoxes,
+                            ),
+                          },
+                        )
                       ) : plan.reason === "not_organized" ? (
                         <span className="librarian-organize-hint">
-                          {skippedText(plan.reason, undefined, entityType)}{" "}
+                          {skippedText(
+                            intl,
+                            plan.reason,
+                            undefined,
+                            entityType,
+                          )}{" "}
                           <OrganizeButton
                             scene={scene}
                             onOrganized={onEntityOrganized}
@@ -192,6 +259,7 @@ export function PlanResultTable({
                         </span>
                       ) : (
                         skippedText(
+                          intl,
                           plan.reason,
                           plan.excludedBy,
                           entityType,

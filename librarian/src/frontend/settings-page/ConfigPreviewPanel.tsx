@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
+import { useIntl } from "react-intl";
 import { configGateFilter } from "../../core/rule-to-filter.js";
 import { useApolloClient } from "@apollo/client";
 import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
-import { eligibleEntityNoun } from "../shared/eligible-entities.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import {
+  eligibleEntityNoun,
+  countableNoun,
+} from "../shared/eligible-entities.js";
 import { runRenameTask } from "../shared/stash-api.js";
 import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
 import {
@@ -30,6 +33,7 @@ export function ConfigPreviewPanel({
   entityType,
 }: ConfigPreviewPanelProps) {
   const type = entityType || "scenes";
+  const intl = useIntl();
   const client = useApolloClient();
   const [sort, setSort] = useState(DEFAULT_PREVIEW_SORT);
   const [closed, setClosed] = useState(true);
@@ -41,7 +45,7 @@ export function ConfigPreviewPanel({
   const running = !!jobId && (!job || !isTerminalStatus(job.status));
 
   const section: any = config[type] || {};
-  const plural = adapterFor(type).plural;
+  const plural = countableNoun(intl, type);
 
   // Shared with the rule preview so the two cannot drift apart. The StashID
   // gate is scene-only, since stash_id_count is not a field on the gallery or
@@ -74,14 +78,20 @@ export function ConfigPreviewPanel({
       return null;
     }
     if (!job) {
-      return "Starting...";
+      return intl.formatMessage({ id: "librarian.common.starting" });
     }
     if (!isTerminalStatus(job.status)) {
       const pct =
         job.progress != null ? Math.round(job.progress * 100) + "%" : "...";
-      return "Renaming... " + pct;
+      return intl.formatMessage(
+        { id: "librarian.renameButton.jobStatus.running" },
+        { progress: pct },
+      );
     }
-    return "Rename job " + job.status.toLowerCase();
+    return intl.formatMessage(
+      { id: "librarian.renameButton.jobStatus.terminal" },
+      { status: job.status.toLowerCase() },
+    );
   }
 
   // Re-query only when the matching set could have changed; otherwise re-plan
@@ -132,18 +142,31 @@ export function ConfigPreviewPanel({
         <ConfirmModal
           show
           icon={faFolderTree}
-          header={"Rename all " + plural + " now?"}
-          cancel={{ text: "Cancel", onClick: () => setConfirming(false) }}
+          header={intl.formatMessage(
+            { id: "librarian.configPreviewPanel.confirm.header" },
+            { entityNoun: plural },
+          )}
+          cancel={{
+            text: intl.formatMessage({ id: "actions.cancel" }),
+            onClick: () => setConfirming(false),
+          }}
           accept={{
-            text: "Rename all " + plural,
+            text: intl.formatMessage(
+              { id: "librarian.configPreviewPanel.renameAll" },
+              { entityNoun: plural },
+            ),
             variant: "danger",
             onClick: handleConfirmedRenameAll,
           }}
         >
           <p>
-            Every {eligibleEntityNoun(config, false, type)} in your library will
-            be renamed/moved on disk immediately: this is a real run, not a
-            preview, and it is NOT reversable by this plugin
+            {intl.formatMessage(
+              { id: "librarian.renameButton.confirm.body" },
+              {
+                entityNoun: eligibleEntityNoun(intl, config, false, type),
+                filterActive: "false",
+              },
+            )}
           </p>
         </ConfirmModal>
       )}
@@ -163,16 +186,27 @@ export function ConfigPreviewPanel({
               disabled={loading}
               onClick={handlePreviewClick}
             >
-              {loading ? "Previewing..." : "Preview matching " + plural}
+              {loading
+                ? intl.formatMessage({
+                    id: "librarian.configPreviewPanel.previewing",
+                  })
+                : intl.formatMessage(
+                    { id: "librarian.configPreviewPanel.previewMatching" },
+                    { entityNoun: plural },
+                  )}
             </Button>
           )}{" "}
           {visible && (
             <Button
               variant="secondary"
               onClick={() => setClosed(true)}
-              title="Close this preview"
+              title={intl.formatMessage({
+                id: "librarian.configPreviewPanel.closePreviewTitle",
+              })}
             >
-              Close preview
+              {intl.formatMessage({
+                id: "librarian.configPreviewPanel.closePreview",
+              })}
             </Button>
           )}
         </div>
@@ -187,7 +221,10 @@ export function ConfigPreviewPanel({
             disabled={running}
             onClick={() => setConfirming(true)}
           >
-            Rename all {plural}
+            {intl.formatMessage(
+              { id: "librarian.configPreviewPanel.renameAll" },
+              { entityNoun: plural },
+            )}
           </Button>
         </div>
       </div>
@@ -195,7 +232,10 @@ export function ConfigPreviewPanel({
         <div className="librarian-config-preview">
           {rows.length === 0 ? (
             <div className="librarian-token-hint text-muted">
-              No {plural} available to preview yet
+              {intl.formatMessage(
+                { id: "librarian.configPreviewPanel.noneToPreview" },
+                { entityNoun: plural },
+              )}
             </div>
           ) : (
             <PlanResultTable

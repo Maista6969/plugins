@@ -7,24 +7,26 @@ export interface EntityUI {
   fileNoun: string;
 }
 
+// fileNoun is a message id, not display text: resolved by the caller
+// (PlanResultTable's skippedText) via useIntl().
 export const ENTITY_UI: Record<string, EntityUI> = {
   scenes: {
     route: "/scenes/",
     thumbnail: (e) => e.paths && e.paths.screenshot,
     files: (e) => e.files || [],
-    fileNoun: "video files",
+    fileNoun: "librarian.entityUI.fileNoun.scenes",
   },
   galleries: {
     route: "/galleries/",
     thumbnail: (e) => e.paths && e.paths.cover,
     files: (e) => e.files || [],
-    fileNoun: "zip file",
+    fileNoun: "librarian.entityUI.fileNoun.galleries",
   },
   images: {
     route: "/images/",
     thumbnail: (e) => e.paths && e.paths.thumbnail,
     files: (e) => e.visual_files || [],
-    fileNoun: "image files",
+    fileNoun: "librarian.entityUI.fileNoun.images",
   },
 };
 

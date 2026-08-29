@@ -50,18 +50,31 @@ export interface PreviewSortField {
   defaultDirection: SortDirection;
 }
 
+// label is a message id, not display text: resolved at render time in
+// PreviewSortSelect, since this module-level constant is built before any
+// component (and its useIntl()) exists.
 export const PREVIEW_SORT_FIELDS: PreviewSortField[] = [
-  { value: "random", label: "Random", sort: "random", defaultDirection: "ASC" },
+  {
+    value: "random",
+    label: "random",
+    sort: "random",
+    defaultDirection: "ASC",
+  },
   {
     value: "created_at",
-    label: "Date added",
+    label: "librarian.previewSortSelect.field.dateAdded",
     sort: "created_at",
     defaultDirection: "DESC",
   },
-  { value: "title", label: "Title", sort: "title", defaultDirection: "ASC" },
+  {
+    value: "title",
+    label: "title",
+    sort: "title",
+    defaultDirection: "ASC",
+  },
   {
     value: "rating",
-    label: "Rating",
+    label: "rating",
     sort: "rating",
     defaultDirection: "DESC",
   },

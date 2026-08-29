@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import { useIntl } from "react-intl";
 import { describeModifiers, describeTokens } from "../../core/token-docs.js";
 
 // The in-app half of the pattern reference. Everything in here is generated
@@ -43,20 +44,24 @@ export function PatternReference({
   stashBoxes,
   boxesLoading,
 }: PatternReferenceProps) {
+  const intl = useIntl();
   const rows = describeTokens(tokens, noun);
   const metadata = rows.filter((r: any) => !r.fileTech);
   const fileTech = rows.filter((r: any) => r.fileTech);
+  const patternReferenceLabel = intl.formatMessage({
+    id: "librarian.patternReference.title",
+  });
 
   return ReactDOM.createPortal(
-    <aside className="librarian-reference" aria-label="Pattern reference">
+    <aside className="librarian-reference" aria-label={patternReferenceLabel}>
       <div className="librarian-reference-header">
-        <strong>Pattern reference</strong>
+        <strong>{patternReferenceLabel}</strong>
         <button
           type="button"
           className="btn btn-link btn-sm librarian-reference-toggle"
           onClick={onClose}
         >
-          Hide
+          {intl.formatMessage({ id: "actions.hide" })}
         </button>
       </div>
 
@@ -114,21 +119,27 @@ export function PatternReference({
       </p>
 
       <TokenTable
-        label="Metadata tokens"
+        label={intl.formatMessage({
+          id: "librarian.patternReference.metadataTokens",
+        })}
         rows={metadata}
         insertToken={insertToken}
       />
       {fileTech.length > 0 && (
         <TokenTable
-          label="File tokens"
-          hint="These describe the individual file being renamed, so they can differ between the files of one item"
+          label={intl.formatMessage({
+            id: "librarian.patternReference.fileTokens",
+          })}
+          hint={intl.formatMessage({
+            id: "librarian.patternReference.fileTokensHint",
+          })}
           rows={fileTech}
           insertToken={insertToken}
         />
       )}
 
       <div className="librarian-reference-group-label text-muted">
-        Modifiers
+        {intl.formatMessage({ id: "librarian.patternReference.modifiers" })}
       </div>
       {/* stacked rather than tabular: three columns do not fit a side panel */}
       <ul className="librarian-reference-modifiers">
@@ -142,7 +153,10 @@ export function PatternReference({
             <div className="librarian-reference-example">
               <code>{m.example.pattern}</code>
               <div className="text-muted">
-                <samp>{m.example.before}</samp> becomes{" "}
+                <samp>{m.example.before}</samp>{" "}
+                {intl.formatMessage({
+                  id: "librarian.patternReference.becomes",
+                })}{" "}
                 <samp className="text-success">{m.example.after}</samp>
               </div>
             </div>
@@ -158,7 +172,10 @@ export function PatternReference({
           on the settings page is used
           {!boxesLoading && stashBoxes.length > 0 && (
             <>
-              {". "}Your sources:{" "}
+              {". "}
+              {intl.formatMessage({
+                id: "librarian.patternReference.yourSources",
+              })}{" "}
               <samp className="text-success">
                 {stashBoxes.map((b: any) => b.name).join(", ")}
               </samp>
@@ -182,6 +199,7 @@ function TokenTable({
   rows: any[];
   insertToken: (text: string) => void;
 }) {
+  const intl = useIntl();
   return (
     <>
       <div className="librarian-reference-group-label text-muted">{label}</div>
@@ -194,7 +212,9 @@ function TokenTable({
                 <span
                   className="librarian-token-chip badge badge-secondary"
                   onClick={() => insertToken(t.insert)}
-                  title="click to insert"
+                  title={intl.formatMessage({
+                    id: "librarian.patternReference.clickToInsert",
+                  })}
                 >
                   {t.spelling}
                 </span>

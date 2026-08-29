@@ -1,4 +1,5 @@
 import React from "react";
+import { useIntl, IntlShape } from "react-intl";
 import { ConditionsEditor } from "./ConditionsEditor.js";
 import { LibraryRootPicker } from "./LibraryRootPicker.js";
 import { PatternInput } from "./PatternInput.js";
@@ -12,7 +13,7 @@ import {
   ruleFilterIsApproximate,
 } from "../../core/rule-to-filter.js";
 import { useEntityCount } from "./useEntityCount.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun } from "../shared/eligible-entities.js";
 import {
   patternUsesAnyToken,
   hasUnsafeOptionalOnlyBasename,
@@ -37,30 +38,26 @@ interface RuleEditModalProps {
   hasEarlierActiveRule: boolean;
 }
 
-function capitalise(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 function matchCountHeading(
+  intl: IntlShape,
   count: number | null,
   upperBound: boolean,
-  noun: string,
-  plural: string,
+  entityType: string,
 ): string {
   if (count == null) {
-    return capitalise(plural) + " currently matching this rule";
+    return intl.formatMessage(
+      { id: "librarian.ruleEditModal.matchHeading.unknown" },
+      { entityNoun: countableNoun(intl, entityType, true, true) },
+    );
   }
-  if (count === 1) {
-    return upperBound
-      ? "Up to 1 " + noun + " currently matches this rule"
-      : "1 " + noun + " currently matches this rule";
-  }
-  return (
-    (upperBound ? "Up to " : "") +
-    count +
-    " " +
-    plural +
-    " currently match this rule"
+  return intl.formatMessage(
+    { id: "librarian.ruleEditModal.matchHeading.counted" },
+    {
+      count,
+      upperBound: upperBound ? "true" : "false",
+      noun: countableNoun(intl, entityType, false),
+      plural: countableNoun(intl, entityType),
+    },
   );
 }
 
@@ -72,8 +69,8 @@ export function RuleEditModal({
   entityType,
   hasEarlierActiveRule,
 }: RuleEditModalProps) {
+  const intl = useIntl();
   const type = entityType || "scenes";
-  const adapter = adapterFor(type);
   // same reasoning as the default pattern: a keep-in-place rule ignores its root
   const keepsInPlace = folderPatternMode(rule.folderPattern) === "keep";
   const keepsName = filenamePatternMode(rule.filenamePattern) === "keep";
@@ -99,49 +96,70 @@ export function RuleEditModal({
     >
       <Modal.Header>
         <Icon icon={faCog} />
-        <span>{rule.name || "Unnamed rule"}</span>
+        <span>
+          {rule.name ||
+            intl.formatMessage({ id: "librarian.ruleEditor.unnamedRule" })}
+        </span>
       </Modal.Header>
       <Modal.Body>
         <div className="setting-section">
           <TextSettingModal
-            heading="Rule name"
-            subHeading="Make it easier to remember why this rule exists by giving it a good name"
+            heading={intl.formatMessage({
+              id: "librarian.ruleEditModal.ruleName.heading",
+            })}
+            subHeading={intl.formatMessage({
+              id: "librarian.ruleEditModal.ruleName.subHeading",
+            })}
             value={rule.name}
             onChange={(name) => onChange({ ...rule, name })}
-            placeholder="e.g. OnlyFans performers"
+            placeholder={intl.formatMessage({
+              id: "librarian.ruleEditModal.ruleName.placeholder",
+            })}
           />
 
           {keepsInPlace ? (
             <p className="librarian-token-hint text-muted">
-              This rule's folder pattern is <code>{"{current}"}</code>, so
-              matching {adapter.plural} keep the folder they are already in and
-              no library root is needed. Give the folder pattern something else
-              (or “/” for the library root itself) to move them into a library.
+              {intl.formatMessage({
+                id: "librarian.ruleEditModal.keepsInPlace.before",
+              })}{" "}
+              <code>{"{current}"}</code>
+              {intl.formatMessage(
+                { id: "librarian.ruleEditModal.keepsInPlace.after" },
+                { entityNoun: countableNoun(intl, type) },
+              )}
             </p>
           ) : (
             <LibraryRootPicker
               value={rule.libraryRoot || ""}
               entityType={entityType}
-              subHeading="The root library path for which this rule is based"
+              subHeading={intl.formatMessage({
+                id: "librarian.ruleEditModal.libraryRoot.subHeading",
+              })}
               onChange={(libraryRoot) => onChange({ ...rule, libraryRoot })}
             />
           )}
 
           <PatternInput
-            label="Folder pattern"
+            label={intl.formatMessage({
+              id: "librarian.ruleEditModal.folderPattern.label",
+            })}
             isFolder
             entityType={entityType}
-            subHeading="May contain “/” or “\\” for multiple nested folder levels. Use {current} to keep files in their current folder, or “/” to place them directly under the library root"
+            subHeading={intl.formatMessage({
+              id: "librarian.ruleEditModal.folderPattern.subHeading",
+            })}
             value={rule.folderPattern}
             onChange={(folderPattern) => onChange({ ...rule, folderPattern })}
           />
 
           <PatternInput
-            label="Filename pattern"
+            label={intl.formatMessage({
+              id: "librarian.ruleEditModal.filenamePattern.label",
+            })}
             entityType={entityType}
-            subHeading={
-              "The file name without the extension. Cannot contain < > : \" / \\ | ? * (stripped automatically if present). Use {current} to keep each file's current name and only move it"
-            }
+            subHeading={intl.formatMessage({
+              id: "librarian.ruleEditModal.filenamePattern.subHeading",
+            })}
             value={rule.filenamePattern}
             onChange={(filenamePattern) =>
               onChange({ ...rule, filenamePattern })
@@ -154,10 +172,14 @@ export function RuleEditModal({
               back from every later rule */}
           {keepsInPlace && keepsName && (
             <p className="librarian-token-hint text-muted">
-              Both patterns are <code>{"{current}"}</code>, so matching{" "}
-              {adapter.plural} are left exactly as they are, and no later rule
-              or the default pattern gets to claim them. Change one of the two
-              if you meant this rule to rename or move something.
+              {intl.formatMessage({
+                id: "librarian.ruleEditModal.keepsBoth.before",
+              })}{" "}
+              <code>{"{current}"}</code>
+              {intl.formatMessage(
+                { id: "librarian.ruleEditModal.keepsBoth.after" },
+                { entityNoun: countableNoun(intl, type) },
+              )}
             </p>
           )}
 
@@ -167,7 +189,9 @@ export function RuleEditModal({
               PERFORMER_SORT_TOKENS,
             )) && (
             <div>
-              Sort performers{" "}
+              {intl.formatMessage({
+                id: "librarian.ruleEditModal.sortPerformers",
+              })}{" "}
               <SortCriteriaSelect
                 value={rule.sortBy}
                 onChange={(sortBy) => onChange({ ...rule, sortBy })}
@@ -181,7 +205,9 @@ export function RuleEditModal({
               rule.filenamePattern,
             ]) && (
               <div>
-                Default StashID source{" "}
+                {intl.formatMessage({
+                  id: "librarian.ruleEditModal.defaultStashIdSource",
+                })}{" "}
                 <StashBoxSelect
                   value={rule.stashBoxEndpoint}
                   inheritedEndpoint={
@@ -207,29 +233,37 @@ export function RuleEditModal({
 
         <div className="librarian-rule-preview-section">
           <h4 className="filter-container text-muted paginationIndex center-text">
-            {matchCountHeading(
-              matchCount,
-              countIsUpperBound,
-              adapter.noun,
-              adapter.plural,
-            )}
+            {matchCountHeading(intl, matchCount, countIsUpperBound, type)}
           </h4>
           {countIsUpperBound && (
             <p className="librarian-token-hint text-muted">
-              The preview below reflects what would actually happen to each{" "}
-              {adapter.noun}, but the count above is only an upper bound:{" "}
-              {[
-                hasEarlierActiveRule &&
-                  "an earlier rule may claim some of these first",
-                gateApproximate &&
-                  "more than one StashID source is accepted, which Stash cannot filter on all at once",
-                quantifierApproximate &&
-                  "an “every performer” condition cannot be expressed as a Stash filter, so the count includes " +
-                    adapter.plural +
-                    " where only some performers match",
-              ]
-                .filter(Boolean)
-                .join(", and ")}
+              {intl.formatMessage(
+                { id: "librarian.ruleEditModal.upperBoundHint" },
+                {
+                  entityNoun: countableNoun(intl, type, false),
+                  caveats: [
+                    hasEarlierActiveRule &&
+                      intl.formatMessage({
+                        id: "librarian.ruleEditModal.caveat.earlierRule",
+                      }),
+                    gateApproximate &&
+                      intl.formatMessage({
+                        id: "librarian.ruleEditModal.caveat.gateApproximate",
+                      }),
+                    quantifierApproximate &&
+                      intl.formatMessage(
+                        {
+                          id: "librarian.ruleEditModal.caveat.quantifierApproximate",
+                        },
+                        { entityNoun: countableNoun(intl, type) },
+                      ),
+                  ]
+                    .filter(Boolean)
+                    .join(
+                      intl.formatMessage({ id: "librarian.common.listAnd" }),
+                    ),
+                },
+              )}
             </p>
           )}
           <RulePreviewPanel rule={rule} config={config} entityType={type} />
@@ -239,7 +273,7 @@ export function RuleEditModal({
         <div />
         <div>
           <Button variant="primary" className="ml-2" onClick={onClose}>
-            Close
+            {intl.formatMessage({ id: "actions.close" })}
           </Button>
         </div>
       </Modal.Footer>

@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
+import { useIntl, IntlShape } from "react-intl";
 import { findPatternProblems } from "../../core/path-template.js";
 import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun } from "../shared/eligible-entities.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 import { TextSettingModal } from "./TextSettingModal.js";
 import { PatternReference } from "./PatternReference.js";
@@ -25,6 +27,7 @@ function PatternModalField({
   isFolder,
   entityType,
 }: PatternModalFieldProps) {
+  const intl = useIntl();
   // Each type supports a different token set: only scenes have stash_ids, a zip
   // gallery file reports no dimensions at all, and an image reports only its own
   const adapter = adapterFor(entityType || "scenes");
@@ -91,30 +94,49 @@ function PatternModalField({
       ))}
       {unsafeBasename && (
         <div className="librarian-token-hint text-danger">
-          This filename only has optional tokens: if none of them have data for
-          a scene, every such scene would collide on the same name. Make at
-          least one of them required (remove its <code>?</code>), or add a
-          required token
+          {intl.formatMessage({
+            id: "librarian.patternInput.unsafeBasename.before",
+          })}
+          <code>?</code>
+          {intl.formatMessage({
+            id: "librarian.patternInput.unsafeBasename.after",
+          })}
         </div>
       )}
       {pattern.trim() === "" && (
         <div className="librarian-token-hint text-warning">
-          An empty pattern means <code>{"{current}"}</code>:{" "}
-          {isFolder
-            ? "each file keeps the folder it is already in"
-            : "each file keeps the name it already has"}
-          . Confirming will fill that in for you.
+          {intl.formatMessage({
+            id: "librarian.patternInput.emptyPattern.before",
+          })}{" "}
+          <code>{"{current}"}</code>
+          {intl.formatMessage(
+            { id: "librarian.patternInput.emptyPattern.after" },
+            {
+              keepsWhat: intl.formatMessage({
+                id: isFolder
+                  ? "librarian.patternInput.keepsFolder"
+                  : "librarian.patternInput.keepsName",
+              }),
+            },
+          )}
         </div>
       )}
       {renderTokenGroup(
-        adapter.label + " metadata",
+        intl,
+        intl.formatMessage(
+          { id: "librarian.patternInput.metadataGroup" },
+          {
+            entityNoun: countableNoun(intl, entityType || "scenes", true, true),
+          },
+        ),
         metadataTokens,
         insertToken,
         adapter.noun,
       )}
       {fileTechTokens.length > 0 &&
         renderTokenGroup(
-          "File metadata",
+          intl,
+          intl.formatMessage({ id: "librarian.patternInput.fileMetadata" }),
           fileTechTokens,
           insertToken,
           adapter.noun,
@@ -124,7 +146,11 @@ function PatternModalField({
         className="btn btn-link btn-sm librarian-reference-toggle"
         onClick={() => setReferenceOpen(!referenceOpen)}
       >
-        {referenceOpen ? "Hide" : "Show"} the full pattern reference
+        {intl.formatMessage({
+          id: referenceOpen
+            ? "librarian.patternInput.hideReference"
+            : "librarian.patternInput.showReference",
+        })}
       </button>
       {referenceOpen && (
         <PatternReference
@@ -142,6 +168,7 @@ function PatternModalField({
 }
 
 function renderTokenGroup(
+  intl: IntlShape,
   label: string,
   tokens: string[],
   insertToken: (text: string) => void,
@@ -159,7 +186,9 @@ function renderTokenGroup(
           onClick={() => insertToken(token.insert)}
           title={
             (token.description ? token.description + " " : "") +
-            "(click to insert)"
+            intl.formatMessage({
+              id: "librarian.patternInput.clickToInsert",
+            })
           }
         >
           {token.spelling}
@@ -188,11 +217,14 @@ export function PatternInput({
   isFolder,
   entityType,
 }: PatternInputProps) {
+  const intl = useIntl();
   return (
     <TextSettingModal
       value={value}
       onChange={(next: string) => onChange(blankPatternToCurrent(next))}
-      heading={label || "Pattern"}
+      heading={
+        label || intl.formatMessage({ id: "librarian.patternInput.pattern" })
+      }
       subHeading={subHeading}
       renderField={(fieldValue, setValue) => (
         <PatternModalField

@@ -1,18 +1,27 @@
 import React from "react";
+import { useIntl, IntlShape } from "react-intl";
 import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun } from "../shared/eligible-entities.js";
 import { useLoadSelectComponents } from "../shared/useLoadSelectComponents.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form, Button } = PluginApi.libraries.Bootstrap;
 
+// label/title below are message ids, not display text: everything in this
+// file is a module-level constant built once at import time, before any
+// component (and its useIntl()) exists, so resolution happens at render time
+// in the components that consume these arrays
 const FIELD_OPTIONS = [
-  { value: "studio", label: "Studio" },
-  { value: "performer", label: "Performer" },
-  { value: "tag", label: "Tag" },
-  { value: "group", label: "Group" },
-  { value: "rating", label: "Rating" },
-  { value: "path", label: "File path" },
-  { value: "custom_field", label: "Custom field" },
+  { value: "studio", label: "studio" },
+  { value: "performer", label: "performer" },
+  { value: "tag", label: "tag" },
+  { value: "group", label: "group" },
+  { value: "rating", label: "rating" },
+  { value: "path", label: "librarian.conditionRow.field.path" },
+  {
+    value: "custom_field",
+    label: "librarian.conditionRow.field.customField",
+  },
 ];
 
 // Only scenes have groups
@@ -26,18 +35,18 @@ function fieldOptionsFor(entityType?: string) {
 const ANY_ONLY_MODIFIERS = [
   {
     value: "any_of",
-    label: "is any of",
-    title: "Matches if the {noun} has at least one of the selected entries",
+    label: "librarian.conditionRow.modifier.anyOf.label",
+    title: "librarian.conditionRow.modifier.anyOf.title",
   },
   {
     value: "is_null",
-    label: "is not set",
-    title: "Matches if the {noun} has none set at all",
+    label: "librarian.conditionRow.modifier.isNull.label",
+    title: "librarian.conditionRow.modifier.isNull.title",
   },
   {
     value: "not_null",
-    label: "has any value",
-    title: "Matches if the {noun} has at least one set, regardless of which",
+    label: "librarian.conditionRow.modifier.notNull.label",
+    title: "librarian.conditionRow.modifier.notNull.title",
   },
 ];
 
@@ -45,8 +54,8 @@ const ANY_OR_ALL_MODIFIERS = [
   ANY_ONLY_MODIFIERS[0],
   {
     value: "all_of",
-    label: "is all of",
-    title: "Matches only if the {noun} has every one of the selected entries",
+    label: "librarian.conditionRow.modifier.allOf.label",
+    title: "librarian.conditionRow.modifier.allOf.title",
   },
   ANY_ONLY_MODIFIERS[1],
   ANY_ONLY_MODIFIERS[2],
@@ -58,45 +67,41 @@ const ANY_OR_ALL_MODIFIERS = [
 const PERFORMER_ONLY_MODIFIERS = [
   {
     value: "favorite",
-    label: "is a favourite",
-    title: "Whether the performer is marked as a favourite",
+    label: "librarian.conditionRow.modifier.favorite.label",
+    title: "librarian.conditionRow.modifier.favorite.title",
   },
   {
     value: "not_favorite",
-    label: "is not a favourite",
-    title: "Whether the performer is not marked as a favourite",
+    label: "librarian.conditionRow.modifier.notFavorite.label",
+    title: "librarian.conditionRow.modifier.notFavorite.title",
   },
   {
     value: "rating",
-    label: "is rated",
-    title:
-      "Whether the performer's rating falls in this range. An unrated performer never matches, however wide the range is",
+    label: "librarian.conditionRow.modifier.performerRating.label",
+    title: "librarian.conditionRow.modifier.performerRating.title",
   },
   {
     value: "not_rated",
-    label: "has no rating",
-    title:
-      "Whether the performer has no rating at all. A rating range never reaches these, so this is the only way to ask for them",
+    label: "librarian.conditionRow.modifier.notRated.label",
+    title: "librarian.conditionRow.modifier.notRated.title",
   },
   {
     value: "custom_field",
-    label: "has a custom field",
-    title: "Whether the performer has a custom field that compares this way",
+    label: "librarian.conditionRow.modifier.performerCustomField.label",
+    title: "librarian.conditionRow.modifier.performerCustomField.title",
   },
 ];
 
 const PERFORMER_QUANTIFIERS = [
   {
     value: "any",
-    label: "any performer",
-    title:
-      "Matches as soon as one of the {noun}'s performers satisfies this, and that performer is the one {matched_performers} names",
+    label: "librarian.conditionRow.quantifier.any.label",
+    title: "librarian.conditionRow.quantifier.any.title",
   },
   {
     value: "all",
-    label: "every performer",
-    title:
-      "Matches only if every one of the {noun}'s performers satisfies this. A {noun} with no performers never matches, and one unrated performer is enough to rule a {noun} out of a rating range",
+    label: "librarian.conditionRow.quantifier.all.label",
+    title: "librarian.conditionRow.quantifier.all.title",
   },
 ];
 
@@ -113,9 +118,8 @@ const STUDIO_MODIFIERS = [
   ANY_ONLY_MODIFIERS[0],
   {
     value: "any_of_or_descendant",
-    label: "is any of (including subsidiaries)",
-    title:
-      "Matches if the {noun}'s studio is one of the selected entries, or a subsidiary of one",
+    label: "librarian.conditionRow.modifier.anyOfOrDescendant.label",
+    title: "librarian.conditionRow.modifier.anyOfOrDescendant.title",
   },
   ANY_ONLY_MODIFIERS[1],
   ANY_ONLY_MODIFIERS[2],
@@ -124,13 +128,13 @@ const STUDIO_MODIFIERS = [
 const GROUP_MODIFIERS = [
   {
     value: "not_null",
-    label: "is set",
-    title: "Matches if the {noun} belongs to a group, whichever one it is",
+    label: "librarian.conditionRow.modifier.groupNotNull.label",
+    title: "librarian.conditionRow.modifier.groupNotNull.title",
   },
   {
     value: "is_null",
-    label: "is not set",
-    title: "Matches if the {noun} belongs to no group at all",
+    label: "librarian.conditionRow.modifier.groupIsNull.label",
+    title: "librarian.conditionRow.modifier.groupIsNull.title",
   },
 ];
 
@@ -149,97 +153,88 @@ const SELECT_COMPONENT_BY_FIELD: Record<string, string> = {
   tag: "TagIDSelect",
 };
 
-const PHRASE_HINT =
-  ' Several words are matched separately, so "The Reunion" also matches' +
-  ' "Friends Reunion". Wrap the value in double quotes to match it as one' +
-  " phrase. “%” matches any run of characters and “_” any single one";
-
 const PATH_MODIFIERS = [
   {
     value: "INCLUDES",
-    label: "contains",
-    title: "Matches if the path contains this." + PHRASE_HINT,
+    label: "librarian.conditionRow.pathModifier.includes.label",
+    title: "librarian.conditionRow.pathModifier.includes.title",
   },
   {
     value: "EXCLUDES",
-    label: "doesn't contain",
-    title: "Matches only if the path contains none of this." + PHRASE_HINT,
+    label: "librarian.conditionRow.pathModifier.excludes.label",
+    title: "librarian.conditionRow.pathModifier.excludes.title",
   },
   {
     value: "EQUALS",
-    label: "is",
-    title:
-      "Matches only if the whole path is exactly this, folders included." +
-      " Words are not split and quotes are not special here",
+    label: "librarian.conditionRow.pathModifier.equals.label",
+    title: "librarian.conditionRow.pathModifier.equals.title",
   },
   {
     value: "NOT_EQUALS",
-    label: "is not",
-    title: "Matches unless the whole path is exactly this, folders included",
+    label: "librarian.conditionRow.pathModifier.notEquals.label",
+    title: "librarian.conditionRow.pathModifier.notEquals.title",
   },
-  { value: "MATCHES_REGEX", label: "matches regex" },
-  { value: "NOT_MATCHES_REGEX", label: "doesn't match regex" },
+  {
+    value: "MATCHES_REGEX",
+    label: "librarian.conditionRow.pathModifier.matchesRegex.label",
+  },
+  {
+    value: "NOT_MATCHES_REGEX",
+    label: "librarian.conditionRow.pathModifier.notMatchesRegex.label",
+  },
 ];
 
 // Custom fields have no schema so we have to be SQLite for this one
 const CUSTOM_FIELD_MODIFIERS = [
   {
     value: "EQUALS",
-    label: "is",
-    title:
-      "Matches the whole value exactly, capitals included. A number and the same digits typed as text both match",
+    label: "librarian.conditionRow.customFieldModifier.equals.label",
+    title: "librarian.conditionRow.customFieldModifier.equals.title",
   },
   {
     value: "NOT_EQUALS",
-    label: "is not",
-    title:
-      "Matches unless the whole value is exactly this. Items with no such field set also match",
+    label: "librarian.conditionRow.customFieldModifier.notEquals.label",
+    title: "librarian.conditionRow.customFieldModifier.notEquals.title",
   },
   {
     value: "INCLUDES",
-    label: "contains",
-    title:
-      "Matches if the value contains this anywhere, ignoring capitals. “%” matches any run of characters and “_” any single one",
+    label: "librarian.conditionRow.customFieldModifier.includes.label",
+    title: "librarian.conditionRow.customFieldModifier.includes.title",
   },
   {
     value: "EXCLUDES",
-    label: "doesn't contain",
-    title:
-      "Matches unless the value contains this. Items with no such field set also match",
+    label: "librarian.conditionRow.customFieldModifier.excludes.label",
+    title: "librarian.conditionRow.customFieldModifier.excludes.title",
   },
   {
     value: "MATCHES_REGEX",
-    label: "matches regex",
-    title:
-      "Case-sensitive. Only use this on fields holding text: Stash fails the whole query, rather than returning nothing, if any item stores this field as a number",
+    label: "librarian.conditionRow.customFieldModifier.matchesRegex.label",
+    title: "librarian.conditionRow.customFieldModifier.matchesRegex.title",
   },
   {
     value: "NOT_MATCHES_REGEX",
-    label: "doesn't match regex",
-    title:
-      "Case-sensitive, and matches items with no such field set. Same warning as “matches regex”: text-valued fields only",
+    label: "librarian.conditionRow.customFieldModifier.notMatchesRegex.label",
+    title: "librarian.conditionRow.customFieldModifier.notMatchesRegex.title",
   },
   {
     value: "GREATER_THAN",
-    label: "is more than",
-    title:
-      "Compares the way Stash stores the value, so every number sorts before every piece of text: a field holding “3” as text is above 100",
+    label: "librarian.conditionRow.customFieldModifier.greaterThan.label",
+    title: "librarian.conditionRow.customFieldModifier.greaterThan.title",
   },
   {
     value: "LESS_THAN",
-    label: "is less than",
-    title:
-      "Compares the way Stash stores the value, so every number sorts before every piece of text",
+    label: "librarian.conditionRow.customFieldModifier.lessThan.label",
+    title: "librarian.conditionRow.customFieldModifier.lessThan.title",
   },
   {
     value: "NOT_NULL",
-    label: "is set",
-    title: "Matches if the {noun} has this field with any value at all",
+    label: "librarian.conditionRow.customFieldModifier.notNull.label",
+    title: "librarian.conditionRow.customFieldModifier.notNull.title",
   },
   {
     value: "IS_NULL",
-    label: "is not set",
-    title: "Matches if the {noun} has no such field",
+    label: "librarian.conditionRow.customFieldModifier.isNull.label",
+    title: "librarian.conditionRow.customFieldModifier.isNull.title",
   },
 ];
 
@@ -364,6 +359,7 @@ function RatingRangeEditor({
   value: RatingRange;
   onChange: (next: RatingRange) => void;
 }) {
+  const intl = useIntl();
   return (
     <div className="librarian-rating-range">
       <Form.Control
@@ -372,27 +368,33 @@ function RatingRangeEditor({
         min={0}
         max={10}
         step={0.1}
-        placeholder="Min"
+        placeholder={intl.formatMessage({
+          id: "librarian.conditionRow.rating.min",
+        })}
         value={value.min == null ? "" : value.min}
         onChange={(e: any) =>
           onChange({ ...value, min: parseRatingBound(e.target.value) })
         }
       />
-      <span>to</span>
+      <span>
+        {intl.formatMessage({ id: "librarian.conditionRow.rating.to" })}
+      </span>
       <Form.Control
         className="input-control"
         type="number"
         min={0}
         max={10}
         step={0.1}
-        placeholder="Max"
+        placeholder={intl.formatMessage({
+          id: "librarian.conditionRow.rating.max",
+        })}
         value={value.max == null ? "" : value.max}
         onChange={(e: any) =>
           onChange({ ...value, max: parseRatingBound(e.target.value) })
         }
       />
       <span className="librarian-token-hint text-muted">
-        (0-10 scale, either side optional)
+        {intl.formatMessage({ id: "librarian.conditionRow.rating.hint" })}
       </span>
     </div>
   );
@@ -409,18 +411,28 @@ function PathValueEditor({
   onChangeOp: (op: string) => void;
   onChangeValue: (value: string) => void;
 }) {
+  const intl = useIntl();
+  const currentTitleId = PATH_MODIFIERS.find((m) => m.value === op)?.title;
   return (
     <>
       <Form.Control
         as="select"
         className="librarian-inline-select input-control"
-        title={PATH_MODIFIERS.find((m) => m.value === op)?.title}
+        title={
+          currentTitleId
+            ? intl.formatMessage({ id: currentTitleId })
+            : undefined
+        }
         value={op}
         onChange={(e: any) => onChangeOp(e.target.value)}
       >
         {PATH_MODIFIERS.map((m) => (
-          <option key={m.value} value={m.value} title={m.title}>
-            {m.label}
+          <option
+            key={m.value}
+            value={m.value}
+            title={m.title ? intl.formatMessage({ id: m.title }) : undefined}
+          >
+            {intl.formatMessage({ id: m.label })}
           </option>
         ))}
       </Form.Control>
@@ -428,7 +440,9 @@ function PathValueEditor({
         className="input-control"
         type="text"
         value={value || ""}
-        placeholder="/data/old-files"
+        placeholder={intl.formatMessage({
+          id: "librarian.conditionRow.path.placeholder",
+        })}
         onChange={(e: any) => onChangeValue(e.target.value)}
       />
     </>
@@ -436,9 +450,19 @@ function PathValueEditor({
 }
 
 // Modifier tooltips are written with a {noun} placeholder so the same copy
-// reads correctly on the scenes, galleries and images tabs
-function withNoun(text: string | undefined, noun: string): string {
-  return (text || "").replace(/{noun}/g, noun);
+// reads correctly on the scenes, galleries and images tabs. The placeholder
+// is escaped in the message catalog (it's not an ICU argument), so it comes
+// back out of formatMessage as a literal "{noun}" for this to replace.
+function withNoun(
+  intl: IntlShape,
+  titleId: string | undefined,
+  noun: string,
+): string {
+  if (!titleId) return "";
+  // Passing {} rather than omitting the second argument: formatjs resolves
+  // quoted-literal escapes differently (and unreliably for adjacent quotes,
+  // e.g. '{noun}''s') when no values object is given at all
+  return intl.formatMessage({ id: titleId }, {}).replace(/{noun}/g, noun);
 }
 
 // A custom field condition needs one more box than any other: which field, the
@@ -458,6 +482,7 @@ function CustomFieldEditor({
   onChange: (next: Condition) => void;
   noun: string;
 }) {
+  const intl = useIntl();
   const current =
     CUSTOM_FIELD_MODIFIERS.find((m) => m.value === op) ||
     CUSTOM_FIELD_MODIFIERS[0];
@@ -468,20 +493,28 @@ function CustomFieldEditor({
         className="input-control librarian-custom-field-name"
         type="text"
         value={condition.key || ""}
-        placeholder="Field name"
-        title="The custom field's name, spelled exactly as it is in Stash"
+        placeholder={intl.formatMessage({
+          id: "librarian.conditionRow.customField.namePlaceholder",
+        })}
+        title={intl.formatMessage({
+          id: "librarian.conditionRow.customField.nameTitle",
+        })}
         onChange={(e: any) => onChange({ ...condition, key: e.target.value })}
       />
       <Form.Control
         as="select"
         className="librarian-inline-select input-control"
-        title={withNoun(current.title, noun)}
+        title={withNoun(intl, current.title, noun)}
         value={op}
         onChange={(e: any) => onChangeOp(e.target.value)}
       >
         {CUSTOM_FIELD_MODIFIERS.map((m) => (
-          <option key={m.value} value={m.value} title={withNoun(m.title, noun)}>
-            {m.label}
+          <option
+            key={m.value}
+            value={m.value}
+            title={withNoun(intl, m.title, noun)}
+          >
+            {intl.formatMessage({ id: m.label })}
           </option>
         ))}
       </Form.Control>
@@ -490,7 +523,9 @@ function CustomFieldEditor({
           className="input-control"
           type="text"
           value={(condition.value as string) || ""}
-          placeholder="Value"
+          placeholder={intl.formatMessage({
+            id: "custom_fields.value",
+          })}
           onChange={(e: any) =>
             onChange({ ...condition, value: e.target.value })
           }
@@ -509,6 +544,7 @@ function QuantifierSelect({
   onChange: (next: string) => void;
   noun: string;
 }) {
+  const intl = useIntl();
   const current =
     PERFORMER_QUANTIFIERS.find((q) => q.value === value) ||
     PERFORMER_QUANTIFIERS[0];
@@ -516,13 +552,17 @@ function QuantifierSelect({
     <Form.Control
       as="select"
       className="librarian-inline-select input-control"
-      title={withNoun(current.title, noun)}
+      title={withNoun(intl, current.title, noun)}
       value={current.value}
       onChange={(e: any) => onChange(e.target.value)}
     >
       {PERFORMER_QUANTIFIERS.map((q) => (
-        <option key={q.value} value={q.value} title={withNoun(q.title, noun)}>
-          {q.label}
+        <option
+          key={q.value}
+          value={q.value}
+          title={withNoun(intl, q.title, noun)}
+        >
+          {intl.formatMessage({ id: q.label })}
         </option>
       ))}
     </Form.Control>
@@ -540,19 +580,24 @@ function ListModifierSelect({
   onChange: (op: string) => void;
   noun: string;
 }) {
+  const intl = useIntl();
   const options = LIST_MODIFIERS_BY_FIELD[field] || ANY_ONLY_MODIFIERS;
   const current = options.find((o) => o.value === op) || options[0];
   return (
     <Form.Control
       as="select"
       className="librarian-inline-select input-control"
-      title={withNoun(current.title, noun)}
+      title={withNoun(intl, current.title, noun)}
       value={op}
       onChange={(e: any) => onChange(e.target.value)}
     >
       {options.map((o) => (
-        <option key={o.value} value={o.value} title={withNoun(o.title, noun)}>
-          {o.label}
+        <option
+          key={o.value}
+          value={o.value}
+          title={withNoun(intl, o.title, noun)}
+        >
+          {intl.formatMessage({ id: o.label })}
         </option>
       ))}
     </Form.Control>
@@ -568,6 +613,7 @@ function FieldSelect({
   onChange: (field: string) => void;
   entityType?: string;
 }) {
+  const intl = useIntl();
   return (
     <Form.Control
       as="select"
@@ -577,7 +623,7 @@ function FieldSelect({
     >
       {fieldOptionsFor(entityType).map((f) => (
         <option key={f.value} value={f.value}>
-          {f.label}
+          {intl.formatMessage({ id: f.label })}
         </option>
       ))}
     </Form.Control>
@@ -597,7 +643,8 @@ export function ConditionRow({
   onRemove,
   entityType,
 }: ConditionRowProps) {
-  const noun = adapterFor(entityType).noun;
+  const intl = useIntl();
+  const noun = countableNoun(intl, entityType || "scenes", false);
   const loadingSelectComponents = useLoadSelectComponents([
     "studio",
     "performer",
@@ -699,17 +746,23 @@ export function ConditionRow({
           className="input-control"
           type="text"
           value={idsToText(ids)}
-          placeholder={
-            loadingSelectComponents
-              ? "id1, id2, ... (loading)"
-              : "id1, id2, ... (this error should never occur)"
-          }
+          placeholder={intl.formatMessage({
+            id: loadingSelectComponents
+              ? "librarian.conditionRow.idFallback.loading"
+              : "librarian.conditionRow.idFallback.error",
+          })}
           onChange={(e: any) =>
             onChange({ ...condition, value: textToIds(e.target.value) })
           }
         />
       )}
-      <Button variant="secondary" onClick={onRemove} title="Remove condition">
+      <Button
+        variant="secondary"
+        onClick={onRemove}
+        title={intl.formatMessage({
+          id: "librarian.conditionRow.removeCondition",
+        })}
+      >
         ✕
       </Button>
     </div>

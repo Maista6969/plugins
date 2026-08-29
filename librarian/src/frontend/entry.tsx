@@ -10,14 +10,23 @@ import {
 import { SettingsLink, SETTINGS_ROUTE } from "./shared/SettingsLink.js";
 import { StashBoxesProvider } from "./shared/StashBoxesContext.js";
 import { SceneFileInfoBlock } from "./scene-file-info/SceneFileInfoBlock.js";
+import { LibrarianIntlProvider } from "./i18n/LibrarianIntlProvider.js";
 import { PLUGIN_ID } from "../core/config-schema.js";
 
 const LOG_PREFIX = "[librarian]";
 
 const PluginApi = (window as any).PluginApi;
 
+function SettingsRoute() {
+  return (
+    <LibrarianIntlProvider>
+      <SettingsPage />
+    </LibrarianIntlProvider>
+  );
+}
+
 try {
-  PluginApi.register.route(SETTINGS_ROUTE, SettingsPage);
+  PluginApi.register.route(SETTINGS_ROUTE, SettingsRoute);
 } catch (e) {
   console.error(LOG_PREFIX, "register.route threw", e);
 }
@@ -29,7 +38,11 @@ try {
     if (props.pluginID !== PLUGIN_ID) {
       return next(...args.slice(0, -1));
     }
-    return <PluginSettingsSummary />;
+    return (
+      <LibrarianIntlProvider>
+        <PluginSettingsSummary />
+      </LibrarianIntlProvider>
+    );
   });
 } catch (e) {
   console.error(LOG_PREFIX, "patch.instead(PluginSettings) threw", e);
@@ -42,10 +55,12 @@ try {
     return (
       <PreviewModeProvider>
         <StashBoxesProvider>
-          <div className="librarian-toolbar">
-            <RenameScenesButton />
-            <SettingsLink />
-          </div>
+          <LibrarianIntlProvider>
+            <div className="librarian-toolbar">
+              <RenameScenesButton />
+              <SettingsLink />
+            </div>
+          </LibrarianIntlProvider>
           {next(...originalArgs)}
         </StashBoxesProvider>
       </PreviewModeProvider>
@@ -73,7 +88,11 @@ function ScenesPreviewSwitch({
   if (!active) {
     return <Next {...props} />;
   }
-  return <PreviewSceneList scenes={scenes} />;
+  return (
+    <LibrarianIntlProvider>
+      <PreviewSceneList scenes={scenes} />
+    </LibrarianIntlProvider>
+  );
 }
 
 try {
@@ -84,7 +103,9 @@ try {
       <>
         {result}
         <StashBoxesProvider>
-          <SceneFileInfoBlock scene={props.scene} />
+          <LibrarianIntlProvider>
+            <SceneFileInfoBlock scene={props.scene} />
+          </LibrarianIntlProvider>
         </StashBoxesProvider>
       </>
     );

@@ -1,9 +1,15 @@
 import React from "react";
+import { useIntl } from "react-intl";
 import {
   defaultPatternCriteria,
   criteriaGaps,
 } from "../../core/pattern-to-criteria.js";
 import { entitySettings } from "../../core/plan-scene.js";
+
+const GAP_MESSAGE_IDS: Record<string, string> = {
+  exclusions: "librarian.renamableFilterButton.gap.exclusions",
+  claimed_by_rule: "librarian.renamableFilterButton.gap.claimedByRule",
+};
 
 const PluginApi = (window as any).PluginApi;
 const { Button, OverlayTrigger, Tooltip } = PluginApi.libraries.Bootstrap;
@@ -65,6 +71,7 @@ export function RenamableFilterButton({
   config,
   liveFilter,
 }: RenamableFilterButtonProps) {
+  const intl = useIntl();
   const history = useHistory();
   if (!config || !liveFilter) {
     return null;
@@ -72,7 +79,9 @@ export function RenamableFilterButton({
 
   const settings = entitySettings(config, "scenes");
   const criteria = defaultPatternCriteria(settings);
-  const gaps = criteriaGaps(settings);
+  const gaps = criteriaGaps(settings).map((key) =>
+    intl.formatMessage({ id: GAP_MESSAGE_IDS[key] || key }),
+  );
 
   function apply() {
     const next = applyCriteria(liveFilter, criteria);
@@ -87,13 +96,20 @@ export function RenamableFilterButton({
   const tooltip = (
     <Tooltip id="librarian-renamable-filter">
       <div>
-        Filters to scenes that pass your options and have data for every token
-        the default pattern requires.
+        {intl.formatMessage({
+          id: "librarian.renamableFilterButton.tooltip",
+        })}
       </div>
       {gaps.length > 0 && (
         <div className="mt-1">
-          Stash filters cannot express {gaps.join(" or ")}, so some scenes may
-          still be skipped.
+          {intl.formatMessage(
+            { id: "librarian.renamableFilterButton.gapsHint" },
+            {
+              gaps: gaps.join(
+                intl.formatMessage({ id: "librarian.common.or" }),
+              ),
+            },
+          )}
         </div>
       )}
     </Tooltip>
@@ -102,7 +118,7 @@ export function RenamableFilterButton({
   return (
     <OverlayTrigger placement="bottom" overlay={tooltip}>
       <Button variant="secondary" onClick={apply}>
-        Show renamable
+        {intl.formatMessage({ id: "librarian.renamableFilterButton.show" })}
       </Button>
     </OverlayTrigger>
   );

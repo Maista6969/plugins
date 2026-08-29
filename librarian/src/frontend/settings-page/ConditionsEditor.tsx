@@ -1,4 +1,5 @@
 import React from "react";
+import { useIntl } from "react-intl";
 import { ConditionRow, Condition } from "./ConditionRow.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -24,13 +25,14 @@ export function ConditionsEditor({
   onChange,
   entityType,
 }: ConditionsEditorProps) {
+  const intl = useIntl();
   const conditionLogic = value.conditionLogic === "OR" ? "OR" : "AND";
   const conditions = value.conditions || [];
 
   return (
     <>
       <div>
-        Match{" "}
+        {intl.formatMessage({ id: "librarian.conditionsEditor.matchBefore" })}{" "}
         <Form.Control
           as="select"
           className="librarian-inline-select input-control"
@@ -42,10 +44,14 @@ export function ConditionsEditor({
             })
           }
         >
-          <option value="AND">ALL</option>
-          <option value="OR">ANY</option>
+          <option value="AND">
+            {intl.formatMessage({ id: "librarian.conditionsEditor.all" })}
+          </option>
+          <option value="OR">
+            {intl.formatMessage({ id: "librarian.conditionsEditor.any" })}
+          </option>
         </Form.Control>{" "}
-        of the following conditions
+        {intl.formatMessage({ id: "librarian.conditionsEditor.matchAfter" })}
       </div>
 
       {conditions.map((condition, index) => (
@@ -72,7 +78,7 @@ export function ConditionsEditor({
           onChange({ ...value, conditions: [...conditions, newCondition()] })
         }
       >
-        + Add condition
+        {intl.formatMessage({ id: "librarian.conditionsEditor.addCondition" })}
       </Button>
     </>
   );

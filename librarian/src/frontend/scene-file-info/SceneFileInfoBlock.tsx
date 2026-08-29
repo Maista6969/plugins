@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useApolloClient, gql } from "@apollo/client";
+import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { planScene } from "../../core/plan-scene.js";
 import { getConfiguration, runRenameTask } from "../shared/stash-api.js";
@@ -34,6 +35,7 @@ interface SceneFileInfoBlockProps {
 export function SceneFileInfoBlock({
   scene: sceneProp,
 }: SceneFileInfoBlockProps) {
+  const intl = useIntl();
   const client = useApolloClient();
   const [config, setConfig] = useState<any | null>(null);
   const { stashBoxes, loading: boxesLoading } = useStashBoxes();
@@ -117,7 +119,11 @@ export function SceneFileInfoBlock({
     }
   }
 
-  const ruleLabel = matchedRuleLabel(plan, (config.scenes || {}).rules || []);
+  const ruleLabel = matchedRuleLabel(
+    intl,
+    plan,
+    (config.scenes || {}).rules || [],
+  );
   const TruncatedText = PluginApi.components.TruncatedText;
   const aggregateStatus = pending
     ? "pending"
@@ -133,7 +139,12 @@ export function SceneFileInfoBlock({
       <div className="librarian-scene-file-info-summary">
         {ruleLabel && (
           <p className="librarian-token-hint text-muted">
-            <Link to={SETTINGS_ROUTE} title="Open Librarian settings">
+            <Link
+              to={SETTINGS_ROUTE}
+              title={intl.formatMessage({
+                id: "librarian.sceneFileInfoBlock.openSettings",
+              })}
+            >
               {ruleLabel}
             </Link>
           </p>
@@ -145,7 +156,7 @@ export function SceneFileInfoBlock({
         )}
         {plan.status === "skipped" && (
           <p className="librarian-token-hint text-muted librarian-organize-hint">
-            {skippedText(plan.reason, plan.excludedBy)}{" "}
+            {skippedText(intl, plan.reason, plan.excludedBy)}{" "}
             {plan.reason === "not_organized" && (
               <OrganizeButton
                 scene={effectiveScene}
@@ -163,11 +174,16 @@ export function SceneFileInfoBlock({
                 const pathClass = f.unchanged ? "correct-path" : "new-path";
                 return (
                   <React.Fragment key={f.fileId}>
-                    <dt>Folder:</dt>
+                    <dt>{intl.formatMessage({ id: "folder" })}:</dt>
                     <dd className={pathClass}>
                       <TruncatedText text={f.folder} />
                     </dd>
-                    <dt>Filename:</dt>
+                    <dt>
+                      {intl.formatMessage({
+                        id: "librarian.sceneFileInfoBlock.filename",
+                      })}
+                      :
+                    </dt>
                     <dd className={pathClass}>
                       <TruncatedText text={f.basename} />
                     </dd>

@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createIntl, createIntlCache } from "react-intl";
 import {
   sortEntities,
   normalizeSortCriteria,
   describeSortCriteria,
 } from "../../src/core/entity-sort.js";
+import messages from "../../src/frontend/i18n/messages/en.json" with { type: "json" };
+
+const intl = createIntl({ locale: "en", messages }, createIntlCache());
 
 function names(entities) {
   return entities.map((e) => e.name);
@@ -211,8 +215,8 @@ test("normalizeSortCriteria always ends with name, and describeSortCriteria says
   ]);
   assert.deepEqual(normalizeSortCriteria(undefined), ["name"]);
   assert.equal(
-    describeSortCriteria(["favorite", "rating"]),
+    describeSortCriteria(intl, ["favorite", "rating"]),
     "Sorted favourites first, highest-rated first, then alphabetically.",
   );
-  assert.equal(describeSortCriteria([]), "Sorted alphabetically.");
+  assert.equal(describeSortCriteria(intl, []), "Sorted alphabetically.");
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useApolloClient, gql } from "@apollo/client";
+import { useIntl } from "react-intl";
 import { RenamableFilterButton } from "./RenamableFilterButton.js";
 import { usePreviewMode } from "./preview-context.js";
 import { isTerminalStatus } from "../shared/job-poll.js";
@@ -67,9 +68,14 @@ function ToggleButton({
   active: boolean;
   onClick: () => void;
 }) {
+  const intl = useIntl();
   return (
     <OverlayTrigger
-      overlay={<Tooltip id="librarian-toggle-tooltip">Rename Scenes</Tooltip>}
+      overlay={
+        <Tooltip id="librarian-toggle-tooltip">
+          {intl.formatMessage({ id: "librarian.renameButton.tooltip" })}
+        </Tooltip>
+      }
     >
       <Button variant="secondary" active={active} onClick={onClick}>
         <Icon icon={faFolderTree} />
@@ -79,6 +85,7 @@ function ToggleButton({
 }
 
 export function RenameScenesButton() {
+  const intl = useIntl();
   const {
     active,
     config,
@@ -112,7 +119,7 @@ export function RenameScenesButton() {
     return (
       <>
         <span className="librarian-summary text-muted">
-          Loading configuration...
+          {intl.formatMessage({ id: "librarian.renameButton.loadingConfig" })}
         </span>
         {toggle}
       </>
@@ -130,8 +137,14 @@ export function RenameScenesButton() {
       <>
         <span className="librarian-summary text-muted">
           {terminal
-            ? "Rename job " + status.toLowerCase()
-            : "Renaming... " + progressPct}
+            ? intl.formatMessage(
+                { id: "librarian.renameButton.jobStatus.terminal" },
+                { status: status.toLowerCase() },
+              )
+            : intl.formatMessage(
+                { id: "librarian.renameButton.jobStatus.running" },
+                { progress: progressPct },
+              )}
         </span>
         {toggle}
       </>
@@ -140,10 +153,18 @@ export function RenameScenesButton() {
 
   const filterActive = hasActiveFilter(liveFilter);
   const summaryText = !filterActive
-    ? `This will rename all ${eligibleEntityNoun(config, true)}`
+    ? intl.formatMessage(
+        { id: "librarian.renameButton.summary.all" },
+        { entityNoun: eligibleEntityNoun(intl, config, true) },
+      )
     : matchCount != null
-      ? `This will rename up to ${matchCount} scene${matchCount === 1 ? "" : "s"} matching the current filter`
-      : "This will rename scenes matching the current filter";
+      ? intl.formatMessage(
+          { id: "librarian.renameButton.summary.filteredCount" },
+          { count: matchCount },
+        )
+      : intl.formatMessage({
+          id: "librarian.renameButton.summary.filteredUnknown",
+        });
 
   function handleConfirmedApply() {
     setConfirming(false);
@@ -156,25 +177,33 @@ export function RenameScenesButton() {
         <ConfirmModal
           show
           icon={faFolderTree}
-          header="Apply renames now?"
-          cancel={{ text: "Cancel", onClick: () => setConfirming(false) }}
+          header={intl.formatMessage({
+            id: "librarian.renameButton.confirm.header",
+          })}
+          cancel={{
+            text: intl.formatMessage({ id: "actions.cancel" }),
+            onClick: () => setConfirming(false),
+          }}
           accept={{
-            text: "Apply",
+            text: intl.formatMessage({ id: "actions.apply" }),
             variant: "danger",
             onClick: handleConfirmedApply,
           }}
         >
           <p>
-            Every {eligibleEntityNoun(config)}{" "}
-            {filterActive ? "currently matching the filter" : "in your library"}{" "}
-            will be renamed/moved on disk immediately: this is a real run, not a
-            preview, and it is NOT reversable by this plugin
+            {intl.formatMessage(
+              { id: "librarian.renameButton.confirm.body" },
+              {
+                entityNoun: eligibleEntityNoun(intl, config),
+                filterActive: filterActive ? "true" : "false",
+              },
+            )}
           </p>
         </ConfirmModal>
       )}
       <span className="librarian-summary text-muted">{summaryText}</span>
       <Button variant="primary" size="sm" onClick={() => setConfirming(true)}>
-        Apply Renames
+        {intl.formatMessage({ id: "librarian.renameButton.apply" })}
       </Button>
       {toggle}
     </>

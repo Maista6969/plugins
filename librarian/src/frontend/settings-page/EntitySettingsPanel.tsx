@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useIntl, IntlShape } from "react-intl";
 import { RuleList } from "./RuleList.js";
 import { PatternInput } from "./PatternInput.js";
 import { LibraryRootPicker } from "./LibraryRootPicker.js";
@@ -14,7 +15,7 @@ import {
   ruleToPreviewFilter,
   stashIdGateIsApproximate,
 } from "../../core/rule-to-filter.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun, capitalize } from "../shared/eligible-entities.js";
 import { resetSection } from "../../core/config-schema.js";
 import {
   patternUsesAnyToken,
@@ -29,25 +30,23 @@ const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
 const { faExclamationTriangle } = PluginApi.libraries.FontAwesomeSolid;
 
-function countText(
+function excludeCountText(
+  intl: IntlShape,
   count: number | null,
-  plural: string,
+  entityType: string,
   upperBound: boolean,
 ): string | null {
   if (count == null) {
     return null;
   }
-  const noun =
-    count === 1
-      ? plural.replace(/(ie)?s$/, (m) => (m === "ies" ? "y" : ""))
-      : plural;
-  return (
-    (upperBound ? "Up to " : "") +
-    count +
-    " " +
-    noun +
-    (count === 1 ? " currently matches" : " currently match") +
-    " these exclusion conditions"
+  return intl.formatMessage(
+    { id: "librarian.entitySettingsPanel.excludeCount" },
+    {
+      count,
+      upperBound: upperBound ? "true" : "false",
+      noun: countableNoun(intl, entityType, false),
+      plural: countableNoun(intl, entityType),
+    },
   );
 }
 
@@ -65,14 +64,14 @@ export function EntitySettingsPanel({
   onChange,
   onReplaceConfig,
 }: EntitySettingsPanelProps) {
+  const intl = useIntl();
   const [confirmingReset, setConfirmingReset] = useState(false);
   const { BooleanSetting } = PluginApi.components;
-  const adapter = adapterFor(entityType);
   const { stashBoxes } = useStashBoxes();
   const section = config[entityType];
   const defaultPattern = section.defaultPattern || {};
-  const noun = adapter.noun;
-  const plural = adapter.plural;
+  const noun = countableNoun(intl, entityType, false);
+  const plural = countableNoun(intl, entityType);
 
   function update(patch: any) {
     onChange(entityType, patch);
@@ -119,20 +118,36 @@ export function EntitySettingsPanel({
 
   return (
     <div className="librarian-entity-settings">
-      <SettingsSection heading="Options">
+      <SettingsSection
+        heading={intl.formatMessage({
+          id: "librarian.entitySettingsPanel.options.heading",
+        })}
+      >
         <BooleanSetting
           id={"librarian-auto-rename-" + entityType}
-          heading="Automatic renaming"
-          subHeading={"Run the plugin on every " + noun + " update"}
+          heading={intl.formatMessage({
+            id: "librarian.entitySettingsPanel.autoRename.heading",
+          })}
+          subHeading={intl.formatMessage(
+            { id: "librarian.entitySettingsPanel.autoRename.subHeading" },
+            { entityNoun: noun },
+          )}
           checked={!!section.autoRename}
           onChange={(v: boolean) => update({ autoRename: v })}
         />
         <BooleanSetting
           id={"librarian-only-organized-" + entityType}
-          heading={"Only rename " + plural + " marked Organized"}
-          subHeading={
-            "Avoids modifying " + plural + " you haven't reviewed yet"
-          }
+          heading={intl.formatMessage(
+            { id: "librarian.entitySettingsPanel.onlyOrganized.heading" },
+            {
+              entityNoun: plural,
+              organized: intl.formatMessage({ id: "organized" }).toLowerCase(),
+            },
+          )}
+          subHeading={intl.formatMessage(
+            { id: "librarian.entitySettingsPanel.onlyOrganized.subHeading" },
+            { entityNoun: plural },
+          )}
           checked={!!section.onlyOrganized}
           onChange={(v: boolean) => update({ onlyOrganized: v })}
         />
@@ -141,8 +156,12 @@ export function EntitySettingsPanel({
           <div className="setting-group">
             <BooleanSetting
               id="librarian-only-with-stash-id"
-              heading="Only rename scenes with at least one StashID"
-              subHeading="Avoids modifying scenes have not been matched against a stash-box"
+              heading={intl.formatMessage({
+                id: "librarian.entitySettingsPanel.onlyWithStashId.heading",
+              })}
+              subHeading={intl.formatMessage({
+                id: "librarian.entitySettingsPanel.onlyWithStashId.subHeading",
+              })}
               checked={!!section.onlyWithStashId}
               onChange={(v: boolean) => update({ onlyWithStashId: v })}
             />
@@ -150,9 +169,15 @@ export function EntitySettingsPanel({
             {section.onlyWithStashId && stashBoxes.length > 1 && (
               <div className="setting">
                 <div>
-                  <h3>Accepted sources</h3>
+                  <h3>
+                    {intl.formatMessage({
+                      id: "librarian.entitySettingsPanel.acceptedSources.heading",
+                    })}
+                  </h3>
                   <div className="sub-heading">
-                    Leave empty to accept a StashID from any stash-box
+                    {intl.formatMessage({
+                      id: "librarian.entitySettingsPanel.acceptedSources.subHeading",
+                    })}
                   </div>
                 </div>
                 <div>
@@ -169,14 +194,23 @@ export function EntitySettingsPanel({
         )}
         <div className="setting">
           <div>
-            <h3>Reset {plural} settings</h3>
+            <h3>
+              {intl.formatMessage(
+                { id: "librarian.entitySettingsPanel.resetSection.heading" },
+                { entityNoun: plural },
+              )}
+            </h3>
             <div className="sub-heading">
-              Reset this tab to its default settings
+              {intl.formatMessage({
+                id: "librarian.entitySettingsPanel.resetSection.subHeading",
+              })}
             </div>
           </div>
           <div>
             <Button variant="danger" onClick={() => setConfirmingReset(true)}>
-              Reset
+              {intl.formatMessage({
+                id: "librarian.settingsPage.formatting.reset.button",
+              })}
             </Button>
           </div>
         </div>
@@ -186,10 +220,19 @@ export function EntitySettingsPanel({
         <ConfirmModal
           show
           icon={faExclamationTriangle}
-          header={"Reset " + plural + " settings?"}
-          cancel={{ text: "Cancel", onClick: () => setConfirmingReset(false) }}
+          header={intl.formatMessage(
+            { id: "librarian.entitySettingsPanel.confirmReset.header" },
+            { entityNoun: plural },
+          )}
+          cancel={{
+            text: intl.formatMessage({ id: "actions.cancel" }),
+            onClick: () => setConfirmingReset(false),
+          }}
           accept={{
-            text: "Reset " + plural,
+            text: intl.formatMessage(
+              { id: "librarian.entitySettingsPanel.confirmReset.accept" },
+              { entityNoun: plural },
+            ),
             variant: "danger",
             onClick: () => {
               setConfirmingReset(false);
@@ -198,28 +241,43 @@ export function EntitySettingsPanel({
           }}
         >
           <p>
-            The options, exclusions and default pattern on the{" "}
-            <strong>{adapter.label}</strong> tab go back to their defaults. This
-            takes effect immediately and cannot be undone.
+            {intl.formatMessage({
+              id: "librarian.entitySettingsPanel.confirmReset.bodyBefore",
+            })}{" "}
+            <strong>{plural}</strong>
+            {intl.formatMessage({
+              id: "librarian.entitySettingsPanel.confirmReset.bodyAfter",
+            })}
           </p>
           <p>
             {section.rules && section.rules.length > 0
-              ? "Your " +
-                section.rules.length +
-                (section.rules.length === 1 ? " rule is" : " rules are") +
-                " kept, but switched off, so nothing you wrote is lost. Turn any of them back on when you want it again."
+              ? intl.formatMessage(
+                  {
+                    id: "librarian.entitySettingsPanel.confirmReset.rulesKept",
+                  },
+                  { count: section.rules.length },
+                )
               : null}
           </p>
-          <p>Settings on the other tabs are not affected.</p>
+          <p>
+            {intl.formatMessage({
+              id: "librarian.entitySettingsPanel.confirmReset.otherTabs",
+            })}
+          </p>
         </ConfirmModal>
       )}
 
-      <SettingsSection heading="Exclusions">
+      <SettingsSection
+        heading={intl.formatMessage({
+          id: "librarian.entitySettingsPanel.exclusions.heading",
+        })}
+      >
         <div className="content">
           <p className="librarian-token-hint text-muted">
-            {plural.charAt(0).toUpperCase() + plural.slice(1)} that match these
-            conditions will always be skipped regardless of what other rules
-            they would match
+            {intl.formatMessage(
+              { id: "librarian.entitySettingsPanel.exclusions.hint" },
+              { entityNoun: capitalize(plural) },
+            )}
           </p>
           <ConditionsEditor
             entityType={entityType}
@@ -229,12 +287,21 @@ export function EntitySettingsPanel({
           {/* rendered even while the debounced count is in flight, so its
               arrival cannot push the rest of the form down */}
           <p className="librarian-token-hint text-muted librarian-count-line">
-            {countText(excludeCount, plural, excludeCountIsUpperBound) || " "}
+            {excludeCountText(
+              intl,
+              excludeCount,
+              entityType,
+              excludeCountIsUpperBound,
+            ) || " "}
           </p>
         </div>
       </SettingsSection>
 
-      <SettingsSection heading="Rules">
+      <SettingsSection
+        heading={intl.formatMessage({
+          id: "librarian.entitySettingsPanel.rules.heading",
+        })}
+      >
         <div className="content">
           <RuleList
             rules={section.rules}
@@ -245,26 +312,37 @@ export function EntitySettingsPanel({
         </div>
       </SettingsSection>
 
-      <SettingsSection heading="Default pattern">
+      <SettingsSection
+        heading={intl.formatMessage({
+          id: "librarian.entitySettingsPanel.defaultPattern.heading",
+        })}
+      >
         <div className="content">
           <p className="librarian-token-hint text-muted">
-            Will be used for every {noun} unless they have a more specific rule
-            above
+            {intl.formatMessage(
+              { id: "librarian.entitySettingsPanel.defaultPattern.hint" },
+              { entityNoun: noun },
+            )}
           </p>
           {keepsInPlace ? (
             <p className="librarian-token-hint text-muted">
-              The folder pattern below is <code>{"{current}"}</code>, so each{" "}
-              {noun} keeps the folder it is already in and no library root is
-              needed. Give the folder pattern something else (or “/” for the
-              library root itself) to move {plural} into a library.
+              {intl.formatMessage({
+                id: "librarian.entitySettingsPanel.keepsInPlace.before",
+              })}{" "}
+              <code>{"{current}"}</code>
+              {intl.formatMessage(
+                { id: "librarian.entitySettingsPanel.keepsInPlace.after" },
+                { noun, plural },
+              )}
             </p>
           ) : (
             <LibraryRootPicker
               value={defaultPattern.libraryRoot}
               entityType={entityType}
-              subHeading={
-                "The library that " + plural + " end up in by default"
-              }
+              subHeading={intl.formatMessage(
+                { id: "librarian.entitySettingsPanel.libraryRoot.subHeading" },
+                { entityNoun: plural },
+              )}
               onChange={(libraryRoot: string) =>
                 updateDefaultPattern({ libraryRoot })
               }
@@ -272,10 +350,14 @@ export function EntitySettingsPanel({
           )}
 
           <PatternInput
-            label="Folder pattern"
+            label={intl.formatMessage({
+              id: "librarian.ruleEditModal.folderPattern.label",
+            })}
             isFolder
             entityType={entityType}
-            subHeading="Always active when no rule matches. May contain “/” or “\\” for multiple nested folder levels. Use {current} to keep files in their current folder, or “/” to place them directly under the library root"
+            subHeading={intl.formatMessage({
+              id: "librarian.entitySettingsPanel.folderPattern.subHeading",
+            })}
             value={defaultPattern.folderPattern}
             onChange={(folderPattern: string) =>
               updateDefaultPattern({ folderPattern })
@@ -283,9 +365,13 @@ export function EntitySettingsPanel({
           />
 
           <PatternInput
-            label="Filename pattern"
+            label={intl.formatMessage({
+              id: "librarian.ruleEditModal.filenamePattern.label",
+            })}
             entityType={entityType}
-            subHeading="The file's whole name, never split into subfolders, even if a token's value happens to contain “/” or “\\”. Use {current} to keep each file's current name and only move it"
+            subHeading={intl.formatMessage({
+              id: "librarian.entitySettingsPanel.filenamePattern.subHeading",
+            })}
             value={defaultPattern.filenamePattern}
             onChange={(filenamePattern: string) =>
               updateDefaultPattern({ filenamePattern })
@@ -295,16 +381,22 @@ export function EntitySettingsPanel({
 
           {keepsInPlace && keepsName && (
             <p className="librarian-token-hint text-warning">
-              Both patterns are <code>{"{current}"}</code>, so nothing would
-              happen: every {noun} would keep the folder and the name it already
-              has, and be reported as skipped. Change one of the two to activate
-              this rule
+              {intl.formatMessage({
+                id: "librarian.entitySettingsPanel.keepsBoth.before",
+              })}{" "}
+              <code>{"{current}"}</code>
+              {intl.formatMessage(
+                { id: "librarian.entitySettingsPanel.keepsBoth.after" },
+                { entityNoun: noun },
+              )}
             </p>
           )}
 
           {usesPerformerSort && (
             <div>
-              Sort performers{" "}
+              {intl.formatMessage({
+                id: "librarian.ruleEditModal.sortPerformers",
+              })}{" "}
               <SortCriteriaSelect
                 value={defaultPattern.sortBy}
                 onChange={(sortBy: string[]) =>
@@ -316,7 +408,9 @@ export function EntitySettingsPanel({
 
           {entityType === "scenes" && usesStashId && (
             <div>
-              Default StashID source{" "}
+              {intl.formatMessage({
+                id: "librarian.ruleEditModal.defaultStashIdSource",
+              })}{" "}
               <StashBoxSelect
                 value={defaultPattern.stashBoxEndpoint}
                 onChange={(stashBoxEndpoint: string) =>
@@ -331,14 +425,26 @@ export function EntitySettingsPanel({
       {entityType === "galleries" && (
         <div className="librarian-entity-notice">
           <p className="librarian-token-hint text-warning">
-            Only <strong>zip galleries</strong> can be renamed
+            {intl.formatMessage({
+              id: "librarian.entitySettingsPanel.galleries.zipOnlyBefore",
+            })}{" "}
+            <strong>
+              {intl.formatMessage({
+                id: "librarian.entitySettingsPanel.galleries.zipGalleries",
+              })}
+            </strong>{" "}
+            {intl.formatMessage({
+              id: "librarian.entitySettingsPanel.galleries.zipOnlyAfter",
+            })}
           </p>
           {folderGalleryCount != null && folderGalleryCount > 0 && (
             <p className="librarian-token-hint text-muted">
-              {folderGalleryCount === 1
-                ? "1 gallery in your library is folder-based and will be skipped"
-                : folderGalleryCount +
-                  " galleries in your library are folder-based and will be skipped"}
+              {intl.formatMessage(
+                {
+                  id: "librarian.entitySettingsPanel.galleries.folderBasedCount",
+                },
+                { count: folderGalleryCount },
+              )}
             </p>
           )}
         </div>
@@ -347,7 +453,9 @@ export function EntitySettingsPanel({
       {entityType === "images" && (
         <div className="librarian-entity-notice">
           <p className="librarian-token-hint text-warning">
-            Images inside a zip gallery are always skipped
+            {intl.formatMessage({
+              id: "librarian.entitySettingsPanel.images.zipSkipped",
+            })}
           </p>
         </div>
       )}

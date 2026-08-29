@@ -127,10 +127,10 @@ test("gaps name what the filter cannot express", () => {
     criteriaGaps({
       excludeConditions: { conditions: [{ field: "tag", op: "any_of" }] },
     }),
-    ["your exclusions"],
+    ["exclusions"],
   );
   assert.deepEqual(criteriaGaps({ rules: [{ id: "r1" }] }), [
-    "scenes claimed by a rule",
+    "claimed_by_rule",
   ]);
   // a disabled rule claims nothing, so it is not a gap
   assert.deepEqual(criteriaGaps({ rules: [{ id: "r1", enabled: false }] }), []);

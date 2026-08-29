@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { adapterFor } from "../../core/entity-adapter.js";
+import { useIntl } from "react-intl";
+import { countableNoun } from "../shared/eligible-entities.js";
 import { Condition } from "./ConditionRow.js";
 import { RuleEditModal } from "./RuleEditModal.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
@@ -57,6 +58,7 @@ export function RuleEditor({
   autoOpen,
   onAutoOpened,
 }: RuleEditorProps) {
+  const intl = useIntl();
   const [showModal, setShowModal] = useState(!!autoOpen);
 
   // Consume the flag on mount so returning to this tab does not reopen the
@@ -69,6 +71,8 @@ export function RuleEditor({
   }, []);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const enabled = rule.enabled !== false;
+  const displayName =
+    rule.name || intl.formatMessage({ id: "librarian.ruleEditor.unnamedRule" });
 
   return (
     <ListGroup.Item
@@ -83,40 +87,40 @@ export function RuleEditor({
         className="librarian-drag-handle"
         onMouseEnter={onHandleMouseEnter}
         onMouseLeave={onHandleMouseLeave}
-        title="Drag to reorder"
+        title={intl.formatMessage({ id: "librarian.ruleEditor.dragToReorder" })}
       >
         <Icon icon={faGripVertical} />
       </div>
       <div className="librarian-rule-row-main">
-        <div className="librarian-rule-row-name">
-          {rule.name || "Unnamed rule"}
-        </div>
+        <div className="librarian-rule-row-name">{displayName}</div>
         {rule.folderPattern || rule.filenamePattern ? (
           <div className="librarian-token-hint librarian-rule-row-pattern text-muted">
             {describePatternPair(rule.folderPattern, rule.filenamePattern)}
           </div>
         ) : (
-          <div className="librarian-token-hint text-muted">No pattern set</div>
+          <div className="librarian-token-hint text-muted">
+            {intl.formatMessage({ id: "librarian.ruleEditor.noPatternSet" })}
+          </div>
         )}
       </div>
       <div className="librarian-rule-row-actions">
         <Form.Switch
           id={"librarian-rule-enabled-" + rule.id}
-          label="Enabled"
+          label={intl.formatMessage({ id: "librarian.ruleEditor.enabled" })}
           checked={enabled}
           onChange={() => onChange({ ...rule, enabled: !enabled })}
         />
         <Button
           className="minimal"
           onClick={() => setShowModal(true)}
-          title="Edit rule"
+          title={intl.formatMessage({ id: "librarian.ruleEditor.editRule" })}
         >
           <Icon icon={faCog} />
         </Button>
         <Button
           className="minimal text-danger"
           onClick={() => setConfirmingDelete(true)}
-          title="Delete rule"
+          title={intl.formatMessage({ id: "librarian.ruleEditor.deleteRule" })}
         >
           <Icon icon={faMinus} />
         </Button>
@@ -135,10 +139,15 @@ export function RuleEditor({
         <ConfirmModal
           show
           icon={faTrash}
-          header="Delete this rule?"
-          cancel={{ text: "Cancel", onClick: () => setConfirmingDelete(false) }}
+          header={intl.formatMessage({
+            id: "librarian.ruleEditor.confirm.header",
+          })}
+          cancel={{
+            text: intl.formatMessage({ id: "actions.cancel" }),
+            onClick: () => setConfirmingDelete(false),
+          }}
           accept={{
-            text: "Delete",
+            text: intl.formatMessage({ id: "actions.delete" }),
             variant: "danger",
             onClick: () => {
               setConfirmingDelete(false);
@@ -147,9 +156,13 @@ export function RuleEditor({
           }}
         >
           <p>
-            “{rule.name || "Unnamed rule"}” will be permanently removed. The{" "}
-            {adapterFor(entityType).plural} it currently matches will fall
-            through to the next rule (or the default pattern) instead
+            {intl.formatMessage(
+              { id: "librarian.ruleEditor.confirm.body" },
+              {
+                ruleName: displayName,
+                entityNoun: countableNoun(intl, entityType || "scenes"),
+              },
+            )}
           </p>
         </ConfirmModal>
       )}

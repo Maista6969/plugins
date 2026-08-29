@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useApolloClient } from "@apollo/client";
+import { useIntl, IntlShape } from "react-intl";
 import {
   getConfiguration,
   setConfiguration,
@@ -27,7 +28,7 @@ import { TokenizedText } from "../shared/TokenizedText.js";
 import { useLoadSettingsComponents } from "../shared/useLoadSettingsComponents.js";
 import { usePluginPageTitle } from "./usePluginPageTitle.js";
 import { useEntityCounts } from "./useEntityCounts.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import { countableNoun } from "../shared/eligible-entities.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Spinner, Nav, Button } = PluginApi.libraries.Bootstrap;
@@ -38,38 +39,40 @@ const AUTOSAVE_DEBOUNCE_MS = 500;
 const SUCCESS_INDICATOR_MS = 4000;
 
 function prunedEntitiesText(
+  intl: IntlShape,
   removedReferences: number,
   removedRules: number,
 ): string {
-  const refPart =
-    removedReferences === 1
-      ? "1 reference to a deleted performer/tag/studio"
-      : removedReferences + " references to deleted performers/tags/studios";
-  if (removedRules === 0) {
-    return "Cleaned up " + refPart;
-  }
-  const rulePart =
-    removedRules === 1
-      ? "1 rule that had none left"
-      : removedRules + " rules that had none left";
-  return "Cleaned up " + refPart + ", removing " + rulePart;
+  return intl.formatMessage(
+    { id: "librarian.settingsPage.cleanup.entities" },
+    { removedReferences, removedRules },
+  );
 }
 
 function prunedLibraryRootsText(
+  intl: IntlShape,
   disabledRules: number,
   clearedDefault: boolean,
 ): string {
   const parts: string[] = [];
-  if (disabledRules === 1) {
-    parts.push("disabled 1 rule");
-  } else if (disabledRules > 1) {
-    parts.push("disabled " + disabledRules + " rules");
+  if (disabledRules > 0) {
+    parts.push(
+      intl.formatMessage(
+        { id: "librarian.settingsPage.cleanup.disabledRules" },
+        { count: disabledRules },
+      ),
+    );
   }
   if (clearedDefault) {
-    parts.push("cleared the default pattern's library root");
+    parts.push(
+      intl.formatMessage({
+        id: "librarian.settingsPage.cleanup.clearedDefaultRoot",
+      }),
+    );
   }
-  return (
-    "A configured library no longer exists in Stash: " + parts.join(" and ")
+  return intl.formatMessage(
+    { id: "librarian.settingsPage.cleanup.libraryRoots" },
+    { parts: parts.join(intl.formatMessage({ id: "librarian.common.and" })) },
   );
 }
 
@@ -84,6 +87,7 @@ export function SettingsPage() {
 }
 
 function SettingsPageContent() {
+  const intl = useIntl();
   const client = useApolloClient();
   const [config, setConfig] = useState<any | null>(null);
   const [pendingConfig, setPendingConfig] = useState<any>(undefined);
@@ -112,7 +116,11 @@ function SettingsPageContent() {
         if (pruned.config !== effectiveConfig) {
           effectiveConfig = pruned.config;
           Toast.success(
-            prunedEntitiesText(pruned.removedReferences, pruned.removedRules),
+            prunedEntitiesText(
+              intl,
+              pruned.removedReferences,
+              pruned.removedRules,
+            ),
           );
         }
       } catch (e) {
@@ -128,6 +136,7 @@ function SettingsPageContent() {
           effectiveConfig = prunedRoots.config;
           Toast.success(
             prunedLibraryRootsText(
+              intl,
               prunedRoots.disabledRules,
               prunedRoots.clearedDefault,
             ),
@@ -179,7 +188,11 @@ function SettingsPageContent() {
   }, [pendingConfig, client]);
 
   if (!config || loadingSettingsComponents || countsLoading) {
-    return <div className="librarian-settings-page">Loading...</div>;
+    return (
+      <div className="librarian-settings-page">
+        {intl.formatMessage({ id: "loading.generic" })}
+      </div>
+    );
   }
 
   function updateConfig(next: any) {
@@ -203,7 +216,9 @@ function SettingsPageContent() {
       return (
         <div className="loading-indicator">
           <Spinner animation="border" role="status">
-            <span className="sr-only">Loading...</span>
+            <span className="sr-only">
+              {intl.formatMessage({ id: "loading.generic" })}
+            </span>
           </Spinner>
         </div>
       );
@@ -218,14 +233,16 @@ function SettingsPageContent() {
     return null;
   }
 
+  const fallbackTitle = intl.formatMessage({
+    id: "settings",
+  });
+
   if (availableTypes.length === 0) {
     return (
       <div className="librarian-settings-page">
-        <h2>{pluginName || "Settings"}</h2>
+        <h2>{pluginName || fallbackTitle}</h2>
         <p className="librarian-token-hint text-muted">
-          There are no scenes, galleries or images in your library yet, so there
-          is nothing for Librarian to rename. Scan some in and these settings
-          will appear.
+          {intl.formatMessage({ id: "librarian.settingsPage.emptyLibrary" })}
         </p>
       </div>
     );
@@ -234,7 +251,7 @@ function SettingsPageContent() {
   return (
     <div className="librarian-settings-page">
       {renderLoadingIndicator()}
-      <h2>{pluginName || "Settings"}</h2>
+      <h2>{pluginName || fallbackTitle}</h2>
 
       <div className="librarian-entity-tabs">
         {availableTypes.length > 1 && (
@@ -245,7 +262,9 @@ function SettingsPageContent() {
           >
             {availableTypes.map((type) => (
               <Nav.Item key={type}>
-                <Nav.Link eventKey={type}>{adapterFor(type).label}</Nav.Link>
+                <Nav.Link eventKey={type}>
+                  {countableNoun(intl, type, true, true)}
+                </Nav.Link>
               </Nav.Item>
             ))}
           </Nav>
@@ -264,14 +283,24 @@ function SettingsPageContent() {
       </div>
 
       <div className="librarian-global-settings">
-        <SettingsSection heading="Formatting">
+        <SettingsSection
+          heading={intl.formatMessage({
+            id: "librarian.settingsPage.formatting.heading",
+          })}
+        >
           <div className="content">
             <p className="librarian-token-hint text-muted">
-              Changes apply to how all folder and file names are formatted
+              {intl.formatMessage({
+                id: "librarian.settingsPage.formatting.hint",
+              })}
             </p>
             <TextSettingModal
-              heading="Space replacement"
-              subHeading="Replaces spaces in every folder and filename with this text (like “.” or “_”). Leave blank to keep spaces as they are"
+              heading={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.spaceReplacement.heading",
+              })}
+              subHeading={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.spaceReplacement.subHeading",
+              })}
               value={config.sanitize && config.sanitize.spaceReplacement}
               onChange={(spaceReplacement: string) =>
                 updateConfig({
@@ -279,12 +308,20 @@ function SettingsPageContent() {
                   sanitize: { ...config.sanitize, spaceReplacement },
                 })
               }
-              placeholder="(do not change spaces)"
+              placeholder={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.spaceReplacement.placeholder",
+              })}
             />
             <TextSettingModal
-              heading="Performers delimiter"
+              heading={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.performersDelimiter.heading",
+              })}
               subHeading={
-                <TokenizedText text="Joins {performers}/{performers_not_in_title}/{matched_performers} with this text" />
+                <TokenizedText
+                  text={intl.formatMessage({
+                    id: "librarian.settingsPage.formatting.performersDelimiter.subHeading",
+                  })}
+                />
               }
               value={config.delimiters && config.delimiters.performers}
               onChange={(performers: string) =>
@@ -293,12 +330,20 @@ function SettingsPageContent() {
                   delimiters: { ...config.delimiters, performers },
                 })
               }
-              placeholder=", "
+              placeholder={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.delimiterPlaceholder",
+              })}
             />
             <TextSettingModal
-              heading="Tags delimiter"
+              heading={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.tagsDelimiter.heading",
+              })}
               subHeading={
-                <TokenizedText text="Joins {tags}/{matched_tags} with this text" />
+                <TokenizedText
+                  text={intl.formatMessage({
+                    id: "librarian.settingsPage.formatting.tagsDelimiter.subHeading",
+                  })}
+                />
               }
               value={config.delimiters && config.delimiters.tags}
               onChange={(tags: string) =>
@@ -307,15 +352,22 @@ function SettingsPageContent() {
                   delimiters: { ...config.delimiters, tags },
                 })
               }
-              placeholder=", "
+              placeholder={intl.formatMessage({
+                id: "librarian.settingsPage.formatting.delimiterPlaceholder",
+              })}
             />
 
             <div className="setting">
               <div>
-                <h3>Reset formatting</h3>
+                <h3>
+                  {intl.formatMessage({
+                    id: "librarian.settingsPage.formatting.reset.heading",
+                  })}
+                </h3>
                 <div className="sub-heading">
-                  Puts the formatting settings back to their defaults. Rules and
-                  patterns are not affected
+                  {intl.formatMessage({
+                    id: "librarian.settingsPage.formatting.reset.hint",
+                  })}
                 </div>
               </div>
               <div>
@@ -323,7 +375,9 @@ function SettingsPageContent() {
                   variant="danger"
                   onClick={() => updateConfig(resetFormatting(config))}
                 >
-                  Reset
+                  {intl.formatMessage({
+                    id: "librarian.settingsPage.formatting.reset.button",
+                  })}
                 </Button>
               </div>
             </div>
@@ -332,10 +386,17 @@ function SettingsPageContent() {
       </div>
 
       <div className="setting-section librarian-config-preview-section">
-        <h1>Preview {adapterFor(activeType).label.toLowerCase()}</h1>
+        <h1>
+          {intl.formatMessage(
+            { id: "librarian.settingsPage.preview.heading" },
+            { entityNoun: countableNoun(intl, activeType) },
+          )}
+        </h1>
         <p className="librarian-token-hint text-muted">
-          Shows what the current rules would do to a sample of recent{" "}
-          {adapterFor(activeType).plural}
+          {intl.formatMessage(
+            { id: "librarian.settingsPage.preview.hint" },
+            { entityNoun: countableNoun(intl, activeType) },
+          )}
         </p>
         {/* keyed like the settings panel so switching tabs cannot leave rows
             from another entity type on screen */}

@@ -120,16 +120,18 @@ export function defaultPatternCriteria(settings) {
 }
 
 // What the filter cannot speak for, so the button can say so rather than
-// implying the page it produces is free of skips
+// implying the page it produces is free of skips. Returns stable keys rather
+// than display text: this module has no access to the UI's translations, so
+// the caller (RenamableFilterButton) maps each key to localized text
 export function criteriaGaps(settings) {
   const config = settings || {};
   const gaps = [];
   const exclusions = config.excludeConditions || {};
   if ((exclusions.conditions || []).length > 0) {
-    gaps.push("your exclusions");
+    gaps.push("exclusions");
   }
   if ((config.rules || []).some((r) => r && r.enabled !== false)) {
-    gaps.push("scenes claimed by a rule");
+    gaps.push("claimed_by_rule");
   }
   return gaps;
 }

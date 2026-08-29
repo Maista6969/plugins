@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useIntl } from "react-intl";
 import { useLibraryPaths } from "../shared/LibraryPathsContext.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -17,6 +18,7 @@ export function LibraryRootPicker({
   subHeading,
   entityType,
 }: LibraryRootPickerProps) {
+  const intl = useIntl();
   const { pathsByType, loading } = useLibraryPaths();
   // A Stash library path can exclude video or images independently, so a
   // video-only library is not a valid destination for galleries or images
@@ -32,17 +34,26 @@ export function LibraryRootPicker({
   }, [value, paths]);
 
   if (loading) {
-    return <div>Loading library paths...</div>;
+    return (
+      <div>
+        {intl.formatMessage({ id: "librarian.libraryRootPicker.loading" })}
+      </div>
+    );
   }
 
   if (paths.length === 0) {
+    const mediaKind = intl.formatMessage({
+      id:
+        entityType === "scenes" || !entityType
+          ? "librarian.libraryRootPicker.video"
+          : "librarian.libraryRootPicker.images",
+    });
     return (
       <p className="librarian-token-hint text-muted">
-        No library paths in Stash accept{" "}
-        {entityType === "scenes" || !entityType ? "video" : "images"} yet. Add
-        one (or enable{" "}
-        {entityType === "scenes" || !entityType ? "video" : "images"} for an
-        existing one) under Settings &gt; Library first
+        {intl.formatMessage(
+          { id: "librarian.libraryRootPicker.noPaths" },
+          { mediaKind },
+        )}
       </p>
     );
   }
@@ -55,7 +66,9 @@ export function LibraryRootPicker({
   return (
     <div className="setting">
       <div>
-        <h3>Library root</h3>
+        <h3>
+          {intl.formatMessage({ id: "librarian.libraryRootPicker.heading" })}
+        </h3>
         {subHeading && <div className="sub-heading">{subHeading}</div>}
       </div>
       <div>
@@ -65,7 +78,11 @@ export function LibraryRootPicker({
           value={value}
           onChange={(e: any) => onChange(e.currentTarget.value)}
         >
-          <option value="">(select a library path)</option>
+          <option value="">
+            {intl.formatMessage({
+              id: "librarian.libraryRootPicker.selectPath",
+            })}
+          </option>
           {paths.map((path: string) => (
             <option key={path} value={path}>
               {path}

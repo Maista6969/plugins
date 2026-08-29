@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useApolloClient, gql } from "@apollo/client";
+import { useIntl } from "react-intl";
 import { usePreviewMode, buildPreviewRows } from "./preview-context.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
+import { countableNoun } from "../shared/eligible-entities.js";
 import { SCENE_FIELDS } from "../shared/scene-query-fields.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 
@@ -60,6 +62,7 @@ interface EnrichedScenes {
 }
 
 export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
+  const intl = useIntl();
   const {
     config,
     pendingSceneIds,
@@ -106,14 +109,19 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
 
   if (!config) {
     return (
-      <div className="librarian-preview-list">Loading configuration...</div>
+      <div className="librarian-preview-list">
+        {intl.formatMessage({ id: "librarian.renameButton.loadingConfig" })}
+      </div>
     );
   }
 
   if (scenes.length === 0) {
     return (
       <div className="librarian-preview-list">
-        No scenes match the current filter
+        {intl.formatMessage(
+          { id: "librarian.previewSceneList.noneMatch" },
+          { entityNoun: countableNoun(intl, "scenes") },
+        )}
       </div>
     );
   }
@@ -122,7 +130,11 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
   // and planning against it would show the wrong preview for a moment
   if (!enriched || enriched.key !== idsKey) {
     return (
-      <div className="librarian-preview-list">Loading preview data...</div>
+      <div className="librarian-preview-list">
+        {intl.formatMessage({
+          id: "librarian.previewSceneList.loadingPreview",
+        })}
+      </div>
     );
   }
 
@@ -141,11 +153,18 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
   return (
     <div className="librarian-preview-list">
       <p className="librarian-token-hint filter-container text-muted paginationIndex center-text">
-        This page: {willMove} will move, {unchanged} unchanged, {skipped}{" "}
-        skipped
-        {errors > 0 ? ", " + errors + " errors" : ""}. "Apply Renames" acts on
-        every scene matching the current filter, across all pages, not just
-        what's shown here
+        {intl.formatMessage(
+          { id: "librarian.previewSceneList.summary" },
+          {
+            willMove,
+            unchanged,
+            skipped,
+            errors,
+            applyLabel: intl.formatMessage({
+              id: "librarian.renameButton.apply",
+            }),
+          },
+        )}
       </p>
       <PlanResultTable
         rows={rows}

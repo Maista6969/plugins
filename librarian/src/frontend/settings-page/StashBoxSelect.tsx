@@ -1,4 +1,5 @@
 import React from "react";
+import { useIntl, IntlShape } from "react-intl";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -11,15 +12,17 @@ interface StashBoxSelectProps {
 }
 
 function inheritedPlaceholder(
+  intl: IntlShape,
   stashBoxes: { name: string; endpoint: string }[],
   inheritedEndpoint?: string,
 ): string {
   if (!inheritedEndpoint) {
-    return "(none selected)";
+    return intl.formatMessage({ id: "librarian.stashBoxSelect.noneSelected" });
   }
   const box = stashBoxes.find((b) => b.endpoint === inheritedEndpoint);
-  return (
-    "Default pattern's source (" + (box ? box.name : inheritedEndpoint) + ")"
+  return intl.formatMessage(
+    { id: "librarian.stashBoxSelect.inheritedSource" },
+    { source: box ? box.name : inheritedEndpoint },
   );
 }
 
@@ -28,6 +31,7 @@ export function StashBoxSelect({
   onChange,
   inheritedEndpoint,
 }: StashBoxSelectProps) {
+  const intl = useIntl();
   const { stashBoxes, loading } = useStashBoxes();
 
   if (loading) {
@@ -37,8 +41,7 @@ export function StashBoxSelect({
   if (stashBoxes.length === 0 && !value) {
     return (
       <p className="librarian-token-hint text-muted">
-        No stash-box sources configured in Stash yet. Add one under Settings
-        &gt; Metadata Providers first
+        {intl.formatMessage({ id: "librarian.stashBoxSelect.noneConfigured" })}
       </p>
     );
   }
@@ -49,13 +52,13 @@ export function StashBoxSelect({
     <Form.Control
       as="select"
       className="librarian-inline-select input-control"
-      title="Which configured stash-box source {stash_id} resolves against"
+      title={intl.formatMessage({ id: "librarian.stashBoxSelect.title" })}
       value={value || ""}
       onChange={(e: any) => onChange(e.target.value)}
     >
       {!value && (
         <option value="">
-          {inheritedPlaceholder(stashBoxes, inheritedEndpoint)}
+          {inheritedPlaceholder(intl, stashBoxes, inheritedEndpoint)}
         </option>
       )}
       {stashBoxes.map((box) => (
@@ -65,7 +68,10 @@ export function StashBoxSelect({
       ))}
       {value && !current && (
         <option value={value} disabled>
-          {value} (no longer configured in Stash)
+          {intl.formatMessage(
+            { id: "librarian.stashBoxSelect.noLongerConfigured" },
+            { value },
+          )}
         </option>
       )}
     </Form.Control>

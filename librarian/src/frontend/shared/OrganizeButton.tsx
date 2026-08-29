@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useApolloClient, gql } from "@apollo/client";
+import { useIntl } from "react-intl";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -41,6 +42,7 @@ export function OrganizeButton({
   onOrganized,
   entityType,
 }: OrganizeButtonProps) {
+  const intl = useIntl();
   const client = useApolloClient();
   const [organizing, setOrganizing] = useState(false);
 
@@ -64,7 +66,7 @@ export function OrganizeButton({
       variant="secondary"
       size="sm"
       className="minimal organized-button not-organized"
-      title="Organized"
+      title={intl.formatMessage({ id: "organized" })}
       disabled={organizing}
       onClick={handleOrganize}
     >

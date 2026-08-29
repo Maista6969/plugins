@@ -70,6 +70,7 @@ const frontendBuild = {
     "react-dom": r("src/frontend/shared/react-dom-shim.cjs"),
     "@apollo/client": r("src/frontend/shared/apollo-shim.cjs"),
     "react-router-dom": r("src/frontend/shared/react-router-dom-shim.cjs"),
+    "react-intl": r("src/frontend/shared/intl-shim.cjs"),
   },
   loader: { ".tsx": "tsx", ".ts": "ts" },
 };

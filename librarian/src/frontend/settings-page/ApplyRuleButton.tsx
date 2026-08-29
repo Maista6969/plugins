@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { useApolloClient } from "@apollo/client";
+import { useIntl } from "react-intl";
 import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
 import { runRenameTask } from "../shared/stash-api.js";
 import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
-import { eligibleEntityNoun } from "../shared/eligible-entities.js";
-import { adapterFor } from "../../core/entity-adapter.js";
+import {
+  eligibleEntityNoun,
+  countableNoun,
+} from "../shared/eligible-entities.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -23,6 +26,7 @@ export function ApplyRuleButton({
   entityType,
 }: ApplyRuleButtonProps) {
   const type = entityType || "scenes";
+  const intl = useIntl();
   const client = useApolloClient();
   const [confirming, setConfirming] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -49,21 +53,27 @@ export function ApplyRuleButton({
       return null;
     }
     if (!job) {
-      return "Starting...";
+      return intl.formatMessage({ id: "librarian.common.starting" });
     }
     if (!isTerminalStatus(job.status)) {
       const pct =
         job.progress != null ? Math.round(job.progress * 100) + "%" : "...";
-      return "Applying... " + pct;
+      return intl.formatMessage(
+        { id: "librarian.applyRuleButton.applying" },
+        { progress: pct },
+      );
     }
-    return "Rename job " + job.status.toLowerCase();
+    return intl.formatMessage(
+      { id: "librarian.renameButton.jobStatus.terminal" },
+      { status: job.status.toLowerCase() },
+    );
   }
 
   const status = statusText();
   const hint = disabledRule
-    ? "Enable this rule to apply it"
+    ? intl.formatMessage({ id: "librarian.applyRuleButton.disabledHint" })
     : notReady
-      ? "Fill in at least one condition to enable this rule"
+      ? intl.formatMessage({ id: "librarian.applyRuleButton.notReadyHint" })
       : undefined;
 
   return (
@@ -72,18 +82,24 @@ export function ApplyRuleButton({
         <ConfirmModal
           show
           icon={faFolderTree}
-          header="Apply this rule now?"
-          cancel={{ text: "Cancel", onClick: () => setConfirming(false) }}
+          header={intl.formatMessage({
+            id: "librarian.applyRuleButton.confirm.header",
+          })}
+          cancel={{
+            text: intl.formatMessage({ id: "actions.cancel" }),
+            onClick: () => setConfirming(false),
+          }}
           accept={{
-            text: "Apply",
+            text: intl.formatMessage({ id: "actions.apply" }),
             variant: "danger",
             onClick: handleConfirmedApply,
           }}
         >
           <p>
-            Every {eligibleEntityNoun(config, false, type)} currently matching
-            this rule will be renamed/moved on disk immediately: this is a real
-            run, not a preview, and it CANNOT be undone
+            {intl.formatMessage(
+              { id: "librarian.applyRuleButton.confirm.body" },
+              { entityNoun: eligibleEntityNoun(intl, config, false, type) },
+            )}
           </p>
         </ConfirmModal>
       )}
@@ -96,7 +112,10 @@ export function ApplyRuleButton({
         onClick={() => setConfirming(true)}
         title={hint}
       >
-        Apply to all matching {adapterFor(type).plural}
+        {intl.formatMessage(
+          { id: "librarian.applyRuleButton.applyToMatching" },
+          { entityNoun: countableNoun(intl, type) },
+        )}
       </Button>
     </div>
   );

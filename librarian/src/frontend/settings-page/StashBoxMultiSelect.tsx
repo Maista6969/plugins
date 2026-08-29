@@ -1,4 +1,5 @@
 import React from "react";
+import { useIntl } from "react-intl";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
 
 const PluginApi = (window as any).PluginApi;
@@ -28,6 +29,7 @@ export function StashBoxMultiSelect({
   value,
   onChange,
 }: StashBoxMultiSelectProps) {
+  const intl = useIntl();
   const { stashBoxes, loading } = useStashBoxes();
   const selected = value || [];
 
@@ -45,7 +47,10 @@ export function StashBoxMultiSelect({
     .filter((endpoint) => !stashBoxes.some((b) => b.endpoint === endpoint))
     .map((endpoint) => ({
       value: endpoint,
-      label: endpoint + " (no longer configured in Stash)",
+      label: intl.formatMessage(
+        { id: "librarian.stashBoxSelect.noLongerConfigured" },
+        { value: endpoint },
+      ),
     }));
 
   const all = options.concat(orphaned);
@@ -60,7 +65,9 @@ export function StashBoxMultiSelect({
         menuPortalTarget={
           typeof document === "undefined" ? null : document.body
         }
-        placeholder="Any source"
+        placeholder={intl.formatMessage({
+          id: "librarian.stashBoxMultiSelect.placeholder",
+        })}
         options={all}
         value={all.filter((o) => selected.indexOf(o.value) !== -1)}
         onChange={(next: Option[] | null) =>
