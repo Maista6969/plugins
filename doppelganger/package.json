@@ -1,10 +1,10 @@
 {
   "name": "doppelganger",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
-  "description": "Stash plugin that finds scenes, performers, and studios duplicated via a shared stash-box match.",
+  "description": "Stash plugin that finds entities duplicated via a shared stash-box match, and scenes hiding identical copies of a file.",
   "scripts": {
     "build": "node esbuild.config.mjs",
     "typecheck": "tsc --noEmit",
