@@ -43,9 +43,18 @@ interface Progress {
   bytes: number;
 }
 
-function formatModTime(iso: string) {
+// Copies are compared by eye, so the column shows just the calendar date in
+// the same YYYY-MM-DD form Stash uses for scene dates; the time of day rarely
+// decides anything and lives in the tooltip. Both are in the browser's local
+// zone, as Stash's own file tab renders modification times.
+function formatModDate(iso: string) {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  if (Number.isNaN(d.getTime())) return { date: iso, full: iso };
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    full: d.toLocaleString(),
+  };
 }
 
 function TrashNotice({ trashPath }: { trashPath: string | undefined }) {
@@ -259,8 +268,11 @@ export function IdenticalCopiesList({
                             <span className="doppelganger-badge">primary</span>
                           )}
                         </td>
-                        <td className="doppelganger-copies-time text-muted">
-                          {formatModTime(file.modTime)}
+                        <td
+                          className="doppelganger-copies-time text-muted"
+                          title={formatModDate(file.modTime).full}
+                        >
+                          {formatModDate(file.modTime).date}
                         </td>
                       </tr>
                     ))}
