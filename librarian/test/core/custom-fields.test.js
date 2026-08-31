@@ -584,10 +584,7 @@ test("from=studio composes with other modifiers and with ?", () => {
     renderTemplate("{@Series|from=studio|uppercase}", tokens),
     "STUDIO'S OWN",
   );
-  assert.equal(
-    renderTemplate("x< [{@Nope|from=studio?}]>", tokens),
-    "x",
-  );
+  assert.equal(renderTemplate("x< [{@Nope|from=studio?}]>", tokens), "x");
   assert.equal(
     renderTemplate("<{@Nope|from=studio?}|{@Series|from=studio}>", tokens),
     "studio's own",

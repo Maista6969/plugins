@@ -565,7 +565,9 @@ const TOKEN_REQUIREMENTS = {
     message: (view, matchedIds, parsed) => {
       const subject =
         customFieldSource(parsed) === "studio" ? "{noun}'s studio" : "{noun}";
-      return subject + ' has no value for the custom field "' + parsed.arg + '"';
+      return (
+        subject + ' has no value for the custom field "' + parsed.arg + '"'
+      );
     },
   },
   // all three hooks go through resolveStashIdSource so the reported reason can
@@ -835,7 +837,12 @@ export function findPatternProblems(pattern, allowedTokens, options) {
       true,
     );
   }
-  if (usage.uses && !usage.blocking && usage.modified && patternKind === "folder") {
+  if (
+    usage.uses &&
+    !usage.blocking &&
+    usage.modified &&
+    patternKind === "folder"
+  ) {
     add(
       "{current}",
       "a folder pattern can only use {current} on its own: rewriting the" +
