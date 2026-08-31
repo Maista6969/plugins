@@ -8,6 +8,7 @@ import {
 } from "./performer-condition.js";
 import { ratingInRange, describeRatingRange } from "./rating-range.js";
 import { countInRange, describeCountRange } from "./count-range.js";
+import { dateInRange, describeDateRange } from "./date-range.js";
 import { isStudioTraitOp } from "./studio-condition.js";
 
 function evaluateStudioTrait(sceneView, condition) {
@@ -107,6 +108,15 @@ export function evaluateCondition(sceneView, condition) {
       return countInRange(sceneView.performerIds.length, condition.value);
     case "tag_count":
       return countInRange(sceneView.tagIds.length, condition.value);
+    case "date": {
+      if (condition.op === "is_null") {
+        return !sceneView.date;
+      }
+      if (condition.op === "not_null") {
+        return !!sceneView.date;
+      }
+      return dateInRange(sceneView.date, condition.value);
+    }
     case "path": {
       const paths = (sceneView.files || []).map((f) => {
         return f.path;
@@ -381,6 +391,16 @@ export function describeCondition(sceneView, condition) {
     case "tag_count": {
       const described = describeCountRange(condition.value);
       return described ? "tag count is " + described : "tag count";
+    }
+    case "date": {
+      if (condition.op === "is_null") {
+        return "date is not set";
+      }
+      if (condition.op === "not_null") {
+        return "date is set";
+      }
+      const described = describeDateRange(condition.value);
+      return described ? "date is " + described : "date";
     }
     case "path": {
       const label = PATH_MODIFIER_LABEL[condition.op] || condition.op;

@@ -104,7 +104,10 @@ that defines a subset, such as having a particular set of tags or performers, be
 **Studio** also has _is a favourite_, _is not a favourite_, _is rated_ and _has no rating_, asking about the item's own
 studio the same way the **Performer** condition already can about a performer.
 **Performer count** and **Tag count** ask how many performers or tags an item has, each side of the range optional, so
-"exactly one performer" is `Performer count` between `1` and `1`.
+"exactly one performer" is `Performer count` between `1` and `1`. **Date** has _is set_, _is not set_ and _is in a range_
+(each side optional, so leaving Max blank means "on or after" and leaving Min blank means "on or before"), and matches
+the way Stash itself does: a partial date like `2024` compares as if it were `2024-01-01`, so `2024` is _on or after_
+`2024-01-01` but not _on or after_ `2024-06-01`.
 
 Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
 their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.

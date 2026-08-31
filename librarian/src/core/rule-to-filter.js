@@ -3,6 +3,7 @@ import { isPerformerOp, isAllQuantifier } from "./performer-condition.js";
 import { isStudioTraitOp } from "./studio-condition.js";
 import { ratingRangeCriterion } from "./rating-range.js";
 import { countRangeCriterion } from "./count-range.js";
+import { dateRangeCriterion } from "./date-range.js";
 
 function asList(value) {
   return Array.isArray(value) ? value : [value];
@@ -157,6 +158,19 @@ function countFilter(key, value) {
   return criterion ? { [key]: criterion } : null;
 }
 
+function dateFilter(condition) {
+  if (condition.op === "is_null" || condition.op === "not_null") {
+    return {
+      date: {
+        value: "",
+        modifier: condition.op === "is_null" ? "IS_NULL" : "NOT_NULL",
+      },
+    };
+  }
+  const criterion = dateRangeCriterion(condition.value);
+  return criterion ? { date: criterion } : null;
+}
+
 function conditionToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
@@ -183,6 +197,8 @@ function conditionToFilter(condition) {
       return countFilter("performer_count", condition.value);
     case "tag_count":
       return countFilter("tag_count", condition.value);
+    case "date":
+      return dateFilter(condition);
     case "path":
       return pathFilter(condition);
     default:

@@ -25,6 +25,7 @@ const FIELD_OPTIONS = [
     value: "tag_count",
     label: "librarian.conditionRow.field.tagCount",
   },
+  { value: "date", label: "librarian.conditionRow.field.date" },
   { value: "path", label: "librarian.conditionRow.field.path" },
   {
     value: "custom_field",
@@ -281,6 +282,28 @@ const CUSTOM_FIELD_MODIFIERS = [
 
 const CUSTOM_FIELD_PRESENCE_OPS = ["IS_NULL", "NOT_NULL"];
 
+// "is set"/"is not set" need a real op each, unlike rating/count which have
+// nothing to ask beyond the range itself. "range" is the third op, covering
+// after/before/between in one editor exactly like RatingRangeEditor already
+// does for its own field
+const DATE_MODIFIERS = [
+  {
+    value: "not_null",
+    label: "librarian.conditionRow.dateModifier.notNull.label",
+    title: "librarian.conditionRow.dateModifier.notNull.title",
+  },
+  {
+    value: "is_null",
+    label: "librarian.conditionRow.dateModifier.isNull.label",
+    title: "librarian.conditionRow.dateModifier.isNull.title",
+  },
+  {
+    value: "range",
+    label: "librarian.conditionRow.dateModifier.range.label",
+    title: "librarian.conditionRow.dateModifier.range.title",
+  },
+];
+
 function idsToText(value: unknown): string {
   return Array.isArray(value) ? value.join(", ") : "";
 }
@@ -297,10 +320,15 @@ export interface RatingRange {
   max: number | null;
 }
 
+export interface DateRange {
+  min: string | null;
+  max: string | null;
+}
+
 export interface Condition {
   field: string;
   op: string;
-  value: string[] | RatingRange | string;
+  value: string[] | RatingRange | DateRange | string;
   // custom fields only: which field, since the name is the user's own
   key?: string;
   // custom fields only: op is taken so we need valueOp
@@ -314,6 +342,7 @@ function valueShape(field: string, op: string): string {
     field === "rating" ||
     field === "performer_count" ||
     field === "tag_count" ||
+    field === "date" ||
     op === "rating"
   )
     return "range";
@@ -325,14 +354,16 @@ function valueShape(field: string, op: string): string {
 function defaultValue(
   field: string,
   op: string,
-): string[] | RatingRange | string {
+): string[] | RatingRange | DateRange | string {
   const shape = valueShape(field, op);
   if (shape === "range") return { min: null, max: null };
   if (shape === "text") return "";
   return [];
 }
 
-function defaultValueForField(field: string): string[] | RatingRange | string {
+function defaultValueForField(
+  field: string,
+): string[] | RatingRange | DateRange | string {
   return defaultValue(field, "");
 }
 
@@ -377,6 +408,9 @@ function nextOpForFieldChange(
   }
   if (newField === "path") {
     return "INCLUDES";
+  }
+  if (newField === "date") {
+    return "range";
   }
   const newOptions = LIST_MODIFIERS_BY_FIELD[newField];
   if (!newOptions) {
@@ -500,6 +534,96 @@ function CountRangeEditor({
         {intl.formatMessage({ id: "librarian.conditionRow.count.hint" })}
       </span>
     </div>
+  );
+}
+
+function parseDateBound(text: string): string | null {
+  return text === "" ? null : text;
+}
+
+// Same layout again, but a date has no natural unit to step by, so this is
+// two native date pickers rather than a number input
+function DateRangeEditor({
+  value,
+  onChange,
+}: {
+  value: DateRange;
+  onChange: (next: DateRange) => void;
+}) {
+  const intl = useIntl();
+  return (
+    <div className="librarian-rating-range">
+      <Form.Control
+        className="input-control"
+        type="date"
+        title={intl.formatMessage({ id: "librarian.conditionRow.rating.min" })}
+        value={value.min || ""}
+        onChange={(e: any) =>
+          onChange({ ...value, min: parseDateBound(e.target.value) })
+        }
+      />
+      <span>
+        {intl.formatMessage({ id: "librarian.conditionRow.rating.to" })}
+      </span>
+      <Form.Control
+        className="input-control"
+        type="date"
+        title={intl.formatMessage({ id: "librarian.conditionRow.rating.max" })}
+        value={value.max || ""}
+        onChange={(e: any) =>
+          onChange({ ...value, max: parseDateBound(e.target.value) })
+        }
+      />
+      <span className="librarian-token-hint text-muted">
+        {intl.formatMessage({ id: "librarian.conditionRow.date.hint" })}
+      </span>
+    </div>
+  );
+}
+
+// "is set"/"is not set" need no value; "range" (after/before/between, picked
+// by which side is filled in) opens the date pickers, same collapsing rule
+// CountRangeEditor and RatingRangeEditor already use
+function DateFieldEditor({
+  condition,
+  onChangeOp,
+  onChange,
+  noun,
+}: {
+  condition: Condition;
+  onChangeOp: (op: string) => void;
+  onChange: (next: Condition) => void;
+  noun: string;
+}) {
+  const intl = useIntl();
+  const current =
+    DATE_MODIFIERS.find((m) => m.value === condition.op) || DATE_MODIFIERS[0];
+  return (
+    <>
+      <Form.Control
+        as="select"
+        className="librarian-inline-select input-control"
+        title={withNoun(intl, current.title, noun)}
+        value={condition.op}
+        onChange={(e: any) => onChangeOp(e.target.value)}
+      >
+        {DATE_MODIFIERS.map((m) => (
+          <option
+            key={m.value}
+            value={m.value}
+            title={withNoun(intl, m.title, noun)}
+          >
+            {intl.formatMessage({ id: m.label })}
+          </option>
+        ))}
+      </Form.Control>
+      {condition.op === "range" && (
+        <DateRangeEditor
+          value={(condition.value as DateRange) || { min: null, max: null }}
+          onChange={(next) => onChange({ ...condition, value: next })}
+        />
+      )}
+    </>
   );
 }
 
@@ -770,6 +894,7 @@ export function ConditionRow({
     studioOp === "rating";
   const isCount =
     condition.field === "performer_count" || condition.field === "tag_count";
+  const isDate = condition.field === "date";
   const isPath = condition.field === "path";
   const isCustomField =
     condition.field === "custom_field" ||
@@ -785,6 +910,7 @@ export function ConditionRow({
   const ids =
     !isRating &&
     !isCount &&
+    !isDate &&
     !isPath &&
     !isCustomField &&
     Array.isArray(condition.value)
@@ -847,6 +973,13 @@ export function ConditionRow({
         <CountRangeEditor
           value={(condition.value as RatingRange) || { min: null, max: null }}
           onChange={(next) => onChange({ ...condition, value: next })}
+        />
+      ) : isDate ? (
+        <DateFieldEditor
+          condition={condition}
+          onChangeOp={(nextOp) => onChange(withOp(condition, nextOp))}
+          onChange={onChange}
+          noun={noun}
         />
       ) : isPath ? (
         <PathValueEditor
