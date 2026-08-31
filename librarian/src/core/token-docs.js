@@ -54,7 +54,7 @@ export const TOKEN_DESCRIPTIONS = {
   stash_id:
     "The {noun}'s StashID. Add |from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below",
   custom_field:
-    "One of the {noun}'s own custom fields, named inside the token: {@Series} is the field called Series. Names are matched exactly, capitals included",
+    "One of the {noun}'s own custom fields, named inside the token: {@Series} is the field called Series. Add |from=studio to read the {noun}'s studio's custom field instead. Names are matched exactly, capitals included",
 };
 
 export function describeToken(name, noun) {
@@ -69,6 +69,7 @@ const TARGET_LABELS = {
   performer: "the performer tokens",
   "performer,tag": "list tokens",
   stash_id: "{stash_id}",
+  "custom_field,stash_id": "{stash_id} or {@Field}",
 };
 
 function targetLabel(spec) {

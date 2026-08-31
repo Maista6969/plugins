@@ -64,7 +64,7 @@ test("describeModifiers spells out whether a value is taken", () => {
   assert.equal(by.limit.targets, "list tokens");
   assert.equal(by.gender.targets, "the performer tokens");
   assert.equal(by.uppercase.targets, "any token");
-  assert.equal(by.from.targets, "{stash_id}");
+  assert.equal(by.from.targets, "{stash_id} or {@Field}");
 });
 
 test("describeToken substitutes the entity noun", () => {

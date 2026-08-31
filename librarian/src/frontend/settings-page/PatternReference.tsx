@@ -111,9 +111,12 @@ export function PatternReference({
       <p className="text-muted">
         <code>{"{current}"}</code> is the path a file already has, and is the
         one token that reads what the pattern writes. It has to be the whole
-        pattern: anything added around it would be read back and added again on
-        the next run, so the path would grow every time. For the same reason a
-        modifier on it has to leave an already-renamed file alone.{" "}
+        pattern, or alone on one side of a{" "}
+        <code>{"<...|...>"}</code> fallback that is itself the whole pattern
+        (as in <code>{"<{@Series?}|{current}>"}</code>): anything else added
+        around it would be read back and added again on the next run, so the
+        path would grow every time. For the same reason a modifier on it has
+        to leave an already-renamed file alone.{" "}
         <code>{"{current|regex=/ - Trailer//}"}</code> is fine, one that keeps
         changing the name is refused.
       </p>
@@ -181,6 +184,14 @@ export function PatternReference({
               </samp>
             </>
           )}
+        </p>
+      )}
+      {tokens.indexOf("custom_field") !== -1 && (
+        <p className="text-muted librarian-reference-note">
+          A custom field token like <code>{"{@Series}"}</code> reads its own
+          value by default. Add <code>|from=studio</code>, as in{" "}
+          <code>{"{@Series|from=studio}"}</code>, to read the same-named field
+          off its own (direct) studio instead.
         </p>
       )}
     </aside>,

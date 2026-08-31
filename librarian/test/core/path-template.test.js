@@ -1495,6 +1495,40 @@ test("filenamePatternMode reads the same intent, but has no root case: a filenam
   assert.equal(filenamePatternMode("literal"), "render");
 });
 
+test("{current} is allowed alone on one side of a <...|...> fallback that is the whole pattern", () => {
+  const blocking = (pattern, patternKind) =>
+    findPatternProblems(pattern, null, { patternKind: patternKind }).filter(
+      (p) => p.blocking && p.raw === "{current}",
+    );
+
+  // the reported case: a custom field falls back to keeping the current folder
+  assert.deepEqual(blocking("<{@Librarian_Folder}|{current}>"), []);
+  assert.deepEqual(blocking("<{current}|{@Librarian_Folder}>"), []);
+  // still fine with more than two alternatives, as long as {current} is alone
+  // in whichever one it appears in
+  assert.deepEqual(blocking("<{@A}|{@B}|{current}>"), []);
+
+  // still refused: {current} combined with anything else, whether inside its
+  // own alternative or via literal/tokens outside the bracket entirely
+  assert.equal(blocking("{current}/{date_year}").length, 1);
+  assert.equal(blocking("<{current}/{@Field}|{@Other}>").length, 1);
+  assert.equal(blocking("foo<{current}|{@Field}>").length, 1);
+  assert.equal(blocking("<{current}|{@Field}>bar").length, 1);
+  assert.equal(blocking("<{current}|{@Field}></{studio}>").length, 1);
+
+  // a modifier on an alone-in-its-alternative {current} is still refused for
+  // folder patterns, same as the unconditional case
+  const folderModified = findPatternProblems(
+    "<{current|uppercase}|{@Field}>",
+    null,
+    { patternKind: "folder" },
+  ).filter((p) => p.blocking && p.raw === "{current}");
+  assert.equal(folderModified.length, 1);
+  // but not for filename patterns, where a rewritten {current} isn't a
+  // moving-target concern
+  assert.deepEqual(blocking("<{current|uppercase}|{@Field}>", "file"), []);
+});
+
 const BOXES = [
   { name: "StashDB", endpoint: "https://stashdb.org/graphql" },
   { name: "ThePornDB", endpoint: "https://theporndb.net/graphql" },

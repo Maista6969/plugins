@@ -396,18 +396,19 @@ export const MODIFIERS = {
   },
   from: {
     input: "source",
-    appliesTo: ["stash_id"],
+    appliesTo: ["stash_id", "custom_field"],
     takesValue: "required",
     summary:
-      "Which stash-box source the StashID comes from, by name or endpoint URL. Without it the rule's default source is used",
+      "Which source the value comes from. On {stash_id}, a stash-box by name or endpoint URL, defaulting to the rule's default source. On {@Field}, write studio to read the {noun}'s studio's custom field instead of its own",
     example: {
       pattern: "{stash_id|from=StashDB}",
       before: "IDs from two stash-boxes",
       after: "the StashDB one",
     },
-    // Only the shape can be checked here: whether a name actually exists is a
-    // question about the user's Stash config, which the registry never sees
-    // findPatternProblems does that part
+    // Only the shape can be checked here: whether a name/source actually
+    // exists is a question findPatternProblems answers, since it is the only
+    // place that both knows the token this "from" belongs to and, for
+    // stash_id, has the configured stash-boxes to check against
     parseValue: function (raw) {
       const text = String(raw == null ? "" : raw).trim();
       if (!text) {

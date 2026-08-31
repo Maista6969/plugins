@@ -552,3 +552,86 @@ test("a well-formed {@...} token is not reported as unknown", () => {
     [],
   );
 });
+
+function tokensForStudio(customFields, studioCustomFields) {
+  return buildTokens(
+    {
+      studioNames: [],
+      performers: [],
+      tags: [],
+      customFields: customFields,
+      studioCustomFields: studioCustomFields,
+    },
+    {},
+    null,
+  );
+}
+
+test("|from=studio reads the item's studio's custom field instead of its own", () => {
+  const tokens = tokensForStudio(SCENE_FIELDS, { Series: "Studio Series" });
+  assert.equal(renderTemplate("{@Series}", tokens), "Anita's Adventures");
+  assert.equal(
+    renderTemplate("{@Series|from=studio}", tokens),
+    "Studio Series",
+  );
+  // a field the studio doesn't have is empty, same as the scene case
+  assert.equal(renderTemplate("{@Nope|from=studio}", tokens), "");
+});
+
+test("from=studio composes with other modifiers and with ?", () => {
+  const tokens = tokensForStudio({}, { Series: "studio's own" });
+  assert.equal(
+    renderTemplate("{@Series|from=studio|uppercase}", tokens),
+    "STUDIO'S OWN",
+  );
+  assert.equal(
+    renderTemplate("x< [{@Nope|from=studio?}]>", tokens),
+    "x",
+  );
+  assert.equal(
+    renderTemplate("<{@Nope|from=studio?}|{@Series|from=studio}>", tokens),
+    "studio's own",
+  );
+});
+
+test("findMissingRequiredData blames the studio, not the scene, for a from=studio field", () => {
+  const view = {
+    studioNames: [],
+    performers: [],
+    tags: [],
+    customFields: SCENE_FIELDS,
+    studioCustomFields: { Series: "Studio Series" },
+  };
+  assert.deepEqual(
+    findMissingRequiredData(["{@Series|from=studio}"], view, null, "scene"),
+    [],
+  );
+  const missing = findMissingRequiredData(
+    ["{@Nope|from=studio}"],
+    view,
+    null,
+    "scene",
+  );
+  assert.equal(missing.length, 1);
+  assert.match(
+    missing[0].message,
+    /scene's studio has no value for the custom field "Nope"/,
+  );
+});
+
+test("from= on a custom field only accepts studio or scene", () => {
+  const bad = findPatternProblems("{@Series|from=performer}", KNOWN_TOKENS);
+  assert.equal(bad.length, 1);
+  assert.equal(bad[0].blocking, true);
+  assert.match(bad[0].message, /only accepts "studio"/);
+
+  assert.deepEqual(
+    findPatternProblems("{@Series|from=studio}", KNOWN_TOKENS),
+    [],
+  );
+  // "scene" is accepted too, even though it is already the default
+  assert.deepEqual(
+    findPatternProblems("{@Series|from=scene}", KNOWN_TOKENS),
+    [],
+  );
+});

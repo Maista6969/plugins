@@ -218,7 +218,9 @@ function renderTokenValue(value, parsed) {
   }
   const source =
     value && value.__customField
-      ? sanitizeTokenValue(customFieldText(value.fields[parsed.arg]))
+      ? sanitizeTokenValue(
+          customFieldText(customFieldFieldsFor(value, parsed)[parsed.arg]),
+        )
       : String(value);
   const text = resanitize(applyValueModifiers(source, parsed), parsed);
   return {
@@ -299,8 +301,26 @@ export function resolveSceneGroup(sceneView) {
   };
 }
 
-function customFieldValue(fields) {
-  return { __customField: true, fields: fields || {} };
+function customFieldValue(fields, studioFields) {
+  return {
+    __customField: true,
+    fields: fields || {},
+    studioFields: studioFields || {},
+  };
+}
+
+// Which entity's custom fields |from= picks: "studio" reads the item's own
+// (direct) studio, anything else (including no "from" at all) means the item
+// itself. Shared between rendering and the missing-data check so both agree
+// on where a given {@Field} looks
+function customFieldSource(parsed) {
+  return (modifierValue(parsed, "from") || "").trim().toLowerCase();
+}
+
+function customFieldFieldsFor(value, parsed) {
+  return customFieldSource(parsed) === "studio"
+    ? value.studioFields
+    : value.fields;
 }
 
 function stashIdValue(stashIds, matchedIds) {
@@ -401,7 +421,10 @@ export function buildTokens(sceneView, config, matchedIds) {
     rating:
       sceneView.rating100 != null ? (sceneView.rating100 / 10).toFixed(1) : "",
     stash_id: stashIdValue(sceneView.stashIds, matched),
-    custom_field: customFieldValue(sceneView.customFields),
+    custom_field: customFieldValue(
+      sceneView.customFields,
+      sceneView.studioCustomFields,
+    ),
     group: chosenGroup.group ? sanitizeTokenValue(chosenGroup.group.name) : "",
     group_idx:
       chosenGroup.group && chosenGroup.group.sceneIndex != null
@@ -533,12 +556,16 @@ const TOKEN_REQUIREMENTS = {
   // missing everywhere are the same skip, and only the name tells them apart
   custom_field: {
     isMissing: (view, matchedIds, parsed) => {
-      return (
-        customFieldText((view.customFields || {})[parsed.arg]).trim() === ""
-      );
+      const fields =
+        customFieldSource(parsed) === "studio"
+          ? view.studioCustomFields
+          : view.customFields;
+      return customFieldText((fields || {})[parsed.arg]).trim() === "";
     },
     message: (view, matchedIds, parsed) => {
-      return '{noun} has no value for the custom field "' + parsed.arg + '"';
+      const subject =
+        customFieldSource(parsed) === "studio" ? "{noun}'s studio" : "{noun}";
+      return subject + ' has no value for the custom field "' + parsed.arg + '"';
     },
   },
   // all three hooks go through resolveStashIdSource so the reported reason can
@@ -741,6 +768,45 @@ export function patternsUseStashIdSource(patterns) {
   });
 }
 
+// {current} is safe from runaway growth if either (a) it is the pattern's
+// only content, or (b) it sits alone in one alternative of a single
+// top-level <a|b> group that is itself the pattern's only content.
+// Whichever alternative renders, {current} is either the entire output or
+// it never appears at all, so nothing we added is ever read back as part of
+// the value next run
+function currentUsageProblems(pattern) {
+  const text = pattern == null ? "" : String(pattern);
+  const segments = splitBracketSegments(text);
+  const soleBracket =
+    segments.length === 1 && segments[0].type === "bracket"
+      ? segments[0]
+      : null;
+
+  if (!soleBracket) {
+    const usage = currentUsage(text);
+    return {
+      uses: usage.uses,
+      blocking: usage.uses && !usage.alone,
+      modified: usage.uses && usage.alone && usage.modified,
+    };
+  }
+
+  let uses = false;
+  let blocking = false;
+  let modified = false;
+  splitTopLevel(soleBracket.text, "|").forEach((alt) => {
+    const usage = currentUsage(alt);
+    if (!usage.uses) return;
+    uses = true;
+    if (!usage.alone) {
+      blocking = true;
+    } else if (usage.modified) {
+      modified = true;
+    }
+  });
+  return { uses: uses, blocking: blocking, modified: modified };
+}
+
 // Everything wrong with a pattern, in the order it appears
 // Since a modifier that matches nothing renders empty rather than
 // reporting missing data this is the only thing standing between
@@ -758,17 +824,18 @@ export function findPatternProblems(pattern, allowedTokens, options) {
   // {current} reads the path that the pattern is about to write, so anything
   // added around it is read back on the next run and added again. Refusing the
   // composition is what keeps a pattern a fixed point rather than a recurrence
-  const usage = currentUsage(pattern);
-  if (usage.uses && !usage.alone) {
+  const usage = currentUsageProblems(pattern);
+  if (usage.uses && usage.blocking) {
     add(
       "{current}",
-      "{current} has to be the whole pattern. Combined with anything else it" +
-        " grows every time the rename runs, because the next run reads back the" +
-        " name the last one wrote",
+      "{current} has to be the whole pattern, or alone in one side of a" +
+        " <...|...> fallback that is itself the whole pattern. Combined with" +
+        " anything else it grows every time the rename runs, because the next" +
+        " run reads back the name the last one wrote",
       true,
     );
   }
-  if (usage.uses && usage.alone && usage.modified && patternKind === "folder") {
+  if (usage.uses && !usage.blocking && usage.modified && patternKind === "folder") {
     add(
       "{current}",
       "a folder pattern can only use {current} on its own: rewriting the" +
@@ -877,13 +944,35 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         add(token.raw, parsed.message, true);
         return;
       }
-      if (modifier.name === "from") {
+      if (modifier.name === "from" && token.name === "stash_id") {
         addStashBoxProblems(add, token, parsed.value, stashBoxes);
+      }
+      if (modifier.name === "from" && token.name === "custom_field") {
+        addCustomFieldSourceProblems(add, token, parsed.value);
       }
     });
   });
 
   return problems;
+}
+
+const CUSTOM_FIELD_SOURCES = ["scene", "studio"];
+
+function addCustomFieldSourceProblems(add, token, value) {
+  const wanted = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (CUSTOM_FIELD_SOURCES.indexOf(wanted) !== -1) {
+    return;
+  }
+  add(
+    token.raw,
+    'from= on a custom field only accepts "studio" (or "scene", which is the' +
+      ' default and so never needs writing). "' +
+      value +
+      '" is neither',
+    true,
+  );
 }
 
 function addStashBoxProblems(add, token, value, stashBoxes) {
