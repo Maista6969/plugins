@@ -28,8 +28,9 @@ trash path configured under Settings > System, when there is one.
 
 ## Usage
 
-Open **Settings > Plugins > Doppelganger** and click **Find duplicates** (or go straight to
-`/plugins/doppelganger`).
+Open **Settings > Tools > Doppelganger** (it sits under Stash's own Scene duplicate checker), or
+**Settings > Plugins > Doppelganger > Find duplicates**, or go straight to `/plugins/doppelganger`.
+Each entity type has its own tab.
 
 Stash-box duplicates are listed per entity type. Scenes, performers, and tags get a **Merge...**
 button that opens Stash's own merge dialog, so relationships are combined and conflicts resolved

@@ -1,6 +1,7 @@
 import React from "react";
 import { DoppelgangerPage } from "./DoppelgangerPage.js";
 import { PluginSettingsSummary } from "./PluginSettingsSummary.js";
+import { registerToolsLauncher } from "./ToolsLauncher.js";
 import { SETTINGS_ROUTE } from "./shared/SettingsLink.js";
 import { PLUGIN_ID } from "./shared/plugin-id.js";
 
@@ -33,4 +34,11 @@ try {
   console.debug(LOG_PREFIX, "patched PluginSettings");
 } catch (e) {
   console.error(LOG_PREFIX, "patch.instead(PluginSettings) threw", e);
+}
+
+try {
+  registerToolsLauncher();
+  console.debug(LOG_PREFIX, "patched SettingsToolsSection");
+} catch (e) {
+  console.error(LOG_PREFIX, "patch.before(SettingsToolsSection) threw", e);
 }
