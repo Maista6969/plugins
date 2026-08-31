@@ -13,6 +13,16 @@
   margin-bottom: 1rem;
 }
 
+/* Stash strips Bootstrap's boxed tabs (.nav-tabs has no border, the active
+   link gets an underline), so nothing is re-introduced here. */
+.doppelganger-tabs {
+  margin-bottom: 1rem;
+}
+
+.doppelganger-tab-panel {
+  padding-top: 0.5rem;
+}
+
 .doppelganger-section {
   margin-bottom: 2rem;
 }
