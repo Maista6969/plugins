@@ -86,8 +86,8 @@ export function DoppelgangerPage() {
   };
 
   return (
-    <div className="doppelganger-page">
-      <div className="doppelganger-page-header">
+    <div className="container">
+      <div className="d-flex justify-content-between align-items-center mb-3">
         <h2>Doppelganger</h2>
         <Button variant="secondary" onClick={refresh}>
           Refresh
@@ -96,7 +96,7 @@ export function DoppelgangerPage() {
 
       <Nav
         variant="tabs"
-        className="doppelganger-tabs"
+        className="mb-3"
         activeKey={tab}
         onSelect={(k: string | null) => k && setTab(k as Tab)}
       >
@@ -109,7 +109,7 @@ export function DoppelgangerPage() {
 
       {/* Keyed so switching tabs remounts the panel: an open merge dialog or a
           half-chosen keeper never leaks into another tab. */}
-      <div className="doppelganger-tab-panel" key={tab}>
+      <div className="pt-2" key={tab}>
         {tab === "scenes" && (
           <>
             <DuplicateGroupList

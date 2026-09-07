@@ -61,7 +61,7 @@ export function DuplicateGroupList({
   const Launcher = mergeKind ? LAUNCHERS[mergeKind] : null;
 
   return (
-    <div className="doppelganger-section">
+    <div className="mb-5">
       <h4>{title}</h4>
       <p className="text-muted">{description}</p>
 
@@ -70,28 +70,31 @@ export function DuplicateGroupList({
         <p className="text-muted">No duplicates found.</p>
       )}
 
-      {groups !== null && groups.length > 0 && (
-        <ul className="doppelganger-group-list">
-          {groups.map((group) => {
-            const labels = groupLabels(group, mergeKind);
-            return (
-              <li
-                key={group.stashId + group.endpoint}
-                className="doppelganger-group"
-              >
-                <div className="doppelganger-group-items">
+      {groups !== null &&
+        groups.map((group, index) => {
+          const labels = groupLabels(group, mergeKind);
+          return (
+            <React.Fragment key={group.stashId + group.endpoint}>
+              {index > 0 && <hr />}
+              <div className="d-flex align-items-center py-2">
+                {/* Scene labels are paths with the shared part already
+                    stripped, so what remains differs from its first segment
+                    onwards and truncating at the end keeps the distinguishing
+                    part visible. The full label is in the title. */}
+                <div className="flex-grow-1 overflow-hidden">
                   {group.items.map((item, i) => (
-                    <Link
+                    <div
                       key={item.id}
-                      to={`/${entityPath}/${item.id}`}
-                      className="doppelganger-group-item"
+                      className="text-truncate"
                       title={item.label}
                     >
-                      {labels[i] || `#${item.id}`}
-                    </Link>
+                      <Link to={`/${entityPath}/${item.id}`}>
+                        {labels[i] || `#${item.id}`}
+                      </Link>
+                    </div>
                   ))}
                 </div>
-                <div className="doppelganger-group-meta text-muted">
+                <div className="text-muted small text-nowrap mx-3">
                   {stashBoxLabel(group.endpoint, stashBoxes)}
                 </div>
                 {Launcher && (
@@ -103,11 +106,10 @@ export function DuplicateGroupList({
                     Merge...
                   </Button>
                 )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+              </div>
+            </React.Fragment>
+          );
+        })}
 
       {Launcher && merging && (
         <Launcher

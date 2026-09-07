@@ -12,7 +12,7 @@ import { ConfirmModal } from "./shared/ConfirmModal.js";
 import { FileSize } from "./shared/FileSize.js";
 
 const PluginApi = (window as any).PluginApi;
-const { Button, Form, ProgressBar } = PluginApi.libraries.Bootstrap;
+const { Badge, Button, Form, ProgressBar } = PluginApi.libraries.Bootstrap;
 const { faTrashAlt } = PluginApi.libraries.FontAwesomeSolid;
 
 export interface CopyFile {
@@ -42,27 +42,6 @@ interface Progress {
   done: number;
   total: number;
   bytes: number;
-}
-
-function TrashNotice({ trashPath }: { trashPath: string | undefined }) {
-  if (trashPath) {
-    return (
-      <p>
-        Files will be moved to the trash folder <code>{trashPath}</code>.
-      </p>
-    );
-  }
-  return (
-    <p>
-      Files will be permanently deleted from disk.
-      {trashPath === "" && (
-        <>
-          {" "}
-          A trash folder can be set under Settings &gt; System &gt; Trash path.
-        </>
-      )}
-    </p>
-  );
 }
 
 export function IdenticalCopiesList({
@@ -140,12 +119,14 @@ export function IdenticalCopiesList({
   const busy = progress !== null;
 
   return (
-    <div className="doppelganger-section">
-      <div className="doppelganger-section-header">
+    <div className="mb-5">
+      <div className="d-flex justify-content-between align-items-center">
         <h4>
           Scenes with identical copies
           {groups && groups.length > 0 && (
-            <span className="doppelganger-count">{groups.length}</span>
+            <Badge className="left-spacing" pill variant="secondary">
+              {intl.formatNumber(groups.length)}
+            </Badge>
           )}
         </h4>
         {groups && groups.length > 0 && (
@@ -175,12 +156,13 @@ export function IdenticalCopiesList({
       {error && <p className="text-danger">{error}</p>}
 
       {progress && (
-        <div className="doppelganger-progress">
+        <div className="d-flex align-items-center mb-3">
           <ProgressBar
+            className="flex-grow-1 mr-3"
             now={progress.total ? (progress.done / progress.total) * 100 : 0}
             label={`${progress.done} / ${progress.total}`}
           />
-          <span className="text-muted">
+          <span className="text-muted text-nowrap mr-3">
             <FileSize size={progress.bytes} /> freed
           </span>
           <Button
@@ -196,19 +178,22 @@ export function IdenticalCopiesList({
         </div>
       )}
 
-      {groups !== null && groups.length > 0 && (
-        <ul className="doppelganger-group-list">
-          {groups.map((group) => {
-            const labels = stripCommonPrefix(group.files.map((f) => f.path));
-            const keeper = keeperFor(group);
-            const plan = plans.get(group.key)!;
-            return (
-              <li key={group.key} className="doppelganger-copies-group">
-                <div className="doppelganger-copies-header">
-                  <Link to={`/scenes/${group.sceneId}`}>
-                    {group.title || `Scene #${group.sceneId}`}
-                  </Link>
-                  <span className="text-muted">
+      {groups !== null &&
+        groups.map((group, index) => {
+          const labels = stripCommonPrefix(group.files.map((f) => f.path));
+          const keeper = keeperFor(group);
+          const plan = plans.get(group.key)!;
+          return (
+            <React.Fragment key={group.key}>
+              {index > 0 && <hr />}
+              <div className="py-2">
+                <div className="d-flex align-items-center mb-1">
+                  <div className="flex-grow-1 text-truncate">
+                    <Link to={`/scenes/${group.sceneId}`}>
+                      {group.title || `Scene #${group.sceneId}`}
+                    </Link>
+                  </div>
+                  <span className="text-muted small text-nowrap mx-3">
                     {group.files.length} copies of{" "}
                     <FileSize size={group.files[0].size} />
                   </span>
@@ -222,61 +207,51 @@ export function IdenticalCopiesList({
                     {plan.deleteFileIds.length === 1 ? "copy" : "copies"}
                   </Button>
                 </div>
-                <table className="doppelganger-copies-table">
-                  <tbody>
-                    {group.files.map((file, i) => (
-                      <tr
-                        key={file.id}
-                        className={file.id === keeper ? "is-keeper" : ""}
-                        onClick={() =>
+                <ul className="list-unstyled mb-0">
+                  {group.files.map((file, i) => (
+                    <li key={file.id} className="d-flex align-items-center">
+                      <Form.Check
+                        className="mr-3"
+                        type="radio"
+                        id={`keeper-${group.key}-${file.id}`}
+                        name={`keeper-${group.key}`}
+                        checked={file.id === keeper}
+                        onChange={() =>
                           setKeepers((k) => ({ ...k, [group.key]: file.id }))
                         }
+                        label="Keep"
+                        disabled={busy}
+                      />
+                      <div
+                        className="flex-grow-1 text-truncate"
+                        title={file.path}
                       >
-                        <td className="doppelganger-copies-keep">
-                          <Form.Check
-                            type="radio"
-                            name={`keeper-${group.key}`}
-                            checked={file.id === keeper}
-                            onChange={() =>
-                              setKeepers((k) => ({
-                                ...k,
-                                [group.key]: file.id,
-                              }))
-                            }
-                            label="Keep"
-                            disabled={busy}
-                          />
-                        </td>
-                        <td
-                          className="doppelganger-copies-path"
-                          title={file.path}
-                        >
-                          {labels[i]}
-                          {file.primary && (
-                            <span className="doppelganger-badge">primary</span>
-                          )}
-                        </td>
-                        {/* The date alone is what gets compared; the
-                            tooltip carries the same rendering Stash's file
-                            tab uses for modification time. */}
-                        <td
-                          className="doppelganger-copies-time text-muted"
-                          title={intl.formatTime(file.modTime, {
-                            dateStyle: "medium",
-                            timeStyle: "medium",
-                          })}
-                        >
-                          <FormattedDate value={file.modTime} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                        {labels[i]}
+                        {file.primary && (
+                          <Badge variant="secondary" className="ml-2">
+                            primary
+                          </Badge>
+                        )}
+                      </div>
+                      {/* The date alone is what gets compared; the tooltip
+                          carries the same rendering Stash's file tab uses for
+                          modification time. */}
+                      <span
+                        className="text-muted small text-nowrap ml-3"
+                        title={intl.formatTime(file.modTime, {
+                          dateStyle: "medium",
+                          timeStyle: "medium",
+                        })}
+                      >
+                        <FormattedDate value={file.modTime} />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </React.Fragment>
+          );
+        })}
 
       {confirming && (
         <ConfirmModal
@@ -301,6 +276,8 @@ export function IdenticalCopiesList({
   );
 }
 
+// Mirrors the body of Stash's DeleteFilesDialog: a summary line, then a
+// danger alert that names the first few paths and counts the rest.
 function ConfirmBody({
   groups,
   plans,
@@ -321,28 +298,34 @@ function ConfirmBody({
       .filter((f) => plan.deleteFileIds.includes(f.id))
       .map((f) => f.path);
   });
+  const files = count === 1 ? "file" : "files";
 
   return (
     <>
       <p>
-        Delete {count} {count === 1 ? "file" : "files"} (
-        <FileSize size={bytes} />) across {groups.length}{" "}
-        {groups.length === 1 ? "scene" : "scenes"}? Each scene keeps the copy
-        you selected.
+        Delete {count} {files} (<FileSize size={bytes} />) across{" "}
+        {groups.length} {groups.length === 1 ? "scene" : "scenes"}? Each scene
+        keeps the copy you selected.
       </p>
-      <TrashNotice trashPath={trashPath} />
-      {paths.length <= 20 ? (
-        <ul className="doppelganger-confirm-paths">
-          {paths.map((p) => (
+      <div className="delete-dialog alert alert-danger text-break">
+        <p className="font-weight-bold">
+          {trashPath
+            ? `The following ${files} will be moved to trash (${trashPath}):`
+            : `The following ${files} will be permanently deleted:`}
+        </p>
+        <ul>
+          {paths.slice(0, 5).map((p) => (
             <li key={p}>{p}</li>
           ))}
+          {paths.length > 5 && <>...and {paths.length - 5} more</>}
         </ul>
-      ) : (
-        <p className="text-muted">
-          The full list is too long to show here; each scene&apos;s table above
-          marks what stays.
-        </p>
-      )}
+        {trashPath === "" && (
+          <p className="mb-0">
+            A trash folder can be set under Settings &gt; System &gt; Trash
+            path.
+          </p>
+        )}
+      </div>
     </>
   );
 }

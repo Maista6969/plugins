@@ -7,7 +7,7 @@ const { Button } = PluginApi.libraries.Bootstrap;
 
 export function PluginSettingsSummary() {
   return (
-    <div className="plugin-settings doppelganger-plugin-settings-summary">
+    <div className="plugin-settings">
       <p className="text-muted">
         Finds scenes, performers, tags, and studios matched to the same
         stash-box entry more than once, and scenes hiding identical copies of

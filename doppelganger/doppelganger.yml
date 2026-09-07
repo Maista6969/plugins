@@ -5,5 +5,3 @@ url: https://github.com/example/doppelganger
 ui:
   javascript:
     - doppelganger-ui.js
-  css:
-    - doppelganger-ui.css

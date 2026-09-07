@@ -61,25 +61,16 @@ const frontendBuild = {
   loader: { ".tsx": "tsx", ".ts": "ts" },
 };
 
-const cssBuild = {
-  entryPoints: [r("src/frontend/styles.css")],
-  outfile: r("dist/doppelganger-ui.css"),
-  bundle: true,
-  legalComments: "none",
-};
-
 async function run() {
   const opts = { logLevel: "info" };
   if (watch) {
     const { context } = await import("esbuild");
     const frontendCtx = await context({ ...frontendBuild, ...opts });
-    const cssCtx = await context({ ...cssBuild, ...opts });
     copyManifest();
-    await Promise.all([frontendCtx.watch(), cssCtx.watch()]);
+    await frontendCtx.watch();
     console.log("Watching for changes...");
   } else {
     await build({ ...frontendBuild, ...opts });
-    await build({ ...cssBuild, ...opts });
     copyManifest();
   }
 }
