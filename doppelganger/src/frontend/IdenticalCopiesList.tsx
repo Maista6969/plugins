@@ -1,14 +1,15 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApolloClient } from "@apollo/client";
+import { FormattedDate, useIntl } from "react-intl";
 import {
   defaultKeeperId,
   planCopyDeletion,
-  formatBytes,
 } from "../core/group-identical-copies.js";
 import { stripCommonPrefix } from "../core/strip-common-prefix.js";
 import { executeCopyDeletion } from "./shared/stash-api.js";
 import { ConfirmModal } from "./shared/ConfirmModal.js";
+import { FileSize } from "./shared/FileSize.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button, Form, ProgressBar } = PluginApi.libraries.Bootstrap;
@@ -43,20 +44,6 @@ interface Progress {
   bytes: number;
 }
 
-// Copies are compared by eye, so the column shows just the calendar date in
-// the same YYYY-MM-DD form Stash uses for scene dates; the time of day rarely
-// decides anything and lives in the tooltip. Both are in the browser's local
-// zone, as Stash's own file tab renders modification times.
-function formatModDate(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { date: iso, full: iso };
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    full: d.toLocaleString(),
-  };
-}
-
 function TrashNotice({ trashPath }: { trashPath: string | undefined }) {
   if (trashPath) {
     return (
@@ -84,6 +71,7 @@ export function IdenticalCopiesList({
   onDeleted,
 }: IdenticalCopiesListProps) {
   const client = useApolloClient();
+  const intl = useIntl();
   // Only overrides live here; anything unset falls back to the primary file,
   // so a refresh that changes primaries never points at a stale choice.
   const [keepers, setKeepers] = useState<Record<string, string>>({});
@@ -168,7 +156,7 @@ export function IdenticalCopiesList({
             onClick={() => setConfirming(groups)}
           >
             Delete all extra copies ({totals.files} files,{" "}
-            {formatBytes(totals.bytes)})
+            <FileSize size={totals.bytes} />)
           </Button>
         )}
       </div>
@@ -193,7 +181,7 @@ export function IdenticalCopiesList({
             label={`${progress.done} / ${progress.total}`}
           />
           <span className="text-muted">
-            {formatBytes(progress.bytes)} freed
+            <FileSize size={progress.bytes} /> freed
           </span>
           <Button
             variant="secondary"
@@ -222,7 +210,7 @@ export function IdenticalCopiesList({
                   </Link>
                   <span className="text-muted">
                     {group.files.length} copies of{" "}
-                    {formatBytes(group.files[0].size)}
+                    <FileSize size={group.files[0].size} />
                   </span>
                   <Button
                     variant="danger"
@@ -268,11 +256,17 @@ export function IdenticalCopiesList({
                             <span className="doppelganger-badge">primary</span>
                           )}
                         </td>
+                        {/* The date alone is what gets compared; the
+                            tooltip carries the same rendering Stash's file
+                            tab uses for modification time. */}
                         <td
                           className="doppelganger-copies-time text-muted"
-                          title={formatModDate(file.modTime).full}
+                          title={intl.formatTime(file.modTime, {
+                            dateStyle: "medium",
+                            timeStyle: "medium",
+                          })}
                         >
-                          {formatModDate(file.modTime).date}
+                          <FormattedDate value={file.modTime} />
                         </td>
                       </tr>
                     ))}
@@ -331,9 +325,10 @@ function ConfirmBody({
   return (
     <>
       <p>
-        Delete {count} {count === 1 ? "file" : "files"} ({formatBytes(bytes)})
-        across {groups.length} {groups.length === 1 ? "scene" : "scenes"}? Each
-        scene keeps the copy you selected.
+        Delete {count} {count === 1 ? "file" : "files"} (
+        <FileSize size={bytes} />) across {groups.length}{" "}
+        {groups.length === 1 ? "scene" : "scenes"}? Each scene keeps the copy
+        you selected.
       </p>
       <TrashNotice trashPath={trashPath} />
       {paths.length <= 20 ? (

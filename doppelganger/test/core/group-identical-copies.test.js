@@ -4,7 +4,6 @@ import {
   groupIdenticalCopyRows,
   defaultKeeperId,
   planCopyDeletion,
-  formatBytes,
 } from "../../src/core/group-identical-copies.js";
 
 // (scene_id, title, oshash, file_id, primary, path, size, mod_time)
@@ -107,12 +106,4 @@ test("rejects a keeper that is not in the group", () => {
     row(1, "h", 7, false, "/b"),
   ]);
   assert.throws(() => planCopyDeletion(group, "99"));
-});
-
-test("formats byte counts in the largest sensible unit", () => {
-  assert.equal(formatBytes(0), "0 B");
-  assert.equal(formatBytes(512), "512 B");
-  assert.equal(formatBytes(20631496), "19.7 MB");
-  assert.equal(formatBytes(3.5 * 1024 ** 3), "3.50 GB");
-  assert.equal(formatBytes(250 * 1024 ** 3), "250 GB");
 });
