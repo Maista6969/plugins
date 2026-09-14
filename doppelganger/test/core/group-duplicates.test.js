@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { groupDuplicateRows } from "../../src/core/group-duplicates.js";
+import {
+  groupDuplicateRows,
+  durationSpread,
+} from "../../src/core/group-duplicates.js";
 
 test("groups rows sharing the same stash_id and endpoint together", () => {
   const rows = [
@@ -65,4 +68,25 @@ test("ids are coerced to strings, matching Stash's own GraphQL ID convention", (
 
 test("returns an empty list for no rows", () => {
   assert.deepEqual(groupDuplicateRows([]), []);
+});
+
+test("a fifth column becomes the item's duration, missing or null becomes null", () => {
+  const groups = groupDuplicateRows([
+    ["abc", "https://stashdb.org/graphql", 1, "One", 634.6],
+    ["abc", "https://stashdb.org/graphql", 2, "Two", null],
+    ["abc", "https://stashdb.org/graphql", 3, "Three"],
+  ]);
+  assert.deepEqual(
+    groups[0].items.map((i) => i.duration),
+    [634.6, null, null],
+  );
+});
+
+test("durationSpread is the widest gap between known durations, or null", () => {
+  assert.equal(
+    durationSpread([{ duration: 120 }, { duration: 6 }, { duration: null }]),
+    114,
+  );
+  assert.equal(durationSpread([{ duration: 120 }, { duration: null }]), null);
+  assert.equal(durationSpread([]), null);
 });

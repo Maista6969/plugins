@@ -119,7 +119,8 @@ export function DoppelgangerPage() {
               groups={scenes}
               stashBoxes={stashBoxes}
               mergeKind="scene"
-              onMerged={refresh}
+              trashPath={trashPath}
+              onChanged={refresh}
             />
             <IdenticalCopiesList
               groups={copies}
@@ -137,7 +138,7 @@ export function DoppelgangerPage() {
             groups={performers}
             stashBoxes={stashBoxes}
             mergeKind="performer"
-            onMerged={refresh}
+            onChanged={refresh}
           />
         )}
 
@@ -149,7 +150,7 @@ export function DoppelgangerPage() {
             groups={tags}
             stashBoxes={stashBoxes}
             mergeKind="tag"
-            onMerged={refresh}
+            onChanged={refresh}
           />
         )}
 

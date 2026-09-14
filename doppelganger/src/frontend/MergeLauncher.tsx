@@ -8,19 +8,20 @@ const { Spinner } = PluginApi.libraries.Bootstrap;
 
 export interface MergeLauncherProps {
   group: DuplicateGroup;
-  onClose: (merged: boolean) => void;
+  // The destination's id on success, undefined on cancel.
+  onClose: (mergedID?: string) => void;
 }
 
 // Stash's merge modals call onClose(id) on success and then onClose() again
 // unconditionally, so the id has to be latched -- reading the last call would
 // report every successful merge as a cancellation.
-function useSettledClose(onClose: (merged: boolean) => void) {
-  const merged = useRef(false);
+function useSettledClose(onClose: (mergedID?: string) => void) {
+  const merged = useRef<string | undefined>(undefined);
   const settled = useRef(false);
 
   return useCallback(
     (mergedID?: string) => {
-      if (mergedID) merged.current = true;
+      if (mergedID) merged.current = String(mergedID);
       if (settled.current) return;
       settled.current = true;
       onClose(merged.current);

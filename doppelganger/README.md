@@ -33,9 +33,25 @@ Open **Settings > Tools > Doppelganger** (it sits under Stash's own Scene duplic
 Each entity type has its own tab.
 
 Stash-box duplicates are listed per entity type. Scenes, performers, and tags get a **Merge...**
-button that opens Stash's own merge dialog, so relationships are combined and conflicts resolved
-exactly as they would be from the entity page. Studios are listed for awareness only: Stash has no
-`studioMerge` mutation, so those need to be resolved manually.
+button that opens Stash's own merge dialog, so relationships, play counts and history are combined
+and conflicts resolved exactly as they would be from the entity page. Studios are listed for
+awareness only: Stash has no `studioMerge` mutation, so those need to be resolved manually.
+
+Two scenes on one stash-box entry are either the same scene in different encodes, or different
+scenes whose fingerprint was matched to the wrong entry. Each scene group carries a badge that
+tells them apart by running time: **same length** (within 10 seconds) or **lengths differ by
+m:ss**. The two cases get different tools:
+
+- **Merge...** for the same scene. After Stash's merge, which attaches every source file to the
+  destination, Doppelganger shows the merged scene's files side by side (resolution, codec,
+  duration, size) and offers to delete all but the one you pick, through Stash's `deleteFiles`.
+  **Keep all files** leaves the scene as Stash merged it.
+- **Unlink...** for a wrong match. Removes that scene's stash ID for the entry, so it stops being
+  reported, and offers to clear the metadata the match filled in. Fields whose value is identical
+  to another scene on the same entry are pre-selected, since Stash does not record which fields a
+  scrape wrote and agreement is the next best evidence; untick anything you want to keep. Telling
+  the stash-box itself that the fingerprint is wrong is not possible from a plugin yet: Stash's
+  client has the `unmatch` field but no mutation exposes it.
 
 **Scenes with identical copies** shows each affected scene with its copies; the current primary
 file is selected as the keeper by default and any row can be picked instead. **Delete N copies**

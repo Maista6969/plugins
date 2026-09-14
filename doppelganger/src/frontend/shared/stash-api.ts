@@ -27,15 +27,19 @@ const QUERY_SQL = gql`
 // against the same stash-box entry, so the title came from the same place.
 // The file path is the only thing that actually tells them apart, so that is
 // what gets listed. Falls back to the title, then to nothing, for scenes with
-// no file (the caller renders #id in that case).
+// no file (the caller renders #id in that case). The primary file's running
+// time rides along as a fifth column: see durationSpread in
+// group-duplicates.js for what it is used for.
 const SCENE_DUPES_SQL = `
   SELECT st.stash_id, st.endpoint, s.id,
-         COALESCE(fo.path || '/' || fi.basename, s.title, '') AS label
+         COALESCE(fo.path || '/' || fi.basename, s.title, '') AS label,
+         vf.duration
   FROM scene_stash_ids st
   JOIN scenes s ON s.id = st.scene_id
   LEFT JOIN scenes_files sf ON sf.scene_id = s.id AND sf.\`primary\` = 1
   LEFT JOIN files fi ON fi.id = sf.file_id
   LEFT JOIN folders fo ON fo.id = fi.parent_folder_id
+  LEFT JOIN video_files vf ON vf.file_id = fi.id
   JOIN (
     SELECT stash_id, endpoint FROM scene_stash_ids GROUP BY stash_id, endpoint HAVING COUNT(*) > 1
   ) dupes ON dupes.stash_id = st.stash_id AND dupes.endpoint = st.endpoint
@@ -252,6 +256,65 @@ export const TAGS_FOR_MERGE = gql`
     }
   }
 `;
+
+// What the post-merge file chooser shows for each file; Stash returns a
+// scene's files primary first.
+export const SCENE_FILES = gql`
+  query DoppelgangerSceneFiles($id: ID!) {
+    findScene(id: $id) {
+      id
+      files {
+        id
+        path
+        size
+        width
+        height
+        duration
+        video_codec
+      }
+    }
+  }
+`;
+
+// Every field the unlink dialog can clear, plus the stash IDs it edits.
+export const SCENES_FOR_UNLINK = gql`
+  query DoppelgangerScenesForUnlink($ids: [ID!]) {
+    findScenes(ids: $ids, filter: { per_page: -1 }) {
+      scenes {
+        id
+        title
+        date
+        details
+        urls
+        studio {
+          id
+        }
+        performers {
+          id
+        }
+        tags {
+          id
+        }
+        stash_ids {
+          endpoint
+          stash_id
+        }
+      }
+    }
+  }
+`;
+
+const SCENE_UPDATE = gql`
+  mutation DoppelgangerSceneUpdate($input: SceneUpdateInput!) {
+    sceneUpdate(input: $input) {
+      id
+    }
+  }
+`;
+
+export async function updateScene(client: any, input: Record<string, unknown>) {
+  await client.mutate({ mutation: SCENE_UPDATE, variables: { input } });
+}
 
 // Mirrors Stash's SelectPerformerData fragment, which is what
 // PerformerMergeModal types its `performers` prop against.
