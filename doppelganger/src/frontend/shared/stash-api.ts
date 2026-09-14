@@ -257,6 +257,58 @@ export const TAGS_FOR_MERGE = gql`
   }
 `;
 
+// Stash's stash-box source only takes a fingerprint lookup or a free-text
+// query, but a stash-box resolves a scene ID passed as the query to that
+// exact scene (pkg/stashbox/scene.go QueryScene -> searchScene). A non-ID
+// query would be a text search, so only ID-shaped values are sent, and the
+// result is trusted only when it echoes the ID back.
+const STASH_BOX_SCENE_QUERY = gql`
+  query DoppelgangerStashBoxScene($endpoint: String!, $query: String!) {
+    scrapeSingleScene(
+      source: { stash_box_endpoint: $endpoint }
+      input: { query: $query }
+    ) {
+      remote_site_id
+      duration
+    }
+  }
+`;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const stashBoxDurations = new Map<string, Promise<number | null>>();
+
+// The entry's running time in seconds, or null when the box has none, the
+// lookup fails (no API key, box offline), or the ID is not one a box would
+// resolve. Cached for the page's lifetime: every group asks once.
+export function fetchStashBoxDuration(
+  client: any,
+  endpoint: string,
+  stashId: string,
+): Promise<number | null> {
+  if (!UUID.test(stashId)) return Promise.resolve(null);
+  const key = endpoint + "\0" + stashId;
+  let pending = stashBoxDurations.get(key);
+  if (!pending) {
+    pending = client
+      .query({
+        query: STASH_BOX_SCENE_QUERY,
+        variables: { endpoint, query: stashId },
+        fetchPolicy: "no-cache",
+      })
+      .then(({ data }: any) => {
+        const scene = (data?.scrapeSingleScene ?? []).find(
+          (s: any) => s.remote_site_id === stashId,
+        );
+        const duration = scene?.duration;
+        return typeof duration === "number" ? duration : null;
+      })
+      .catch(() => null);
+    stashBoxDurations.set(key, pending!);
+  }
+  return pending!;
+}
+
 // What the post-merge file chooser shows for each file; Stash returns a
 // scene's files primary first.
 export const SCENE_FILES = gql`

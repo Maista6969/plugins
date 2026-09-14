@@ -28,16 +28,3 @@ export function groupDuplicateRows(rows) {
   }
   return result;
 }
-
-// Two scenes on the same stash-box entry are either the same content in
-// different encodes, or different content whose fingerprint was matched to
-// the wrong entry. Running time is the cheapest way to tell: re-encodes keep
-// it, wrong matches almost never do. Returns the widest gap in seconds, or
-// null when fewer than two items have a known duration.
-export function durationSpread(items) {
-  const known = items
-    .map((i) => i.duration)
-    .filter((d) => typeof d === "number");
-  if (known.length < 2) return null;
-  return Math.max(...known) - Math.min(...known);
-}

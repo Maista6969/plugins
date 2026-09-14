@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useApolloClient } from "@apollo/client";
 import {
   SceneMergeLauncher,
   PerformerMergeLauncher,
@@ -7,13 +8,16 @@ import {
 } from "./MergeLauncher.js";
 import { MergedFilesChooser } from "./MergedFilesChooser.js";
 import { UnlinkSceneDialog } from "./UnlinkSceneDialog.js";
-import { stashBoxLabel, StashBoxSummary } from "./shared/stash-api.js";
+import {
+  fetchStashBoxDuration,
+  stashBoxLabel,
+  StashBoxSummary,
+} from "./shared/stash-api.js";
 import { secondsToTimestamp } from "./shared/text-utils.js";
 import { stripCommonPrefix } from "../core/strip-common-prefix.js";
-import { durationSpread } from "../core/group-duplicates.js";
 
 const PluginApi = (window as any).PluginApi;
-const { Badge, Button } = PluginApi.libraries.Bootstrap;
+const { Button } = PluginApi.libraries.Bootstrap;
 
 export interface DuplicateGroup {
   stashId: string;
@@ -30,31 +34,47 @@ export function groupLabels(group: DuplicateGroup, mergeKind?: MergeKind) {
   return mergeKind === "scene" ? stripCommonPrefix(labels) : labels;
 }
 
-// Re-encodes of one scene keep its running time to within a few seconds;
-// anything wider is most likely two different scenes on one stash-box entry.
-const SAME_LENGTH_TOLERANCE_SECONDS = 10;
+// Two scenes on one stash-box entry are either the same scene in different
+// encodes or different scenes whose fingerprint was matched to the wrong
+// entry. The entry's own running time settles it: the scene whose file is
+// within a few seconds of it is the real match. Stash-box durations are whole
+// seconds and encodes drift a little; seven seconds is the widest genuine gap
+// seen in years of StashDB admin work.
+const MATCH_TOLERANCE_SECONDS = 7;
 
-function LengthBadge({ group }: { group: DuplicateGroup }) {
-  const spread = durationSpread(group.items);
-  if (spread === null) return null;
-  if (spread <= SAME_LENGTH_TOLERANCE_SECONDS) {
-    return (
-      <Badge
-        variant="secondary"
-        title="Likely the same scene in different encodes"
-      >
-        same length
-      </Badge>
-    );
-  }
-  return (
-    <Badge
-      variant="warning"
-      title="Likely different scenes matched to the same entry"
-    >
-      lengths differ by {secondsToTimestamp(spread)}
-    </Badge>
+function groupKey(group: DuplicateGroup) {
+  return group.stashId + "\0" + group.endpoint;
+}
+
+// One lookup per group, in sequence so a long list does not hammer the
+// stash-box; null means the box had nothing to say.
+function useStashBoxDurations(groups: DuplicateGroup[] | null) {
+  const client = useApolloClient();
+  const [durations, setDurations] = useState<Map<string, number | null>>(
+    () => new Map(),
   );
+
+  useEffect(() => {
+    if (!groups) return;
+    let cancelled = false;
+    (async () => {
+      for (const group of groups) {
+        if (cancelled) return;
+        const duration = await fetchStashBoxDuration(
+          client,
+          group.endpoint,
+          group.stashId,
+        );
+        if (cancelled) return;
+        setDurations((prev) => new Map(prev).set(groupKey(group), duration));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client, groups]);
+
+  return durations;
 }
 
 const LAUNCHERS = {
@@ -84,6 +104,8 @@ export function DuplicateGroupList({
   trashPath,
   onChanged,
 }: DuplicateGroupListProps) {
+  const isScene = mergeKind === "scene";
+  const boxDurations = useStashBoxDurations(isScene ? groups : null);
   const [merging, setMerging] = useState<DuplicateGroup | null>(null);
   const [mergedSceneId, setMergedSceneId] = useState<string | null>(null);
   const [unlinking, setUnlinking] = useState<{
@@ -111,7 +133,6 @@ export function DuplicateGroupList({
   }
 
   const Launcher = mergeKind ? LAUNCHERS[mergeKind] : null;
-  const isScene = mergeKind === "scene";
 
   return (
     <div className="mb-5">
@@ -126,6 +147,11 @@ export function DuplicateGroupList({
       {groups !== null &&
         groups.map((group, index) => {
           const labels = groupLabels(group, mergeKind);
+          const reference = boxDurations.get(groupKey(group)) ?? null;
+          const matches = (duration: number | null) =>
+            reference !== null &&
+            duration !== null &&
+            Math.abs(duration - reference) <= MATCH_TOLERANCE_SECONDS;
           return (
             <React.Fragment key={group.stashId + group.endpoint}>
               {index > 0 && <hr />}
@@ -145,6 +171,22 @@ export function DuplicateGroupList({
                           {labels[i] || `#${item.id}`}
                         </Link>
                       </div>
+                      {isScene && item.duration !== null && (
+                        <span
+                          className={`small text-nowrap ml-3 ${
+                            matches(item.duration)
+                              ? "text-success"
+                              : "text-muted"
+                          }`}
+                          title={
+                            matches(item.duration)
+                              ? "Matches the stash-box entry's running time"
+                              : undefined
+                          }
+                        >
+                          {secondsToTimestamp(item.duration)}
+                        </span>
+                      )}
                       {isScene && (
                         <Button
                           variant="link"
@@ -163,14 +205,14 @@ export function DuplicateGroupList({
                       )}
                     </div>
                   ))}
-                  {isScene && (
-                    <div className="mt-1">
-                      <LengthBadge group={group} />
+                </div>
+                <div className="text-muted small text-nowrap mx-3 text-right">
+                  {stashBoxLabel(group.endpoint, stashBoxes)}
+                  {reference !== null && (
+                    <div title="The entry's running time on the stash-box">
+                      {secondsToTimestamp(reference)}
                     </div>
                   )}
-                </div>
-                <div className="text-muted small text-nowrap mx-3">
-                  {stashBoxLabel(group.endpoint, stashBoxes)}
                 </div>
                 {Launcher && (
                   <Button

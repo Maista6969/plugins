@@ -38,9 +38,10 @@ and conflicts resolved exactly as they would be from the entity page. Studios ar
 awareness only: Stash has no `studioMerge` mutation, so those need to be resolved manually.
 
 Two scenes on one stash-box entry are either the same scene in different encodes, or different
-scenes whose fingerprint was matched to the wrong entry. Each scene group carries a badge that
-tells them apart by running time: **same length** (within 10 seconds) or **lengths differ by
-m:ss**. The two cases get different tools:
+scenes whose fingerprint was matched to the wrong entry. Each scene in a group shows its running
+time, and Doppelganger asks the stash-box (through Stash's own scraper endpoint, one request per
+group) for the entry's running time, shown under the box name. A scene within 7 seconds of it is
+highlighted in green as the real match. The two cases get different tools:
 
 - **Merge...** for the same scene. After Stash's merge, which attaches every source file to the
   destination, Doppelganger shows the merged scene's files side by side (resolution, codec,
