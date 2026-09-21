@@ -2,6 +2,11 @@ name: Doppelganger
 description: Finds scenes, performers, tags, and studios matched to the same stash-box entry more than once, and scenes hiding identical copies of the same file. Merges through Stash's own dialogs and deletes copies through Stash's own file deletion.
 # version: injected from package.json at build time
 url: https://github.com/example/doppelganger
+settings:
+  keepPrimaryAfterMerge:
+    displayName: Keep only the primary file after merging scenes
+    description: Skip the file chooser after a scene merge and delete the files that came from the merged scenes, keeping the merge target's primary file.
+    type: BOOLEAN
 ui:
   javascript:
     - doppelganger-ui.js

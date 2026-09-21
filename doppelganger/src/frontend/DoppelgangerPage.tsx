@@ -15,6 +15,11 @@ import {
   IdenticalCopiesList,
   IdenticalCopyGroup,
 } from "./IdenticalCopiesList.js";
+import {
+  ConfigButton,
+  ConfigPanel,
+  useDoppelgangerConfig,
+} from "./ConfigPanel.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button, Nav } = PluginApi.libraries.Bootstrap;
@@ -47,6 +52,8 @@ export function DoppelgangerPage() {
   const [copies, setCopies] = useState<IdenticalCopyGroup[] | null>(null);
   const [stashBoxes, setStashBoxes] = useState<StashBoxSummary[]>([]);
   const [trashPath, setTrashPath] = useState<string | undefined>(undefined);
+  const [showConfig, setShowConfig] = useState(false);
+  const [config, updateConfig] = useDoppelgangerConfig();
 
   useEffect(() => {
     let cancelled = false;
@@ -89,10 +96,19 @@ export function DoppelgangerPage() {
     <div className="container">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2>Doppelganger</h2>
-        <Button variant="secondary" onClick={refresh}>
-          Refresh
-        </Button>
+        <div className="d-flex align-items-center">
+          <Button variant="secondary" onClick={refresh}>
+            Refresh
+          </Button>
+          <div className="ml-2">
+            <ConfigButton
+              showConfig={showConfig}
+              onClick={() => setShowConfig(!showConfig)}
+            />
+          </div>
+        </div>
       </div>
+      <ConfigPanel show={showConfig} config={config} onChange={updateConfig} />
 
       <Nav
         variant="tabs"
@@ -120,6 +136,7 @@ export function DoppelgangerPage() {
               stashBoxes={stashBoxes}
               mergeKind="scene"
               trashPath={trashPath}
+              keepPrimaryAfterMerge={config.keepPrimaryAfterMerge}
               onChanged={refresh}
             />
             <IdenticalCopiesList

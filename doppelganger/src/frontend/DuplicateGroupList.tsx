@@ -91,6 +91,7 @@ interface DuplicateGroupListProps {
   stashBoxes: StashBoxSummary[];
   mergeKind?: MergeKind;
   trashPath?: string;
+  keepPrimaryAfterMerge?: boolean;
   onChanged?: () => void;
 }
 
@@ -102,6 +103,7 @@ export function DuplicateGroupList({
   stashBoxes,
   mergeKind,
   trashPath,
+  keepPrimaryAfterMerge,
   onChanged,
 }: DuplicateGroupListProps) {
   const isScene = mergeKind === "scene";
@@ -189,9 +191,9 @@ export function DuplicateGroupList({
                       )}
                       {isScene && (
                         <Button
-                          variant="link"
+                          variant="secondary"
                           size="sm"
-                          className="py-0"
+                          className="ml-3 my-1"
                           onClick={() =>
                             setUnlinking({
                               group,
@@ -241,6 +243,7 @@ export function DuplicateGroupList({
           key={mergedSceneId}
           sceneId={mergedSceneId}
           trashPath={trashPath}
+          autoKeepPrimary={!!keepPrimaryAfterMerge}
           onClose={handleChooserClose}
         />
       )}

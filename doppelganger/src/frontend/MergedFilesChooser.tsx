@@ -14,6 +14,8 @@ const { faTrashAlt } = PluginApi.libraries.FontAwesomeSolid;
 interface MergedFilesChooserProps {
   sceneId: string;
   trashPath: string | undefined;
+  // Skip the dialog: keep the primary and delete the rest straight away.
+  autoKeepPrimary: boolean;
   onClose: () => void;
 }
 
@@ -24,9 +26,11 @@ interface MergedFilesChooserProps {
 export function MergedFilesChooser({
   sceneId,
   trashPath,
+  autoKeepPrimary,
   onClose,
 }: MergedFilesChooserProps) {
   const client = useApolloClient();
+  const Toast = PluginApi.hooks.useToast();
   const { data, loading } = useQuery(SCENE_FILES, {
     variables: { id: sceneId },
     fetchPolicy: "network-only",
@@ -50,11 +54,32 @@ export function MergedFilesChooser({
     [data],
   );
 
+  const [autoFailed, setAutoFailed] = useState(false);
+
   useEffect(() => {
-    if (!loading && files.length < 2) onClose();
-  }, [loading, files, onClose]);
+    if (loading) return;
+    if (files.length < 2) {
+      onClose();
+      return;
+    }
+    if (!autoKeepPrimary || autoFailed) return;
+    const plan = planCopyDeletion({ sceneId, files }, files[0].id);
+    executeCopyDeletion(client, plan).then(
+      () => {
+        const n = plan.deleteFileIds.length;
+        Toast.success(`Merged and deleted ${n} ${n === 1 ? "file" : "files"}`);
+        onClose();
+      },
+      (e: unknown) => {
+        // Fall back to the dialog so the user can see what is left.
+        Toast.error(e);
+        setAutoFailed(true);
+      },
+    );
+  }, [loading, files, autoKeepPrimary, autoFailed, sceneId, client, onClose]);
 
   if (loading || files.length < 2) return null;
+  if (autoKeepPrimary && !autoFailed) return null;
 
   const labels = stripCommonPrefix(files.map((f) => f.path));
   const chosen = keeper ?? files[0].id;

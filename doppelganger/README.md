@@ -46,7 +46,9 @@ highlighted in green as the real match. The two cases get different tools:
 - **Merge...** for the same scene. After Stash's merge, which attaches every source file to the
   destination, Doppelganger shows the merged scene's files side by side (resolution, codec,
   duration, size) and offers to delete all but the one you pick, through Stash's `deleteFiles`.
-  **Keep all files** leaves the scene as Stash merged it.
+  **Keep all files** leaves the scene as Stash merged it. Once you trust the process, the cog
+  next to **Refresh** has a setting to skip this chooser and always keep the merge target's
+  primary file; it is stored in the plugin's configuration, so it follows the Stash instance.
 - **Unlink...** for a wrong match. Removes that scene's stash ID for the entry, so it stops being
   reported, and offers to clear the metadata the match filled in. Fields whose value is identical
   to another scene on the same entry are pre-selected, since Stash does not record which fields a
