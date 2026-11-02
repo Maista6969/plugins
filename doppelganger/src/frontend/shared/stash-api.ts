@@ -14,7 +14,10 @@ const QUERY_SQL = gql`
 // All four detection queries share the same shape: join <entity>_stash_ids
 // against itself (grouped by stash_id+endpoint, HAVING count > 1) to find
 // only stash_ids that are genuinely duplicated, then join back to the real
-// entity table for a human-readable label. Confirmed via Stash's own source
+// entity table for a human-readable label. The subquery joins the entity table
+// too: stash_id rows can outlive their entity (left behind while foreign keys
+// were unenforced), and counting those yields one-item groups whose sibling
+// no longer exists. Confirmed via Stash's own source
 // (pkg/sqlite/migrations/14_stash_box_ids.up.sql, 34_indexes.up.sql):
 // performer_stash_ids/studio_stash_ids have no unique constraint at the DB
 // level (unlike scene_stash_ids, which got a composite PRIMARY KEY in
@@ -41,7 +44,9 @@ const SCENE_DUPES_SQL = `
   LEFT JOIN folders fo ON fo.id = fi.parent_folder_id
   LEFT JOIN video_files vf ON vf.file_id = fi.id
   JOIN (
-    SELECT stash_id, endpoint FROM scene_stash_ids GROUP BY stash_id, endpoint HAVING COUNT(*) > 1
+    SELECT x.stash_id, x.endpoint FROM scene_stash_ids x
+    JOIN scenes ON scenes.id = x.scene_id
+    GROUP BY x.stash_id, x.endpoint HAVING COUNT(*) > 1
   ) dupes ON dupes.stash_id = st.stash_id AND dupes.endpoint = st.endpoint
   ORDER BY st.stash_id, st.endpoint, s.id
 `;
@@ -51,7 +56,9 @@ const PERFORMER_DUPES_SQL = `
   FROM performer_stash_ids st
   JOIN performers p ON p.id = st.performer_id
   JOIN (
-    SELECT stash_id, endpoint FROM performer_stash_ids GROUP BY stash_id, endpoint HAVING COUNT(*) > 1
+    SELECT x.stash_id, x.endpoint FROM performer_stash_ids x
+    JOIN performers ON performers.id = x.performer_id
+    GROUP BY x.stash_id, x.endpoint HAVING COUNT(*) > 1
   ) dupes ON dupes.stash_id = st.stash_id AND dupes.endpoint = st.endpoint
   ORDER BY st.stash_id, st.endpoint, p.id
 `;
@@ -61,7 +68,9 @@ const TAG_DUPES_SQL = `
   FROM tag_stash_ids st
   JOIN tags t ON t.id = st.tag_id
   JOIN (
-    SELECT stash_id, endpoint FROM tag_stash_ids GROUP BY stash_id, endpoint HAVING COUNT(*) > 1
+    SELECT x.stash_id, x.endpoint FROM tag_stash_ids x
+    JOIN tags ON tags.id = x.tag_id
+    GROUP BY x.stash_id, x.endpoint HAVING COUNT(*) > 1
   ) dupes ON dupes.stash_id = st.stash_id AND dupes.endpoint = st.endpoint
   ORDER BY st.stash_id, st.endpoint, t.id
 `;
@@ -71,7 +80,9 @@ const STUDIO_DUPES_SQL = `
   FROM studio_stash_ids st
   JOIN studios s ON s.id = st.studio_id
   JOIN (
-    SELECT stash_id, endpoint FROM studio_stash_ids GROUP BY stash_id, endpoint HAVING COUNT(*) > 1
+    SELECT x.stash_id, x.endpoint FROM studio_stash_ids x
+    JOIN studios ON studios.id = x.studio_id
+    GROUP BY x.stash_id, x.endpoint HAVING COUNT(*) > 1
   ) dupes ON dupes.stash_id = st.stash_id AND dupes.endpoint = st.endpoint
   ORDER BY st.stash_id, st.endpoint, s.id
 `;
