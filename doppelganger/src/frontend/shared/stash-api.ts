@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { groupDuplicateRows } from "../../core/group-duplicates.js";
-import { groupIdenticalCopyRows } from "../../core/group-identical-copies.js";
+import { groupSceneFileRows } from "../../core/multi-file-scenes.js";
 
 const QUERY_SQL = gql`
   mutation DoppelgangerQuerySQL($sql: String!) {
@@ -87,27 +87,27 @@ const STUDIO_DUPES_SQL = `
   ORDER BY st.stash_id, st.endpoint, s.id
 `;
 
-// A scan attaches a new file to an existing scene when its oshash (or MD5)
-// matches a file already on that scene -- pkg/scene/scan.go's
-// matchableFingerprintTypes -- so a scene whose files share an oshash holds
-// byte-identical copies, not alternate encodes. oshash is the file size plus
-// checksums of the first and last 64 KB, so a re-encode or a different cut
-// cannot share one. Column order matches group-identical-copies.js.
-const IDENTICAL_COPIES_SQL = `
-  SELECT sf.scene_id, s.title, fp.fingerprint, fi.id, sf.\`primary\`,
-         fo.path || '/' || fi.basename, fi.size, fi.mod_time
+// Every file of every scene holding more than one. A scan only attaches a
+// file to an existing scene when its oshash or MD5 matches one already there
+// (pkg/scene/scan.go's matchableFingerprintTypes), which yields byte-identical
+// copies; a merge moves all of the source scenes' files across, which yields
+// alternate encodes. The oshash rides along so the two can be told apart.
+// Column order matches multi-file-scenes.js.
+const MULTI_FILE_SCENES_SQL = `
+  SELECT sf.scene_id, s.title, fi.id, sf.\`primary\`,
+         fo.path || '/' || fi.basename, fi.size, fi.mod_time,
+         vf.width, vf.height, vf.bit_rate, vf.video_codec, vf.duration,
+         fp.fingerprint
   FROM scenes_files sf
   JOIN scenes s ON s.id = sf.scene_id
   JOIN files fi ON fi.id = sf.file_id
   JOIN folders fo ON fo.id = fi.parent_folder_id
-  JOIN files_fingerprints fp ON fp.file_id = fi.id AND fp.type = 'oshash'
-  JOIN (
-    SELECT sf2.scene_id, fp2.fingerprint
-    FROM scenes_files sf2
-    JOIN files_fingerprints fp2 ON fp2.file_id = sf2.file_id AND fp2.type = 'oshash'
-    GROUP BY sf2.scene_id, fp2.fingerprint HAVING COUNT(*) > 1
-  ) dupes ON dupes.scene_id = sf.scene_id AND dupes.fingerprint = fp.fingerprint
-  ORDER BY sf.scene_id, fp.fingerprint, sf.\`primary\` DESC, fi.id
+  LEFT JOIN video_files vf ON vf.file_id = fi.id
+  LEFT JOIN files_fingerprints fp ON fp.file_id = fi.id AND fp.type = 'oshash'
+  WHERE sf.scene_id IN (
+    SELECT scene_id FROM scenes_files GROUP BY scene_id HAVING COUNT(*) > 1
+  )
+  ORDER BY sf.scene_id, sf.\`primary\` DESC, fi.id
 `;
 
 const CONFIGURATION_QUERY = gql`
@@ -168,12 +168,12 @@ export function findDuplicateStudios(client: any) {
   return runDuplicateQuery(client, STUDIO_DUPES_SQL);
 }
 
-export async function findIdenticalCopies(client: any) {
+export async function findMultiFileScenes(client: any) {
   const { data } = await client.mutate({
     mutation: QUERY_SQL,
-    variables: { sql: IDENTICAL_COPIES_SQL },
+    variables: { sql: MULTI_FILE_SCENES_SQL },
   });
-  return groupIdenticalCopyRows(data?.querySQL?.rows ?? []);
+  return groupSceneFileRows(data?.querySQL?.rows ?? []);
 }
 
 // Kept separate from CONFIGURATION_QUERY: the field only exists on newer

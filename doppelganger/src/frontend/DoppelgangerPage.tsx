@@ -5,16 +5,13 @@ import {
   findDuplicatePerformers,
   findDuplicateTags,
   findDuplicateStudios,
-  findIdenticalCopies,
+  findMultiFileScenes,
   fetchStashBoxes,
   fetchDeleteTrashPath,
   StashBoxSummary,
 } from "./shared/stash-api.js";
 import { DuplicateGroupList, DuplicateGroup } from "./DuplicateGroupList.js";
-import {
-  IdenticalCopiesList,
-  IdenticalCopyGroup,
-} from "./IdenticalCopiesList.js";
+import { MultiFileScenesList, MultiFileScene } from "./MultiFileScenesList.js";
 import {
   ConfigButton,
   ConfigPanel,
@@ -49,7 +46,7 @@ export function DoppelgangerPage() {
   const [performers, setPerformers] = useState<DuplicateGroup[] | null>(null);
   const [tags, setTags] = useState<DuplicateGroup[] | null>(null);
   const [studios, setStudios] = useState<DuplicateGroup[] | null>(null);
-  const [copies, setCopies] = useState<IdenticalCopyGroup[] | null>(null);
+  const [multiFile, setMultiFile] = useState<MultiFileScene[] | null>(null);
   const [stashBoxes, setStashBoxes] = useState<StashBoxSummary[]>([]);
   const [trashPath, setTrashPath] = useState<string | undefined>(undefined);
   const [showConfig, setShowConfig] = useState(false);
@@ -70,12 +67,12 @@ export function DoppelgangerPage() {
 
   const refresh = useCallback(() => {
     setScenes(null);
-    setCopies(null);
+    setMultiFile(null);
     setPerformers(null);
     setTags(null);
     setStudios(null);
     findDuplicateScenes(client).then(setScenes);
-    findIdenticalCopies(client).then(setCopies);
+    findMultiFileScenes(client).then(setMultiFile);
     findDuplicatePerformers(client).then(setPerformers);
     findDuplicateTags(client).then(setTags);
     findDuplicateStudios(client).then(setStudios);
@@ -86,7 +83,7 @@ export function DoppelgangerPage() {
   }, [refresh]);
 
   const counts: Record<Tab, (number | null)[]> = {
-    scenes: [scenes?.length ?? null, copies?.length ?? null],
+    scenes: [scenes?.length ?? null, multiFile?.length ?? null],
     performers: [performers?.length ?? null],
     tags: [tags?.length ?? null],
     studios: [studios?.length ?? null],
@@ -124,7 +121,7 @@ export function DoppelgangerPage() {
       </Nav>
 
       {/* Keyed so switching tabs remounts the panel: an open merge dialog or a
-          half-chosen keeper never leaks into another tab. */}
+          half-ticked selection never leaks into another tab. */}
       <div className="pt-2" key={tab}>
         {tab === "scenes" && (
           <>
@@ -139,9 +136,11 @@ export function DoppelgangerPage() {
               keepPrimaryAfterMerge={config.keepPrimaryAfterMerge}
               onChanged={refresh}
             />
-            <IdenticalCopiesList
-              groups={copies}
+            <MultiFileScenesList
+              groups={multiFile}
               trashPath={trashPath}
+              config={config}
+              onConfigChange={updateConfig}
               onDeleted={refresh}
             />
           </>

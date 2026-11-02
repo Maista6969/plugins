@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client";
-import { planCopyDeletion } from "../core/group-identical-copies.js";
+import { planCopyDeletion } from "../core/multi-file-scenes.js";
 import { stripCommonPrefix } from "../core/strip-common-prefix.js";
 import { SCENE_FILES, executeCopyDeletion } from "./shared/stash-api.js";
 import { ConfirmModal } from "./shared/ConfirmModal.js";

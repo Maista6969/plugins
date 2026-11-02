@@ -7,8 +7,9 @@ itself hides:
   kind of duplicate created by re-scraping or re-importing the same content, which Stash's built-in
   perceptual-hash duplicate finder can't catch (it's aimed at re-encodes of the same source video,
   not user-error duplicates); and
-- scenes holding several byte-identical copies of the same file, which a scan silently folds into
-  one scene entry, so the duplicate files never show up anywhere.
+- scenes holding more than one file, either byte-identical copies a scan silently folded into one
+  scene entry, or alternate encodes a merge moved onto the same scene, so the extra files never
+  show up anywhere.
 
 ## Motivation
 
@@ -17,14 +18,15 @@ Stash's own duplicate scanner uses phash, which is useless for the much more com
 under two different local IDs. Since a StashID pairs an endpoint with an entity, two entities
 sharing the same `(stash_id, endpoint)` are near-certainly the same real-world thing.
 
-### Identical copies
+### Scenes with multiple files
 
 A scan attaches a new file to an existing scene when its oshash (file size plus checksums of the
-first and last 64 KB) matches a file already on that scene. That is meant for keeping alternate
-encodes together, but in practice it means a second download of the same file vanishes into the
-existing scene. Doppelganger lists every scene whose files share an oshash, side by side, and
-deletes the copies you don't want through Stash's own `deleteFiles` mutation — which honours the
-trash path configured under Settings > System, when there is one.
+first and last 64 KB) or MD5 matches a file already on that scene, so a second download of the same
+file vanishes into the existing scene. A merge does the same with every file of the merged scenes,
+which is how alternate encodes end up together. Doppelganger lists every scene with more than one
+file, marks byte-identical copies, and deletes the files you don't want through Stash's own
+`deleteFiles` mutation — which honours the trash path configured under Settings > System, when
+there is one.
 
 ## Usage
 
@@ -56,11 +58,16 @@ highlighted in green as the real match. The two cases get different tools:
   the stash-box itself that the fingerprint is wrong is not possible from a plugin yet: Stash's
   client has the `unmatch` field but no mutation exposes it.
 
-**Scenes with identical copies** shows each affected scene with its copies; the current primary
-file is selected as the keeper by default and any row can be picked instead. **Delete N copies**
-handles one scene, **Delete all extra copies** runs every scene in sequence with a progress bar and
-a stop button. Both confirm first and say whether files go to the trash folder or are removed
-permanently.
+**Scenes with multiple files** works like Stash's own scene duplicate checker, one row per file:
+ticked files are deleted. **Select Options…** offers the same rules — keep the highest resolution,
+the largest file, the preferred codec, the oldest or the youngest — plus keep the highest bit rate,
+along with the preferred codec picker and the "only select if all codecs match" guard. Unlike
+Stash, the chosen rule is stored in the plugin's configuration and applied every time the list
+loads. Byte-identical copies always keep the primary file, since any copy is as good as another,
+and ties keep the primary too. Boxes can be changed by hand, but the last file of a scene can't be
+ticked. **Delete N files** handles one scene, **Delete selected files** runs every scene in
+sequence with a progress bar and a stop button. Both confirm first and say whether files go to the
+trash folder or are removed permanently.
 
 ## Scope
 

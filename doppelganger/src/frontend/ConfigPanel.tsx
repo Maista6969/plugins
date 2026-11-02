@@ -8,10 +8,18 @@ const { Icon } = PluginApi.components;
 
 export interface DoppelgangerConfig {
   keepPrimaryAfterMerge: boolean;
+  // The multi-file scene list's selection rule, set from its own controls
+  // rather than this panel, the way Stash's duplicate checker places them.
+  selectOption: string;
+  preferredCodec: string;
+  onlySelectMatchingCodecs: boolean;
 }
 
 const DEFAULTS: DoppelgangerConfig = {
   keepPrimaryAfterMerge: false,
+  selectOption: "none",
+  preferredCodec: "",
+  onlySelectMatchingCodecs: true,
 };
 
 // Settings live in Stash's plugin configuration (Settings > Plugins), so they
