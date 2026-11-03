@@ -3,6 +3,7 @@ import { useIntl, IntlShape } from "react-intl";
 import { adapterFor } from "../../core/entity-adapter.js";
 import { countableNoun } from "../shared/eligible-entities.js";
 import { useLoadSelectComponents } from "../shared/useLoadSelectComponents.js";
+import { StashBoxMultiSelect } from "./StashBoxMultiSelect.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form, Button } = PluginApi.libraries.Bootstrap;
@@ -26,6 +27,7 @@ const FIELD_OPTIONS = [
     label: "librarian.conditionRow.field.tagCount",
   },
   { value: "date", label: "librarian.conditionRow.field.date" },
+  { value: "stash_id", label: "librarian.conditionRow.field.stashId" },
   { value: "path", label: "librarian.conditionRow.field.path" },
   {
     value: "custom_field",
@@ -38,12 +40,14 @@ export function fieldLabel(intl: IntlShape, field: string): string {
   return option ? intl.formatMessage({ id: option.label }) : field;
 }
 
-// Only scenes have groups
+// Only scenes have groups and StashIDs
 function fieldOptionsFor(entityType?: string) {
-  if (adapterFor(entityType).hasGroups) {
-    return FIELD_OPTIONS;
-  }
-  return FIELD_OPTIONS.filter((f) => f.value !== "group");
+  const adapter = adapterFor(entityType);
+  return FIELD_OPTIONS.filter(
+    (f) =>
+      (f.value !== "group" || adapter.hasGroups) &&
+      (f.value !== "stash_id" || adapter.tokens.indexOf("stash_id") !== -1),
+  );
 }
 
 const ANY_ONLY_MODIFIERS = [
@@ -309,6 +313,21 @@ const DATE_MODIFIERS = [
   },
 ];
 
+// The value is the sources to look at, empty meaning any of them, so the
+// presence ops still take a value here unlike everywhere else
+const STASH_ID_MODIFIERS = [
+  {
+    value: "not_null",
+    label: "librarian.conditionRow.stashIdModifier.notNull.label",
+    title: "librarian.conditionRow.stashIdModifier.notNull.title",
+  },
+  {
+    value: "is_null",
+    label: "librarian.conditionRow.stashIdModifier.isNull.label",
+    title: "librarian.conditionRow.stashIdModifier.isNull.title",
+  },
+];
+
 function idsToText(value: unknown): string {
   return Array.isArray(value) ? value.join(", ") : "";
 }
@@ -416,6 +435,9 @@ function nextOpForFieldChange(
   }
   if (newField === "date") {
     return "range";
+  }
+  if (newField === "stash_id") {
+    return "not_null";
   }
   const newOptions = LIST_MODIFIERS_BY_FIELD[newField];
   if (!newOptions) {
@@ -628,6 +650,46 @@ function DateFieldEditor({
           onChange={(next) => onChange({ ...condition, value: next })}
         />
       )}
+    </>
+  );
+}
+
+function StashIdFieldEditor({
+  condition,
+  onChange,
+  noun,
+}: {
+  condition: Condition;
+  onChange: (next: Condition) => void;
+  noun: string;
+}) {
+  const intl = useIntl();
+  const current =
+    STASH_ID_MODIFIERS.find((m) => m.value === condition.op) ||
+    STASH_ID_MODIFIERS[0];
+  return (
+    <>
+      <Form.Control
+        as="select"
+        className="librarian-inline-select input-control"
+        title={withNoun(intl, current.title, noun)}
+        value={current.value}
+        onChange={(e: any) => onChange({ ...condition, op: e.target.value })}
+      >
+        {STASH_ID_MODIFIERS.map((m) => (
+          <option
+            key={m.value}
+            value={m.value}
+            title={withNoun(intl, m.title, noun)}
+          >
+            {intl.formatMessage({ id: m.label })}
+          </option>
+        ))}
+      </Form.Control>
+      <StashBoxMultiSelect
+        value={Array.isArray(condition.value) ? condition.value : []}
+        onChange={(endpoints) => onChange({ ...condition, value: endpoints })}
+      />
     </>
   );
 }
@@ -900,6 +962,7 @@ export function ConditionRow({
   const isCount =
     condition.field === "performer_count" || condition.field === "tag_count";
   const isDate = condition.field === "date";
+  const isStashId = condition.field === "stash_id";
   const isPath = condition.field === "path";
   const isCustomField =
     condition.field === "custom_field" ||
@@ -916,6 +979,7 @@ export function ConditionRow({
     !isRating &&
     !isCount &&
     !isDate &&
+    !isStashId &&
     !isPath &&
     !isCustomField &&
     Array.isArray(condition.value)
@@ -983,6 +1047,12 @@ export function ConditionRow({
         <DateFieldEditor
           condition={condition}
           onChangeOp={(nextOp) => onChange(withOp(condition, nextOp))}
+          onChange={onChange}
+          noun={noun}
+        />
+      ) : isStashId ? (
+        <StashIdFieldEditor
+          condition={condition}
           onChange={onChange}
           noun={noun}
         />

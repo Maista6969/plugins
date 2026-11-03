@@ -10,6 +10,10 @@ import { ratingInRange, describeRatingRange } from "./rating-range.js";
 import { countInRange, describeCountRange } from "./count-range.js";
 import { dateInRange, describeDateRange } from "./date-range.js";
 import { isStudioTraitOp } from "./studio-condition.js";
+import {
+  evaluateStashIdCondition,
+  describeStashIdCondition,
+} from "./stash-id-condition.js";
 
 function evaluateStudioTrait(sceneView, condition) {
   switch (condition.op) {
@@ -117,6 +121,8 @@ export function evaluateCondition(sceneView, condition) {
       }
       return dateInRange(sceneView.date, condition.value);
     }
+    case "stash_id":
+      return evaluateStashIdCondition(sceneView, condition);
     case "path": {
       const paths = (sceneView.files || []).map((f) => {
         return f.path;
@@ -332,7 +338,7 @@ function describePerformerCondition(sceneView, condition) {
     : named + " '" + condition.value + "'";
 }
 
-export function describeCondition(sceneView, condition) {
+export function describeCondition(sceneView, condition, stashBoxes) {
   switch (condition.field) {
     case "custom_field":
       return describeCustomField("custom field", condition);
@@ -402,6 +408,8 @@ export function describeCondition(sceneView, condition) {
       const described = describeDateRange(condition.value);
       return described ? "date is " + described : "date";
     }
+    case "stash_id":
+      return describeStashIdCondition(sceneView, condition, stashBoxes);
     case "path": {
       const label = PATH_MODIFIER_LABEL[condition.op] || condition.op;
       return "path " + label + " '" + condition.value + "'";

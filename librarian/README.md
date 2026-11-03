@@ -107,7 +107,9 @@ studio the same way the **Performer** condition already can about a performer.
 "exactly one performer" is `Performer count` between `1` and `1`. **Date** has _is set_, _is not set_ and _is in a range_
 (each side optional, so leaving Max blank means "on or after" and leaving Min blank means "on or before"), and matches
 the way Stash itself does: a partial date like `2024` compares as if it were `2024-01-01`, so `2024` is _on or after_
-`2024-01-01` but not _on or after_ `2024-06-01`.
+`2024-01-01` but not _on or after_ `2024-06-01`. **StashID** (scenes only) _has one from_ or _has none from_ the
+stash-box sources you pick, by the names they have under Settings > Metadata Providers; pick none to mean any source at
+all. Matched scenes can then go one way and unmatched ones another, or _has none from_ can sit in your exclusions.
 
 Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
 their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.

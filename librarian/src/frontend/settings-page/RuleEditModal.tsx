@@ -10,6 +10,7 @@ import { TextSettingModal } from "./TextSettingModal.js";
 import {
   ruleToPreviewFilter,
   stashIdGateIsApproximate,
+  stashIdConditionIsApproximate,
   ruleFilterIsApproximate,
 } from "../../core/rule-to-filter.js";
 import { useEntityCount } from "./useEntityCount.js";
@@ -78,8 +79,12 @@ export function RuleEditModal({
   // at once, so the query over-selects and the count is only an upper bound
   const gateApproximate = stashIdGateIsApproximate(config[type]);
   const quantifierApproximate = ruleFilterIsApproximate(rule);
+  const stashIdSourcesApproximate = stashIdConditionIsApproximate(rule);
   const countIsUpperBound =
-    hasEarlierActiveRule || gateApproximate || quantifierApproximate;
+    hasEarlierActiveRule ||
+    gateApproximate ||
+    quantifierApproximate ||
+    stashIdSourcesApproximate;
   const ruleFilter = ruleToPreviewFilter(rule, config[type]);
   const matchCount = useEntityCount(
     type,
@@ -257,6 +262,10 @@ export function RuleEditModal({
                         },
                         { entityNoun: countableNoun(intl, type) },
                       ),
+                    stashIdSourcesApproximate &&
+                      intl.formatMessage({
+                        id: "librarian.ruleEditModal.caveat.stashIdSourcesApproximate",
+                      }),
                   ]
                     .filter(Boolean)
                     .join(

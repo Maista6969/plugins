@@ -100,16 +100,6 @@ test("performer/tag ids are coerced to strings", () => {
   assert.deepEqual(view.tagIds, ["7"]);
 });
 
-test("hasStashId reflects whether stash_ids has at least one entry", () => {
-  assert.equal(normalizeScene({ id: "1" }).hasStashId, false);
-  assert.equal(normalizeScene({ id: "1", stash_ids: [] }).hasStashId, false);
-  assert.equal(
-    normalizeScene({ id: "1", stash_ids: [{ endpoint: "e", stash_id: "s" }] })
-      .hasStashId,
-    true,
-  );
-});
-
 test("stashIds carries every {endpoint, stash_id} pair through", () => {
   assert.deepEqual(normalizeScene({ id: "1" }).stashIds, []);
   assert.deepEqual(

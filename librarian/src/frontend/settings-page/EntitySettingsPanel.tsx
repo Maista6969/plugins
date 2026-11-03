@@ -15,6 +15,7 @@ import { useLoadSelectComponents } from "../shared/useLoadSelectComponents.js";
 import {
   ruleToPreviewFilter,
   stashIdGateIsApproximate,
+  stashIdConditionIsApproximate,
 } from "../../core/rule-to-filter.js";
 import { countableNoun, capitalize } from "../shared/eligible-entities.js";
 import { resetSection } from "../../core/config-schema.js";
@@ -83,9 +84,11 @@ export function EntitySettingsPanel({
     update({ defaultPattern: { ...defaultPattern, ...patch } });
   }
 
-  // several accepted StashID sources make the gate over-select, so this count
-  // is an upper bound rather than exact
-  const excludeCountIsUpperBound = stashIdGateIsApproximate(section);
+  // several StashID sources, accepted by the gate or named by an exclusion,
+  // make the query over-select, so this count is an upper bound rather than exact
+  const excludeCountIsUpperBound =
+    stashIdGateIsApproximate(section) ||
+    stashIdConditionIsApproximate(section.excludeConditions);
   const excludeFilter = ruleToPreviewFilter(section.excludeConditions, section);
   const excludeCount = useEntityCount(
     entityType,

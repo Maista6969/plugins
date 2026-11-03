@@ -23,6 +23,7 @@ import {
 } from "./path-template.js";
 import { assignSuffixes } from "./file-ordering.js";
 import { deriveFileTech } from "./file-tech.js";
+import { hasStashIdFrom, stashIdEndpoints } from "./stash-id-condition.js";
 import { adapterFor } from "./entity-adapter.js";
 // Only these apply to every type; everything else belongs to a section. Sharing
 // the list stops a stray top-level key, such as one left behind by an older
@@ -50,16 +51,6 @@ function splitPath(path) {
 }
 
 // An empty endpoint list means any source will do
-function hasRequiredStashId(sceneView, endpoints) {
-  const wanted = endpoints || [];
-  if (wanted.length === 0) {
-    return sceneView.hasStashId;
-  }
-  return (sceneView.stashIds || []).some((s) => {
-    return wanted.indexOf(s.endpoint) !== -1;
-  });
-}
-
 function dataError(
   reason,
   sceneId,
@@ -112,6 +103,19 @@ export function configNeedsStashBoxes(config, entityType) {
   }
   const settings = entitySettings(config, entityType);
 
+  // only to name the sources when an exclusion is reported, endpoints match
+  // without them
+  const exclusions = (settings.excludeConditions || {}).conditions || [];
+  if (
+    exclusions.some((c) => {
+      return (
+        c && c.field === "stash_id" && stashIdEndpoints(c.value).length > 0
+      );
+    })
+  ) {
+    return true;
+  }
+
   const candidates = [{ pattern: settings.defaultPattern, rule: null }];
   (settings.rules || []).forEach((rule) => {
     if (rule && rule.enabled !== false) {
@@ -153,7 +157,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
 
   if (
     settings.onlyWithStashId &&
-    !hasRequiredStashId(sceneView, settings.stashIdEndpoints)
+    !hasStashIdFrom(sceneView, settings.stashIdEndpoints)
   ) {
     return {
       status: "skipped",
@@ -176,7 +180,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
         reason: "excluded",
         sceneId: sceneView.id,
         excludedBy: matched.map((c) => {
-          return describeCondition(sceneView, c);
+          return describeCondition(sceneView, c, stashBoxes);
         }),
         files: [],
       };

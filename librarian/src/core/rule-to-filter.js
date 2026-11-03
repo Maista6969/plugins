@@ -4,6 +4,7 @@ import { isStudioTraitOp } from "./studio-condition.js";
 import { ratingRangeCriterion } from "./rating-range.js";
 import { countRangeCriterion } from "./count-range.js";
 import { dateRangeCriterion } from "./date-range.js";
+import { stashIdEndpoints } from "./stash-id-condition.js";
 
 function asList(value) {
   return Array.isArray(value) ? value : [value];
@@ -171,6 +172,23 @@ function dateFilter(condition) {
   return criterion ? { date: criterion } : null;
 }
 
+// One level of a Stash filter cannot hold both AND and OR, so a condition
+// cannot bring its own OR into a rule that ANDs its conditions. With several
+// sources this over-selects instead: any StashID for "has", or lacking just the
+// first source for "has no". See stashIdConditionIsApproximate
+function stashIdFilter(condition) {
+  const endpoints = stashIdEndpoints(condition.value);
+  if (condition.op !== "is_null") {
+    return stashIdGate(endpoints);
+  }
+  if (endpoints.length === 0) {
+    return { stash_id_count: { value: 0, modifier: "EQUALS" } };
+  }
+  return {
+    stash_ids_endpoint: { endpoint: endpoints[0], modifier: "IS_NULL" },
+  };
+}
+
 function conditionToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
@@ -199,6 +217,8 @@ function conditionToFilter(condition) {
       return countFilter("tag_count", condition.value);
     case "date":
       return dateFilter(condition);
+    case "stash_id":
+      return stashIdFilter(condition);
     case "path":
       return pathFilter(condition);
     default:
@@ -256,6 +276,16 @@ export function ruleFilterIsApproximate(rule) {
       condition.field === "performer" &&
       isPerformerOp(condition.op) &&
       isAllQuantifier(condition)
+    );
+  });
+}
+
+export function stashIdConditionIsApproximate(rule) {
+  return ((rule && rule.conditions) || []).some((condition) => {
+    return (
+      condition &&
+      condition.field === "stash_id" &&
+      stashIdEndpoints(condition.value).length > 1
     );
   });
 }

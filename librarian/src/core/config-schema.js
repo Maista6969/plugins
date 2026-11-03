@@ -181,8 +181,8 @@ function migrateBlankPatterns(config) {
   return result;
 }
 
-// Only Scene has the groups field
-const SCENE_ONLY_CONDITION_FIELDS = ["group"];
+// Only Scene has the groups and stash_ids fields
+const SCENE_ONLY_CONDITION_FIELDS = ["group", "stash_id"];
 
 function keepableConditions(conditions) {
   if (!Array.isArray(conditions)) {
