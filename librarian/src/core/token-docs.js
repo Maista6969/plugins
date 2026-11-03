@@ -39,6 +39,10 @@ export const TOKEN_DESCRIPTIONS = {
   date_day:
     "Just the day of the date, e.g. “10”, can be missing if date is partial",
   resolution: "The file's resolution, e.g. “1080p” or “4K”",
+  width: "The file's width in pixels, e.g. “1920”",
+  height: "The file's height in pixels, e.g. “1080”",
+  orientation:
+    "“Landscape”, “Portrait” or “Square”, from the file's width and height",
   video_codec: "The file's video codec, e.g. “h264”, “hevc”",
   audio_codec: "The file's audio codec, e.g. “aac”",
   bitrate: "The file's bitrate, e.g. “8.42Mbps”",

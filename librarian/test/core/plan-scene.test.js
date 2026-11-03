@@ -648,6 +648,66 @@ test("file metadata tokens (resolution, codecs, bitrate, phash, rating) render e
   assert.equal(result.files[0].basename, "Normal Scene.mp4");
 });
 
+test("{orientation}/{width}/{height} render end to end, so a vertical file can say so in its name", () => {
+  const scene = {
+    id: "502",
+    title: "Tall Scene",
+    organized: true,
+    performers: [],
+    tags: [],
+    files: [
+      { id: "12", path: "/data/old/tall.mp4", width: 1080, height: 1920 },
+    ],
+  };
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "{orientation}",
+      filenamePattern: "{title} [{width}x{height}]",
+    },
+  });
+  const result = planScene(scene, config);
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].folder, "/data/Portrait");
+  assert.equal(result.files[0].basename, "Tall Scene [1080x1920].mp4");
+});
+
+test("{orientation} is missing data on a file with no dimensions, and {orientation?} renders empty instead", () => {
+  const scene = {
+    id: "503",
+    title: "Unprobed Scene",
+    organized: true,
+    performers: [],
+    tags: [],
+    files: [{ id: "13", path: "/data/old/unprobed.mp4" }],
+  };
+  const required = planScene(
+    scene,
+    baseConfig({
+      defaultPattern: {
+        folderPattern: "",
+        filenamePattern: "{title} {orientation}",
+      },
+    }),
+  );
+  assert.equal(required.status, "error");
+  assert.deepEqual(
+    required.missingData.map((m) => m.token),
+    ["orientation"],
+  );
+
+  const optional = planScene(
+    scene,
+    baseConfig({
+      defaultPattern: {
+        folderPattern: "",
+        filenamePattern: "{title}< {orientation?}>",
+      },
+    }),
+  );
+  assert.equal(optional.status, "ok");
+  assert.equal(optional.files[0].basename, "Unprobed Scene.mp4");
+});
+
 test("technical metadata tokens differ PER FILE on a multi-file scene", () => {
   const scene = {
     id: "500",

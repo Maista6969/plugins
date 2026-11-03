@@ -384,7 +384,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
           {
             token: null,
             message:
-              "the filename would be based entirely on file properties (resolution/codec/bitrate/fps) with no actual Stash metadata (title, studio, performers, tags, date, or rating). Refusing to rename to a name that can't be told apart from other uncatalogued files with the same technical specs; add metadata to this scene, or use a pattern whose filename includes at least one metadata field",
+              "the filename would be based entirely on file properties (resolution/dimensions/codec/bitrate/fps) with no actual Stash metadata (title, studio, performers, tags, date, or rating). Refusing to rename to a name that can't be told apart from other uncatalogued files with the same technical specs; add metadata to this scene, or use a pattern whose filename includes at least one metadata field",
           },
         ],
       );

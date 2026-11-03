@@ -87,10 +87,13 @@ test("describeTokens separates file metadata from entity metadata", () => {
     "audio_codec",
     "bitrate",
     "fps",
+    "height",
+    "orientation",
     "oshash",
     "phash",
     "resolution",
     "video_codec",
+    "width",
   ]);
   rows.forEach((r) => {
     assert.ok(r.description, r.name + " rendered an empty description");

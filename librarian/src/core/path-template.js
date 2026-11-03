@@ -43,6 +43,9 @@ export const KNOWN_TOKENS = [
   "phash",
   // Core file metadata, should always be available
   "resolution",
+  "width",
+  "height",
+  "orientation",
   "video_codec",
   "audio_codec",
   "bitrate",
@@ -65,6 +68,9 @@ export const PERFORMER_SORT_TOKENS = [
 
 export const FILE_TECH_TOKENS = [
   "resolution",
+  "width",
+  "height",
+  "orientation",
   "video_codec",
   "audio_codec",
   "bitrate",
@@ -409,6 +415,9 @@ export function buildTokens(sceneView, config, matchedIds) {
     date_month: monthMatch ? monthMatch[2] : "",
     date_day: dayMatch ? dayMatch[3] : "",
     resolution: sanitizeTokenValue(sceneView.resolution || ""),
+    width: sceneView.width ? String(sceneView.width) : "",
+    height: sceneView.height ? String(sceneView.height) : "",
+    orientation: sceneView.orientation || "",
     video_codec: sanitizeTokenValue(sceneView.videoCodec || ""),
     audio_codec: sanitizeTokenValue(sceneView.audioCodec || ""),
     bitrate:
@@ -507,6 +516,18 @@ const TOKEN_REQUIREMENTS = {
   resolution: {
     isMissing: (view) => !view.resolution,
     message: "{noun}'s primary file has no resolution info",
+  },
+  width: {
+    isMissing: (view) => !view.width,
+    message: "{noun}'s primary file has no width info",
+  },
+  height: {
+    isMissing: (view) => !view.height,
+    message: "{noun}'s primary file has no height info",
+  },
+  orientation: {
+    isMissing: (view) => !view.orientation,
+    message: "{noun}'s primary file has no width/height info",
   },
   video_codec: {
     isMissing: (view) => !view.videoCodec,

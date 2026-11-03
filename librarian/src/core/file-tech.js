@@ -39,10 +39,27 @@ function resolutionLabel(width, height) {
   return null;
 }
 
+// Straight from Stash: pkg/sqlite/criterion_handlers.go orientationCriterionHandler
+function orientationLabel(width, height) {
+  if (!width || !height) {
+    return null;
+  }
+  if (width > height) {
+    return "Landscape";
+  }
+  if (width < height) {
+    return "Portrait";
+  }
+  return "Square";
+}
+
 export function deriveFileTech(file) {
   if (!file) {
     return {
       resolution: null,
+      width: null,
+      height: null,
+      orientation: null,
       videoCodec: null,
       audioCodec: null,
       bitrateMbps: null,
@@ -53,6 +70,9 @@ export function deriveFileTech(file) {
   }
   return {
     resolution: resolutionLabel(file.width, file.height),
+    width: file.width || null,
+    height: file.height || null,
+    orientation: orientationLabel(file.width, file.height),
     videoCodec: file.video_codec || null,
     audioCodec: file.audio_codec || null,
     bitrateMbps: file.bit_rate ? file.bit_rate / 1000000 : null,

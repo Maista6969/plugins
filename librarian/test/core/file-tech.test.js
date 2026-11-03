@@ -45,9 +45,44 @@ test("resolution ladder matches Stash's own TextUtils.resolution at representati
   assert.equal(deriveFileTech({ width: 100, height: 100 }).resolution, null);
 });
 
-test("resolution/codec/bitrate/fps/phash/oshash are all null for a null file or a file lacking that data", () => {
+test("orientation compares width to height strictly, the way Stash's own orientation filter does", () => {
+  assert.equal(
+    deriveFileTech({ width: 1920, height: 1080 }).orientation,
+    "Landscape",
+  );
+  assert.equal(
+    deriveFileTech({ width: 1080, height: 1920 }).orientation,
+    "Portrait",
+  );
+  assert.equal(
+    deriveFileTech({ width: 1080, height: 1080 }).orientation,
+    "Square",
+  );
+  // one pixel off is no longer square: Stash does no rounding either
+  assert.equal(
+    deriveFileTech({ width: 1081, height: 1080 }).orientation,
+    "Landscape",
+  );
+});
+
+test("width and height are the file's own pixel dimensions", () => {
+  const tech = deriveFileTech({ width: 1080, height: 1920 });
+  assert.equal(tech.width, 1080);
+  assert.equal(tech.height, 1920);
+});
+
+test("orientation is null unless both dimensions are known", () => {
+  assert.equal(deriveFileTech({ width: 1920 }).orientation, null);
+  assert.equal(deriveFileTech({ height: 1080 }).orientation, null);
+  assert.equal(deriveFileTech({ width: 0, height: 0 }).orientation, null);
+});
+
+test("resolution/dimensions/codec/bitrate/fps/phash/oshash are all null for a null file or a file lacking that data", () => {
   const nullFile = deriveFileTech(null);
   assert.equal(nullFile.resolution, null);
+  assert.equal(nullFile.width, null);
+  assert.equal(nullFile.height, null);
+  assert.equal(nullFile.orientation, null);
   assert.equal(nullFile.videoCodec, null);
   assert.equal(nullFile.audioCodec, null);
   assert.equal(nullFile.bitrateMbps, null);
@@ -57,6 +92,9 @@ test("resolution/codec/bitrate/fps/phash/oshash are all null for a null file or 
 
   const bareFile = deriveFileTech({ id: "1" });
   assert.equal(bareFile.resolution, null);
+  assert.equal(bareFile.width, null);
+  assert.equal(bareFile.height, null);
+  assert.equal(bareFile.orientation, null);
   assert.equal(bareFile.videoCodec, null);
   assert.equal(bareFile.audioCodec, null);
   assert.equal(bareFile.bitrateMbps, null);

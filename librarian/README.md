@@ -408,15 +408,18 @@ _File metadata_
 
 <!-- BEGIN GENERATED: tokens-file -->
 
-| Token           | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `{phash}`       | The file's perceptual hash fingerprint           |
-| `{resolution}`  | The file's resolution, e.g. “1080p” or “4K”      |
-| `{video_codec}` | The file's video codec, e.g. “h264”, “hevc”      |
-| `{audio_codec}` | The file's audio codec, e.g. “aac”               |
-| `{bitrate}`     | The file's bitrate, e.g. “8.42Mbps”              |
-| `{fps}`         | The file's framerate, e.g. “30fps” or “23.98fps” |
-| `{oshash}`      | The file's oshash fingerprint                    |
+| Token           | Description                                                           |
+| --------------- | --------------------------------------------------------------------- |
+| `{phash}`       | The file's perceptual hash fingerprint                                |
+| `{resolution}`  | The file's resolution, e.g. “1080p” or “4K”                           |
+| `{width}`       | The file's width in pixels, e.g. “1920”                               |
+| `{height}`      | The file's height in pixels, e.g. “1080”                              |
+| `{orientation}` | “Landscape”, “Portrait” or “Square”, from the file's width and height |
+| `{video_codec}` | The file's video codec, e.g. “h264”, “hevc”                           |
+| `{audio_codec}` | The file's audio codec, e.g. “aac”                                    |
+| `{bitrate}`     | The file's bitrate, e.g. “8.42Mbps”                                   |
+| `{fps}`         | The file's framerate, e.g. “30fps” or “23.98fps”                      |
+| `{oshash}`      | The file's oshash fingerprint                                         |
 
 <!-- END GENERATED: tokens-file -->
 
@@ -453,7 +456,8 @@ source so you can tell the two cases apart.
 Two spelling quirks worth knowing: a source whose name ends in `?` cannot be written directly (the `?`
 is read as the optional marker), and neither can one containing `|`.
 
-`{resolution}`/`{video_codec}`/`{audio_codec}`/`{bitrate}`/`{fps}`/`{phash}` describe the specific file
+`{resolution}`/`{width}`/`{height}`/`{orientation}`/`{video_codec}`/`{audio_codec}`/`{bitrate}`/`{fps}`/`{phash}`
+describe the specific file
 being renamed, not the scene as a whole: a scene with both a 1080p copy and a 4K remux renders each
 file's own filename (and folder, if referenced there too) from that file's own specs, so a
 collection with multiple qualities of the same scene ends up correctly labeled. Files that still
