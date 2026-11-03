@@ -12,6 +12,7 @@ import {
   resetFormatting,
   availableEntityTypes,
   resolveActiveType,
+  LOG_LEVELS,
 } from "../../core/config-schema.js";
 import {
   collectEntityIdsAll,
@@ -34,6 +35,12 @@ const PluginApi = (window as any).PluginApi;
 const { Spinner, Nav, Button } = PluginApi.libraries.Bootstrap;
 const { faCheckCircle, faTimesCircle } = PluginApi.libraries.FontAwesomeSolid;
 const Icon = PluginApi.components.Icon;
+
+// Stash's own Logs page leaves its level names untranslated too
+const LOG_LEVEL_LABELS: Record<string, string> = {
+  debug: "Debug",
+  info: "Info",
+};
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
 const SUCCESS_INDICATOR_MS = 4000;
@@ -194,6 +201,10 @@ function SettingsPageContent() {
       </div>
     );
   }
+
+  // only registered once Stash's Settings components have loaded, checked
+  // above. Unlike BooleanSetting it renders headingID/subHeadingID only
+  const { SelectSetting } = PluginApi.components;
 
   function updateConfig(next: any) {
     setConfig(next);
@@ -382,6 +393,27 @@ function SettingsPageContent() {
               </div>
             </div>
           </div>
+        </SettingsSection>
+        <SettingsSection
+          heading={intl.formatMessage({
+            id: "librarian.settingsPage.logging.heading",
+          })}
+        >
+          <SelectSetting
+            id="librarian-log-level"
+            headingID="librarian.settingsPage.logging.logLevel.heading"
+            subHeadingID="librarian.settingsPage.logging.logLevel.subHeading"
+            value={config.logLevel}
+            onChange={(logLevel: string) =>
+              updateConfig({ ...config, logLevel })
+            }
+          >
+            {LOG_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {LOG_LEVEL_LABELS[level] || intl.formatMessage({ id: "none" })}
+              </option>
+            ))}
+          </SelectSetting>
         </SettingsSection>
       </div>
 

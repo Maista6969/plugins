@@ -8,7 +8,7 @@ import {
 import { normalizeConfig } from "../core/config-schema.js";
 import { configNeedsStashBoxes } from "../core/plan-scene.js";
 import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
-import { describePatternPair, joinBasename } from "../core/path-template.js";
+import { describePatternPair } from "../core/path-template.js";
 import { renameEntity } from "./core-runner.js";
 import { adapterFor } from "../core/entity-adapter.js";
 
@@ -129,20 +129,16 @@ export function run(args) {
       logError(text);
       return { Output: text };
     }
-    const changedPaths = outcome.files
-      .filter((f) => {
-        return !f.unchanged;
-      })
-      .map((f) => {
-        return joinBasename(f.folder, f.basename);
-      });
+    // the paths themselves go to the log at the level the user picked, so
+    // this only says what happened: Stash logs it at Debug whatever we return
+    const moved = outcome.moved || 0;
     return {
       Output:
         noun +
         " " +
         outcome.sceneId +
-        (changedPaths.length > 0
-          ? " renamed to: " + changedPaths.join(", ")
+        (moved > 0
+          ? " renamed (" + moved + (moved === 1 ? " file)" : " files)")
           : " already at target"),
     };
   } catch (e) {

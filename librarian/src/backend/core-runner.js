@@ -2,6 +2,7 @@ import { planEntity } from "../core/plan-scene.js";
 import { adapterFor } from "../core/entity-adapter.js";
 import { gqlMoveFile, gqlFindOwnerOfPath } from "./gql.js";
 import { filesNeedingMove } from "./hook-guard.js";
+import { joinBasename } from "../core/path-template.js";
 
 const ALREADY_EXISTS = /file (.+?) already exists/;
 
@@ -39,6 +40,25 @@ function explainMoveError(entityType, error) {
   );
 }
 
+function logRename(level, noun, entityId, file) {
+  if (typeof log === "undefined" || level === "off") {
+    return;
+  }
+  const line =
+    noun +
+    " " +
+    entityId +
+    ": " +
+    file.currentPath +
+    " -> " +
+    joinBasename(file.folder, file.basename);
+  if (level === "info") {
+    log.Info(line);
+  } else {
+    log.Debug(line);
+  }
+}
+
 export function renameEntity(rawEntity, config, entityType, stashBoxes) {
   const plan = planEntity(rawEntity, config, entityType, stashBoxes);
 
@@ -56,7 +76,14 @@ export function renameEntity(rawEntity, config, entityType, stashBoxes) {
         file.basename,
         file.folderId,
       );
-      if (!ok) {
+      if (ok) {
+        logRename(
+          config && config.logLevel,
+          adapterFor(entityType).noun,
+          plan.sceneId,
+          file,
+        );
+      } else {
         moveErrors.push({
           fileId: file.fileId,
           error: "moveFiles returned false",

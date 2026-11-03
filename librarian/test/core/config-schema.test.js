@@ -323,6 +323,18 @@ test("resetting formatting does not mutate DEFAULT_CONFIG", () => {
   assert.notEqual(DEFAULT_CONFIG.sanitize.maxSegmentLength, 1);
 });
 
+test("renames are logged at Debug unless the user picks otherwise", () => {
+  assert.equal(normalizeConfig({}).logLevel, "debug");
+  assert.equal(normalizeConfig({ logLevel: "info" }).logLevel, "info");
+  assert.equal(normalizeConfig({ logLevel: "off" }).logLevel, "off");
+});
+
+test("the log level is not a formatting setting, so resetting formatting keeps it", () => {
+  const config = normalizeConfig({ logLevel: "info" });
+  assert.equal(resetFormatting(config).logLevel, "info");
+  assert.equal(resetSection(config, "scenes").logLevel, "info");
+});
+
 test("the two resets are complementary: neither touches the other's settings", () => {
   const config = normalizeConfig({
     scenes: { autoRename: false, rules: [{ id: "a", enabled: true }] },

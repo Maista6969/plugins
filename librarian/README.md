@@ -82,6 +82,10 @@ I recommend making frequent backups of your database and your config where the p
 - **Per-type tasks**: each type also gets its own "Rename all …" task, so you can sweep scenes, galleries or images
   independently. See [What can be renamed](#what-can-be-renamed) for the limits Stash imposes on galleries and images.
 
+- **A log of every rename**: each file Librarian moves or renames, from a task or as you update, is written to Stash's
+  log as `scene 157: /old/path.mp4 -> /new/path.mp4`. The **Logging** setting picks the level: Debug by default, Info to
+  see it on Stash's Logs page without lowering its level, or None to leave it out.
+
 ## What can be renamed
 
 Scenes, galleries and images each get their own tab in the settings.

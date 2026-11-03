@@ -8,6 +8,9 @@ export const GLOBAL_SETTING_KEYS = ["delimiters", "sanitize"];
 
 export const ENTITY_TYPES = ["scenes", "galleries", "images"];
 
+// "off" or the Stash log level each moved file is reported at
+export const LOG_LEVELS = ["off", "debug", "info"];
+
 // Config keys that lived at the top level before per-entity-type sections existed
 const LEGACY_SCENE_KEYS = [
   "autoRename",
@@ -74,6 +77,7 @@ export const DEFAULT_CONFIG = {
     maxSegmentLength: 255,
     spaceReplacement: "",
   },
+  logLevel: "debug",
 };
 
 function isPlainObject(value) {
