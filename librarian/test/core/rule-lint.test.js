@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   findConditionProblems,
-  pathWordSplit,
+  textWordSplit,
 } from "../../src/core/rule-lint.js";
 
 const anyTag = { field: "tag", op: "not_null", value: [] };
@@ -91,12 +91,12 @@ test("an unquoted multi-word path value is reported with the words it splits int
     op: "EXCLUDES",
     value: "To Sort and Name",
   };
-  assert.deepEqual(pathWordSplit(condition), ["To", "Sort", "and", "Name"]);
+  assert.deepEqual(textWordSplit(condition), ["To", "Sort", "and", "Name"]);
 });
 
 test("a quoted phrase, a single word, and a whole-path comparison do not split", () => {
   assert.equal(
-    pathWordSplit({
+    textWordSplit({
       field: "path",
       op: "EXCLUDES",
       value: '"To Sort and Name"',
@@ -104,11 +104,11 @@ test("a quoted phrase, a single word, and a whole-path comparison do not split",
     null,
   );
   assert.equal(
-    pathWordSplit({ field: "path", op: "INCLUDES", value: "Standard" }),
+    textWordSplit({ field: "path", op: "INCLUDES", value: "Standard" }),
     null,
   );
   assert.equal(
-    pathWordSplit({
+    textWordSplit({
       field: "path",
       op: "EQUALS",
       value: "F:\\To sort and name",
@@ -116,7 +116,7 @@ test("a quoted phrase, a single word, and a whole-path comparison do not split",
     null,
   );
   assert.equal(
-    pathWordSplit({ field: "tag", op: "any_of", value: ["To Sort"] }),
+    textWordSplit({ field: "tag", op: "any_of", value: ["To Sort"] }),
     null,
   );
 });

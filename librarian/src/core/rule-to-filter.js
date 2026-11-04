@@ -68,6 +68,26 @@ function pathFilter(condition) {
   return filter;
 }
 
+const TEXT_MODIFIERS = [
+  "INCLUDES",
+  "EXCLUDES",
+  "EQUALS",
+  "NOT_EQUALS",
+  "MATCHES_REGEX",
+  "NOT_MATCHES_REGEX",
+];
+
+function textFilter(key, condition) {
+  const op = condition.op || "INCLUDES";
+  if (op === "IS_NULL" || op === "NOT_NULL") {
+    return { [key]: { value: "", modifier: op } };
+  }
+  if (TEXT_MODIFIERS.indexOf(op) === -1 || typeof condition.value !== "string")
+    return null;
+  if (!condition.value) return null;
+  return { [key]: { value: condition.value, modifier: op } };
+}
+
 function groupPresenceFilter(condition) {
   if (condition.op !== "is_null" && condition.op !== "not_null") {
     return null;
@@ -222,6 +242,10 @@ function conditionToFilter(condition) {
       return stashIdFilter(condition);
     case "path":
       return pathFilter(condition);
+    case "title":
+      return textFilter("title", condition);
+    case "video_codec":
+      return textFilter("video_codec", condition);
     default:
       return null;
   }

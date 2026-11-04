@@ -197,9 +197,9 @@ test("not_null matches a scene that has at least one of the field set, regardles
   assert.equal(matchRule(noStudio, [studioNotNull]), null);
 });
 
-test("there is no 'title' rule condition field", () => {
+test("an unknown rule condition field matches nothing", () => {
   const rule = {
-    conditions: [{ field: "title", op: "contains", value: "My" }],
+    conditions: [{ field: "nonexistent", op: "contains", value: "My" }],
     folderPattern: "",
     filenamePattern: "A",
   };

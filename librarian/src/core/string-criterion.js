@@ -103,3 +103,21 @@ export function matchesAnyPath(paths, criterion) {
     return evaluateStringCriterion(p, criterion);
   });
 }
+
+// Stash stores a blank title as NULL and SQL never compares NULL as true, so
+// an untitled item fails every comparison except NOT_MATCHES_REGEX, which Stash
+// writes as "IS NULL OR NOT regexp". The presence checks trim, as Stash's do
+export function evaluateNullableStringCriterion(value, criterion) {
+  const text = value || "";
+  const modifier = (criterion && criterion.modifier) || "INCLUDES";
+  if (modifier === "IS_NULL") {
+    return text.trim() === "";
+  }
+  if (modifier === "NOT_NULL") {
+    return text.trim() !== "";
+  }
+  if (text === "") {
+    return modifier === "NOT_MATCHES_REGEX" && !!criterion.value;
+  }
+  return evaluateStringCriterion(text, criterion);
+}

@@ -54,12 +54,12 @@ export function findConditionProblems(conditionLogic, conditions) {
 }
 
 // "contains" and "doesn't contain" match each word of an unquoted value on its
-// own, the way Stash's own path filter does. A library name like "To sort and
+// own, the way Stash's own string filters do. A library name like "To sort and
 // name" then excludes every path holding "and", which is rarely what was meant
-export function pathWordSplit(condition) {
+export function textWordSplit(condition) {
   if (
     !condition ||
-    condition.field !== "path" ||
+    (condition.field !== "path" && condition.field !== "title") ||
     (condition.op !== "INCLUDES" && condition.op !== "EXCLUDES")
   ) {
     return null;

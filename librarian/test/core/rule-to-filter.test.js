@@ -216,7 +216,9 @@ test("the 'contains' op has no ID-based filter equivalent and is not translatabl
 test("an unknown condition field is not translatable", () => {
   assert.equal(
     ruleToSceneFilter(
-      rule({ conditions: [{ field: "title", op: "any_of", value: ["x"] }] }),
+      rule({
+        conditions: [{ field: "nonexistent", op: "any_of", value: ["x"] }],
+      }),
     ),
     null,
   );

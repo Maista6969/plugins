@@ -1,4 +1,7 @@
-import { matchesAnyPath } from "./string-criterion.js";
+import {
+  matchesAnyPath,
+  evaluateNullableStringCriterion,
+} from "./string-criterion.js";
 import { evaluateCustomField, isPresenceOp } from "./custom-fields.js";
 import {
   isPerformerOp,
@@ -142,6 +145,21 @@ export function evaluateCondition(sceneView, condition) {
         value: condition.value,
       });
     }
+    case "title":
+      return evaluateNullableStringCriterion(sceneView.title, {
+        modifier: condition.op,
+        value: condition.value,
+      });
+    // Stash joins every video file, so any one of a merged scene's files will do
+    case "video_codec": {
+      const codecs = (sceneView.files || []).map((f) => {
+        return f.video_codec || "";
+      });
+      return matchesAnyPath(codecs, {
+        modifier: condition.op,
+        value: condition.value,
+      });
+    }
     default:
       return false;
   }
@@ -248,6 +266,17 @@ const PATH_MODIFIER_LABEL = {
   MATCHES_REGEX: "matches regex",
   NOT_MATCHES_REGEX: "doesn't match regex",
 };
+
+function describeTextCondition(label, condition) {
+  if (condition.op === "IS_NULL") {
+    return label + " is not set";
+  }
+  if (condition.op === "NOT_NULL") {
+    return label + " is set";
+  }
+  const modifier = PATH_MODIFIER_LABEL[condition.op] || condition.op;
+  return label + " " + modifier + " '" + condition.value + "'";
+}
 
 function overlappingNames(sceneIds, sceneNames, conditionValue) {
   const values = Array.isArray(conditionValue)
@@ -424,10 +453,12 @@ export function describeCondition(sceneView, condition, stashBoxes) {
     }
     case "stash_id":
       return describeStashIdCondition(sceneView, condition, stashBoxes);
-    case "path": {
-      const label = PATH_MODIFIER_LABEL[condition.op] || condition.op;
-      return "path " + label + " '" + condition.value + "'";
-    }
+    case "path":
+      return describeTextCondition("path", condition);
+    case "title":
+      return describeTextCondition("title", condition);
+    case "video_codec":
+      return describeTextCondition("video codec", condition);
     default:
       return condition.field;
   }

@@ -116,6 +116,10 @@ the way Stash itself does: a partial date like `2024` compares as if it were `20
 `2024-01-01` but not _on or after_ `2024-06-01`. **StashID** (scenes only) _has one from_ or _has none from_ the
 stash-box sources you pick, by the names they have under Settings > Metadata Providers; pick none to mean any source at
 all. Matched scenes can then go one way and unmatched ones another, or _has none from_ can sit in your exclusions.
+**Title** compares the way Stash's own title filter does, including _is set_ and _is not set_. An untitled item has no
+title to compare, so it never matches _doesn't contain_ or _is not_: add an _is not set_ alongside in an ANY rule if you want
+untitled items too. **Video codec** (scenes only) matches when any of a scene's files has that codec, as Stash names it:
+`h264`, `hevc`, `av1`, `vp9` and so on.
 
 Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
 their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.

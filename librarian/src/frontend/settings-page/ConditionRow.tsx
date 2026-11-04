@@ -28,7 +28,9 @@ const FIELD_OPTIONS = [
   },
   { value: "date", label: "librarian.conditionRow.field.date" },
   { value: "stash_id", label: "librarian.conditionRow.field.stashId" },
+  { value: "title", label: "title" },
   { value: "path", label: "librarian.conditionRow.field.path" },
+  { value: "video_codec", label: "video_codec" },
   {
     value: "custom_field",
     label: "librarian.conditionRow.field.customField",
@@ -40,13 +42,14 @@ export function fieldLabel(intl: IntlShape, field: string): string {
   return option ? intl.formatMessage({ id: option.label }) : field;
 }
 
-// Only scenes have groups and StashIDs
+// Only scenes have groups, StashIDs and a video codec filter
 function fieldOptionsFor(entityType?: string) {
   const adapter = adapterFor(entityType);
   return FIELD_OPTIONS.filter(
     (f) =>
       (f.value !== "group" || adapter.hasGroups) &&
-      (f.value !== "stash_id" || adapter.tokens.indexOf("stash_id") !== -1),
+      ((f.value !== "stash_id" && f.value !== "video_codec") ||
+        adapter.tokens.indexOf("stash_id") !== -1),
   );
 }
 
@@ -247,6 +250,86 @@ const PATH_MODIFIERS = [
   },
 ];
 
+const TITLE_MODIFIERS = [
+  {
+    value: "INCLUDES",
+    label: "librarian.conditionRow.pathModifier.includes.label",
+    title: "librarian.conditionRow.titleModifier.includes.title",
+  },
+  {
+    value: "EXCLUDES",
+    label: "librarian.conditionRow.pathModifier.excludes.label",
+    title: "librarian.conditionRow.titleModifier.excludes.title",
+  },
+  {
+    value: "EQUALS",
+    label: "librarian.conditionRow.pathModifier.equals.label",
+    title: "librarian.conditionRow.titleModifier.equals.title",
+  },
+  {
+    value: "NOT_EQUALS",
+    label: "librarian.conditionRow.pathModifier.notEquals.label",
+    title: "librarian.conditionRow.titleModifier.notEquals.title",
+  },
+  PATH_MODIFIERS[4],
+  PATH_MODIFIERS[5],
+  {
+    value: "NOT_NULL",
+    label: "librarian.conditionRow.dateModifier.notNull.label",
+    title: "librarian.conditionRow.titleModifier.notNull.title",
+  },
+  {
+    value: "IS_NULL",
+    label: "librarian.conditionRow.dateModifier.isNull.label",
+    title: "librarian.conditionRow.titleModifier.isNull.title",
+  },
+];
+
+// Stash fills the codec in on every scan, so asking whether it is set at all
+// would only ever find the files that failed to probe
+const VIDEO_CODEC_MODIFIERS = [
+  {
+    value: "INCLUDES",
+    label: "librarian.conditionRow.pathModifier.includes.label",
+    title: "librarian.conditionRow.videoCodecModifier.includes.title",
+  },
+  {
+    value: "EXCLUDES",
+    label: "librarian.conditionRow.pathModifier.excludes.label",
+    title: "librarian.conditionRow.videoCodecModifier.excludes.title",
+  },
+  {
+    value: "EQUALS",
+    label: "librarian.conditionRow.pathModifier.equals.label",
+    title: "librarian.conditionRow.videoCodecModifier.equals.title",
+  },
+  {
+    value: "NOT_EQUALS",
+    label: "librarian.conditionRow.pathModifier.notEquals.label",
+    title: "librarian.conditionRow.videoCodecModifier.notEquals.title",
+  },
+  PATH_MODIFIERS[4],
+  PATH_MODIFIERS[5],
+];
+
+const TEXT_FIELDS: Record<
+  string,
+  { modifiers: typeof PATH_MODIFIERS; placeholder: string }
+> = {
+  path: {
+    modifiers: PATH_MODIFIERS,
+    placeholder: "librarian.conditionRow.path.placeholder",
+  },
+  title: {
+    modifiers: TITLE_MODIFIERS,
+    placeholder: "librarian.conditionRow.title.placeholder",
+  },
+  video_codec: {
+    modifiers: VIDEO_CODEC_MODIFIERS,
+    placeholder: "librarian.conditionRow.videoCodec.placeholder",
+  },
+};
+
 // Custom fields have no schema so we have to be SQLite for this one
 const CUSTOM_FIELD_MODIFIERS = [
   {
@@ -382,7 +465,7 @@ function valueShape(field: string, op: string): string {
     op === "rating"
   )
     return "range";
-  if (field === "path" || field === "custom_field" || op === "custom_field")
+  if (TEXT_FIELDS[field] || field === "custom_field" || op === "custom_field")
     return "text";
   return "ids";
 }
@@ -442,7 +525,7 @@ function nextOpForFieldChange(
   if (newField === "custom_field") {
     return "EQUALS";
   }
-  if (newField === "path") {
+  if (TEXT_FIELDS[newField]) {
     return "INCLUDES";
   }
   if (newField === "date") {
@@ -706,51 +789,52 @@ function StashIdFieldEditor({
   );
 }
 
-function PathValueEditor({
+function TextValueEditor({
+  field,
   op,
   value,
   onChangeOp,
   onChangeValue,
+  noun,
 }: {
+  field: string;
   op: string;
   value: string;
   onChangeOp: (op: string) => void;
   onChangeValue: (value: string) => void;
+  noun: string;
 }) {
   const intl = useIntl();
-  const currentTitleId = PATH_MODIFIERS.find((m) => m.value === op)?.title;
+  const { modifiers, placeholder } = TEXT_FIELDS[field];
+  const currentTitleId = modifiers.find((m) => m.value === op)?.title;
   return (
     <>
       <Form.Control
         as="select"
         className="librarian-inline-select input-control"
-        title={
-          currentTitleId
-            ? intl.formatMessage({ id: currentTitleId })
-            : undefined
-        }
+        title={withNoun(intl, currentTitleId, noun) || undefined}
         value={op}
         onChange={(e: any) => onChangeOp(e.target.value)}
       >
-        {PATH_MODIFIERS.map((m) => (
+        {modifiers.map((m) => (
           <option
             key={m.value}
             value={m.value}
-            title={m.title ? intl.formatMessage({ id: m.title }) : undefined}
+            title={withNoun(intl, m.title, noun) || undefined}
           >
             {intl.formatMessage({ id: m.label })}
           </option>
         ))}
       </Form.Control>
-      <Form.Control
-        className="input-control"
-        type="text"
-        value={value || ""}
-        placeholder={intl.formatMessage({
-          id: "librarian.conditionRow.path.placeholder",
-        })}
-        onChange={(e: any) => onChangeValue(e.target.value)}
-      />
+      {op !== "IS_NULL" && op !== "NOT_NULL" && (
+        <Form.Control
+          className="input-control"
+          type="text"
+          value={value || ""}
+          placeholder={intl.formatMessage({ id: placeholder })}
+          onChange={(e: any) => onChangeValue(e.target.value)}
+        />
+      )}
     </>
   );
 }
@@ -975,7 +1059,7 @@ export function ConditionRow({
     condition.field === "performer_count" || condition.field === "tag_count";
   const isDate = condition.field === "date";
   const isStashId = condition.field === "stash_id";
-  const isPath = condition.field === "path";
+  const isText = !!TEXT_FIELDS[condition.field];
   const isCustomField =
     condition.field === "custom_field" ||
     performerOp === "custom_field" ||
@@ -992,7 +1076,7 @@ export function ConditionRow({
     !isCount &&
     !isDate &&
     !isStashId &&
-    !isPath &&
+    !isText &&
     !isCustomField &&
     Array.isArray(condition.value)
       ? (condition.value as string[])
@@ -1068,8 +1152,10 @@ export function ConditionRow({
           onChange={onChange}
           noun={noun}
         />
-      ) : isPath ? (
-        <PathValueEditor
+      ) : isText ? (
+        <TextValueEditor
+          field={condition.field}
+          noun={noun}
           op={condition.op}
           value={condition.value as string}
           onChangeOp={(nextOp) => onChange({ ...condition, op: nextOp })}

@@ -185,8 +185,9 @@ function migrateBlankPatterns(config) {
   return result;
 }
 
-// Only Scene has the groups and stash_ids fields
-const SCENE_ONLY_CONDITION_FIELDS = ["group", "stash_id"];
+// Only Scene has the groups and stash_ids fields, and is the only one with a
+// video_codec filter
+const SCENE_ONLY_CONDITION_FIELDS = ["group", "stash_id", "video_codec"];
 
 function keepableConditions(conditions) {
   if (!Array.isArray(conditions)) {

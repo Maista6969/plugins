@@ -2,7 +2,7 @@ import React from "react";
 import { useIntl } from "react-intl";
 import { ConditionRow, Condition, fieldLabel } from "./ConditionRow.js";
 import { countableNoun } from "../shared/eligible-entities.js";
-import { findConditionProblems, pathWordSplit } from "../../core/rule-lint.js";
+import { findConditionProblems, textWordSplit } from "../../core/rule-lint.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form, Button } = PluginApi.libraries.Bootstrap;
@@ -58,7 +58,7 @@ export function ConditionsEditor({
       </div>
 
       {conditions.map((condition, index) => {
-        const splitTerms = pathWordSplit(condition);
+        const splitTerms = textWordSplit(condition);
         return (
           <React.Fragment key={index}>
             <ConditionRow
@@ -78,7 +78,12 @@ export function ConditionsEditor({
             {splitTerms && (
               <p className="librarian-token-hint text-warning">
                 {intl.formatMessage(
-                  { id: "librarian.conditionRow.pathWordSplit" },
+                  {
+                    id:
+                      condition.field === "title"
+                        ? "librarian.conditionRow.titleWordSplit"
+                        : "librarian.conditionRow.pathWordSplit",
+                  },
                   {
                     count: splitTerms.length,
                     terms: splitTerms.map((t) => "“" + t + "”").join(", "),
