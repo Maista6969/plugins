@@ -105,6 +105,8 @@ Both skips are reported per item in the preview and in the logs, with the reason
 
 Rules let you define new folder and filename patterns for a subset of your collection: they must have at least one condition
 that defines a subset, such as having a particular set of tags or performers, belonging to a set of studios, or having a certain rating.
+**Tag** also has _is none of_, which sits alongside an _is any of_ in the same rule: `Tag` is any of `4K` and `Tag` is
+none of `VR` matches the 4K scenes that are not VR, and an item with no tags at all counts as having none of them.
 **Studio** also has _is a favourite_, _is not a favourite_, _is rated_ and _has no rating_, asking about the item's own
 studio the same way the **Performer** condition already can about a performer.
 **Performer count** and **Tag count** ask how many performers or tags an item has, each side of the range optional, so

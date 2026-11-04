@@ -182,6 +182,8 @@
   "librarian.conditionRow.modifier.notNull.title": "Matches if the '{noun}' has at least one set, regardless of which",
   "librarian.conditionRow.modifier.allOf.label": "is all of",
   "librarian.conditionRow.modifier.allOf.title": "Matches only if the '{noun}' has every one of the selected entries",
+  "librarian.conditionRow.modifier.noneOf.label": "is none of",
+  "librarian.conditionRow.modifier.noneOf.title": "Matches only if the '{noun}' has none of the selected entries",
   "librarian.conditionRow.modifier.anyOfOrDescendant.label": "is any of (including subsidiaries)",
   "librarian.conditionRow.modifier.anyOfOrDescendant.title": "Matches if the '{noun}''s' studio is one of the selected entries, or a subsidiary of one",
   "librarian.conditionRow.modifier.studioFavorite.label": "is a favourite",

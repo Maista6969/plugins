@@ -182,6 +182,8 @@
   "librarian.conditionRow.modifier.notNull.title": "如果'{noun}'至少设置了一个，无论是哪一个，则匹配",
   "librarian.conditionRow.modifier.allOf.label": "全部都是",
   "librarian.conditionRow.modifier.allOf.title": "只有当'{noun}'拥有全部所选条目时才匹配",
+  "librarian.conditionRow.modifier.noneOf.label": "都不是",
+  "librarian.conditionRow.modifier.noneOf.title": "只有当'{noun}'没有任何所选条目时才匹配",
   "librarian.conditionRow.modifier.anyOfOrDescendant.label": "是其中之一（含下属公司）",
   "librarian.conditionRow.modifier.anyOfOrDescendant.title": "如果'{noun}'的工作室是所选条目之一，或是其下属公司，则匹配",
   "librarian.conditionRow.modifier.studioFavorite.label": "是收藏",

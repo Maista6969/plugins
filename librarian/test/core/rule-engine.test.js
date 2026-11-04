@@ -6,7 +6,10 @@ import {
   evaluateConditions,
   matchingConditions,
   describeCondition,
+  evaluateCondition,
 } from "../../src/core/rule-engine.js";
+import { ruleToSceneFilter } from "../../src/core/rule-to-filter.js";
+import { normalizeScene } from "../../src/core/normalize-scene.js";
 
 function sceneView(overrides) {
   return Object.assign(
@@ -488,4 +491,49 @@ test("describeCondition: path describes the modifier in plain words, not the raw
 
 test("getMatchedEntityIds returns [] for a null rule (default-pattern case)", () => {
   assert.deepEqual(getMatchedEntityIds(sceneView(), null, "performer"), []);
+});
+
+test("tag is none of composes with is any of in the same rule", () => {
+  const scene = (tagIds) => {
+    return normalizeScene({
+      id: "s",
+      tags: tagIds.map((id) => {
+        return { id: id, name: "t" + id };
+      }),
+    });
+  };
+  const rule = {
+    id: "r",
+    conditionLogic: "AND",
+    conditions: [
+      { field: "tag", op: "any_of", value: ["4k"] },
+      { field: "tag", op: "none_of", value: ["vr"] },
+    ],
+  };
+  assert.equal(matchRule(scene(["4k"]), [rule]).id, "r");
+  assert.equal(matchRule(scene(["4k", "vr"]), [rule]), null);
+  assert.equal(matchRule(scene(["vr"]), [rule]), null);
+  assert.deepEqual(getMatchedEntityIds(scene(["4k", "x"]), rule, "tag"), [
+    "4k",
+  ]);
+  assert.deepEqual(ruleToSceneFilter(rule), {
+    tags: { value: ["4k"], modifier: "INCLUDES", depth: 0 },
+    AND: { tags: { value: ["vr"], modifier: "EXCLUDES", depth: 0 } },
+  });
+});
+
+test("tag is none of matches an item with no tags, and nothing when left blank", () => {
+  const untagged = normalizeScene({ id: "s" });
+  assert.equal(
+    evaluateCondition(untagged, { field: "tag", op: "none_of", value: ["a"] }),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(untagged, { field: "tag", op: "none_of", value: [] }),
+    false,
+  );
+  assert.equal(
+    describeCondition(untagged, { field: "tag", op: "none_of", value: ["a"] }),
+    "tag is none of the selected",
+  );
 });

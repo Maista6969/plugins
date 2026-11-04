@@ -182,6 +182,8 @@
   "librarian.conditionRow.modifier.notNull.title": "Trifft zu, wenn '{noun}' mindestens einen festgelegt hat, unabhängig davon, welchen",
   "librarian.conditionRow.modifier.allOf.label": "sind alle von",
   "librarian.conditionRow.modifier.allOf.title": "Trifft nur zu, wenn '{noun}' jeden der ausgewählten Einträge hat",
+  "librarian.conditionRow.modifier.noneOf.label": "ist keines von",
+  "librarian.conditionRow.modifier.noneOf.title": "Trifft nur zu, wenn '{noun}' keinen der ausgewählten Einträge hat",
   "librarian.conditionRow.modifier.anyOfOrDescendant.label": "ist eines von (einschließlich Tochtergesellschaften)",
   "librarian.conditionRow.modifier.anyOfOrDescendant.title": "Trifft zu, wenn das Studio von '{noun}' einer der ausgewählten Einträge ist, oder eine Tochtergesellschaft davon",
   "librarian.conditionRow.modifier.studioFavorite.label": "ist ein Favorit",

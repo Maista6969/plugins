@@ -182,6 +182,8 @@
   "librarian.conditionRow.modifier.notNull.title": "Correspond si le/la '{noun}' en a au moins un de défini, peu importe lequel",
   "librarian.conditionRow.modifier.allOf.label": "est tous de",
   "librarian.conditionRow.modifier.allOf.title": "Correspond seulement si le/la '{noun}' a toutes les entrées sélectionnées",
+  "librarian.conditionRow.modifier.noneOf.label": "n'est aucun de",
+  "librarian.conditionRow.modifier.noneOf.title": "Correspond seulement si le/la '{noun}' n'a aucune des entrées sélectionnées",
   "librarian.conditionRow.modifier.anyOfOrDescendant.label": "est l'un de (filiales incluses)",
   "librarian.conditionRow.modifier.anyOfOrDescendant.title": "Correspond si le studio du/de la '{noun}' est l'une des entrées sélectionnées, ou une filiale de l'une d'elles",
   "librarian.conditionRow.modifier.studioFavorite.label": "est un favori",

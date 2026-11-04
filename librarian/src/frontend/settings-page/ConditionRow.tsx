@@ -189,10 +189,22 @@ const GROUP_MODIFIERS = [
   },
 ];
 
+const TAG_MODIFIERS = [
+  ANY_OR_ALL_MODIFIERS[0],
+  ANY_OR_ALL_MODIFIERS[1],
+  {
+    value: "none_of",
+    label: "librarian.conditionRow.modifier.noneOf.label",
+    title: "librarian.conditionRow.modifier.noneOf.title",
+  },
+  ANY_OR_ALL_MODIFIERS[2],
+  ANY_OR_ALL_MODIFIERS[3],
+];
+
 const LIST_MODIFIERS_BY_FIELD: Record<string, typeof ANY_ONLY_MODIFIERS> = {
   studio: STUDIO_MODIFIERS,
   performer: PERFORMER_MODIFIERS,
-  tag: ANY_OR_ALL_MODIFIERS,
+  tag: TAG_MODIFIERS,
   group: GROUP_MODIFIERS,
 };
 

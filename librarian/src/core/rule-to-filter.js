@@ -14,6 +14,7 @@ function idListModifier(op) {
   if (op === "all_of") return "INCLUDES_ALL";
   if (op === "any_of" || op === "equals" || op === "any_of_or_descendant")
     return "INCLUDES";
+  if (op === "none_of") return "EXCLUDES";
   if (op === "is_null") return "IS_NULL";
   if (op === "not_null") return "NOT_NULL";
   return null;

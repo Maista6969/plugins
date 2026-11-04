@@ -58,6 +58,16 @@ function applyListOp(list, op, value) {
       })
     );
   }
+  // Empty matches nothing, like any_of, so a row left blank cannot claim
+  // every item
+  if (op === "none_of") {
+    return (
+      values.length > 0 &&
+      !list.some((item) => {
+        return values.indexOf(item) !== -1;
+      })
+    );
+  }
   if (op === "contains") {
     return list.some((item) => {
       return item.indexOf(value) !== -1;
@@ -259,6 +269,10 @@ function describeListField(label, sceneIds, sceneNames, condition) {
   }
   if (condition.op === "not_null") {
     return label + " is set";
+  }
+  // the item holds none of them by definition, so has no names to show
+  if (condition.op === "none_of") {
+    return label + " is none of the selected";
   }
   const names = overlappingNames(sceneIds, sceneNames, condition.value);
   const suffix =

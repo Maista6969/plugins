@@ -182,6 +182,8 @@
   "librarian.conditionRow.modifier.notNull.title": "Coincide si el/la '{noun}' tiene al menos uno definido, sin importar cuál",
   "librarian.conditionRow.modifier.allOf.label": "son todos de",
   "librarian.conditionRow.modifier.allOf.title": "Coincide solo si el/la '{noun}' tiene todas las entradas seleccionadas",
+  "librarian.conditionRow.modifier.noneOf.label": "no es ninguno de",
+  "librarian.conditionRow.modifier.noneOf.title": "Coincide solo si el/la '{noun}' no tiene ninguna de las entradas seleccionadas",
   "librarian.conditionRow.modifier.anyOfOrDescendant.label": "es cualquiera de (incluidas filiales)",
   "librarian.conditionRow.modifier.anyOfOrDescendant.title": "Coincide si el estudio de '{noun}' es una de las entradas seleccionadas, o una filial de una de ellas",
   "librarian.conditionRow.modifier.studioFavorite.label": "es favorito",
