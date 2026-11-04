@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { useApolloClient } from "@apollo/client";
 import { useIntl } from "react-intl";
 import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
-import { runRenameTask } from "../shared/stash-api.js";
-import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
+import { useRenameJob } from "../shared/rename-run.js";
+import { RunResultStatus } from "../shared/RunResultStatus.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
 import {
   eligibleEntityNoun,
@@ -27,49 +26,18 @@ export function ApplyRuleButton({
 }: ApplyRuleButtonProps) {
   const type = entityType || "scenes";
   const intl = useIntl();
-  const client = useApolloClient();
   const [confirming, setConfirming] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [job, setJob] = useState<JobInfo | null>(null);
+  const { jobId, job, result, running, start } = useRenameJob();
 
   const sceneFilter = ruleToPreviewFilter(rule, config[type]);
   const notReady = sceneFilter === null;
   const disabledRule = rule.enabled === false;
-  const running = !!jobId && (!job || !isTerminalStatus(job.status));
 
-  async function handleConfirmedApply() {
+  function handleConfirmedApply() {
     setConfirming(false);
-    setJob(null);
-    const id = await runRenameTask(client, {
-      entity: type,
-      entity_filter: sceneFilter,
-    });
-    setJobId(id);
-    pollJob(client, id, setJob);
+    start({ entity: type, entity_filter: sceneFilter });
   }
 
-  function statusText(): string | null {
-    if (!jobId) {
-      return null;
-    }
-    if (!job) {
-      return intl.formatMessage({ id: "librarian.common.starting" });
-    }
-    if (!isTerminalStatus(job.status)) {
-      const pct =
-        job.progress != null ? Math.round(job.progress * 100) + "%" : "...";
-      return intl.formatMessage(
-        { id: "librarian.applyRuleButton.applying" },
-        { progress: pct },
-      );
-    }
-    return intl.formatMessage(
-      { id: "librarian.renameButton.jobStatus.terminal" },
-      { status: job.status.toLowerCase() },
-    );
-  }
-
-  const status = statusText();
   const hint = disabledRule
     ? intl.formatMessage({ id: "librarian.applyRuleButton.disabledHint" })
     : notReady
@@ -103,8 +71,14 @@ export function ApplyRuleButton({
           </p>
         </ConfirmModal>
       )}
-      {status && (
-        <span className="librarian-token-hint text-muted">{status}</span>
+      {jobId && (
+        <RunResultStatus
+          job={job}
+          result={result}
+          runningMessageId="librarian.applyRuleButton.applying"
+          className="librarian-token-hint text-muted"
+          entityType={type}
+        />
       )}
       <Button
         variant="primary"

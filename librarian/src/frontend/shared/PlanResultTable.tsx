@@ -7,6 +7,10 @@ import { useStashBoxes } from "./StashBoxesContext.js";
 import { describePatternPair, joinBasename } from "../../core/path-template.js";
 import { countableNoun } from "./eligible-entities.js";
 import { entityUI } from "./entity-ui.js";
+import { findPathClashes, clashKey } from "../../core/path-clashes.js";
+import { failureStillApplies } from "../../core/run-results.js";
+import { RunFailure } from "./stash-api.js";
+import { describeFailure } from "./RunResultStatus.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Table } = PluginApi.libraries.Bootstrap;
@@ -18,6 +22,8 @@ export interface PlanRow {
 
 interface PlanResultTableProps {
   rows: PlanRow[];
+  // what the last real run could not rename, by entity id
+  failures?: Record<string, RunFailure>;
   onMoveOne?: (sceneId: string) => void;
   pendingSceneIds?: Set<string>;
   onEntityOrganized?: (sceneId: string, patchedScene: any) => void;
@@ -194,8 +200,40 @@ function entityLink(scene: any, entityType?: string) {
   );
 }
 
+// only while the plan still moves a file to the path that was taken: once the
+// rules send it elsewhere, or it is in place, the failure is history
+function knownFailure(
+  failures: Record<string, RunFailure> | undefined,
+  id: string,
+  plan: any,
+): RunFailure | null {
+  const failure = failures ? failures[id] : null;
+  if (!failure) {
+    return null;
+  }
+  const targets = plan.files
+    .filter((f: any) => !f.unchanged)
+    .map((f: any) => joinBasename(f.folder, f.basename));
+  return targets.length > 0 && failureStillApplies(failure, targets)
+    ? failure
+    : null;
+}
+
+function inlineEntityLink(scene: any, entityType?: string) {
+  return (
+    <a
+      href={entityUI(entityType).route + scene.id}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {entityDisplayName(scene, entityType)}
+    </a>
+  );
+}
+
 export function PlanResultTable({
   rows,
+  failures,
   onMoveOne,
   pendingSceneIds,
   onEntityOrganized,
@@ -205,6 +243,7 @@ export function PlanResultTable({
   const intl = useIntl();
   // empty outside the settings page, where the message keeps the endpoint URL
   const { stashBoxes } = useStashBoxes();
+  const clashes = findPathClashes(rows);
 
   return (
     <div className="table-list librarian-plan-table">
@@ -278,69 +317,112 @@ export function PlanResultTable({
                     </td>
                   </tr>
                 ) : (
-                  plan.files.map((f: any) => (
-                    <tr key={f.fileId}>
-                      <td className="cover_image-data">
-                        {coverImageLink(scene, entityType)}
-                      </td>
-                      <td>
-                        {entityLink(scene, entityType)}
-                        {(plan.warnings || []).length > 0 && (
-                          <ul className="librarian-plan-warnings text-warning">
-                            {plan.warnings.map((w: string, i: number) => (
-                              <li key={i}>{w}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </td>
-                      <td className="librarian-path-diff">
-                        {f.unchanged ? (
-                          <div className="correct-path">{f.currentPath}</div>
-                        ) : (
-                          (() => {
-                            const newPath = joinBasename(f.folder, f.basename);
-                            const shorterLength = Math.min(
-                              f.currentPath.length,
-                              newPath.length,
-                            );
-                            return (
-                              <>
-                                <div className="old-path text-muted">
-                                  {f.currentPath}
-                                </div>
-                                <div
-                                  className="librarian-path-diff-arrow text-muted"
-                                  style={{
-                                    marginLeft: shorterLength / 2 + "ch",
-                                  }}
-                                >
-                                  ↓
-                                </div>
-                                <div className="new-path">{newPath}</div>
-                              </>
-                            );
-                          })()
-                        )}
-                      </td>
-                      <td>
-                        <StatusBadge
-                          status={
-                            pending
-                              ? "pending"
-                              : f.unchanged
-                                ? "unchanged"
-                                : "will-move"
-                          }
-                          onClick={
-                            onMoveOne && !pending
-                              ? () => onMoveOne(scene.id)
-                              : undefined
-                          }
-                          title={ruleTitle}
-                        />
-                      </td>
-                    </tr>
-                  ))
+                  plan.files.map((f: any, fileIndex: number) => {
+                    const known = knownFailure(failures, scene.id, plan);
+                    // a failure is about the whole entity, so said once
+                    const failure = fileIndex === 0 ? known : null;
+                    // the failure already says what the warning predicted
+                    const fileClashes = known
+                      ? []
+                      : clashes.get(clashKey(scene.id, f.fileId)) || [];
+                    return (
+                      <tr key={f.fileId}>
+                        <td className="cover_image-data">
+                          {coverImageLink(scene, entityType)}
+                        </td>
+                        <td>
+                          {entityLink(scene, entityType)}
+                          {(plan.warnings || []).length > 0 && (
+                            <ul className="librarian-plan-warnings text-warning">
+                              {plan.warnings.map((w: string, i: number) => (
+                                <li key={i}>{w}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                        <td className="librarian-path-diff">
+                          {f.unchanged ? (
+                            <div className="correct-path">{f.currentPath}</div>
+                          ) : (
+                            (() => {
+                              const newPath = joinBasename(
+                                f.folder,
+                                f.basename,
+                              );
+                              const shorterLength = Math.min(
+                                f.currentPath.length,
+                                newPath.length,
+                              );
+                              return (
+                                <>
+                                  <div className="old-path text-muted">
+                                    {f.currentPath}
+                                  </div>
+                                  <div
+                                    className="librarian-path-diff-arrow text-muted"
+                                    style={{
+                                      marginLeft: shorterLength / 2 + "ch",
+                                    }}
+                                  >
+                                    ↓
+                                  </div>
+                                  <div className="new-path">{newPath}</div>
+                                </>
+                              );
+                            })()
+                          )}
+                          {fileClashes.length > 0 && (
+                            <ul className="librarian-plan-warnings text-warning">
+                              {fileClashes.map((c: any) => (
+                                <li key={c.scene.id}>
+                                  {intl.formatMessage(
+                                    {
+                                      id: c.alreadyThere
+                                        ? "librarian.planResultTable.clash.alreadyThere"
+                                        : "librarian.planResultTable.clash.sameTarget",
+                                    },
+                                    {
+                                      name: inlineEntityLink(
+                                        c.scene,
+                                        entityType,
+                                      ),
+                                    },
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {failure && (
+                            <div className="text-danger">
+                              {describeFailure(
+                                intl,
+                                failure,
+                                stashBoxes,
+                                entityType,
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <StatusBadge
+                            status={
+                              pending
+                                ? "pending"
+                                : f.unchanged
+                                  ? "unchanged"
+                                  : "will-move"
+                            }
+                            onClick={
+                              onMoveOne && !pending
+                                ? () => onMoveOne(scene.id)
+                                : undefined
+                            }
+                            title={ruleTitle}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </React.Fragment>
             );

@@ -6,10 +6,12 @@ import { joinBasename } from "../core/path-template.js";
 
 const ALREADY_EXISTS = /file (.+?) already exists/;
 
+// Returns the message to log, plus what clashed so the UI can say it in the
+// viewer's language and link to the owner
 function explainMoveError(entityType, error) {
   const match = ALREADY_EXISTS.exec(error);
   if (!match) {
-    return error;
+    return { message: error, collision: null };
   }
   const path = match[1];
 
@@ -22,22 +24,30 @@ function explainMoveError(entityType, error) {
 
   const noun = adapterFor(entityType).noun;
   if (!owner) {
-    return (
+    return {
+      message:
+        "cannot be renamed to " +
+        path +
+        ": a file is already there. Nothing was overwritten",
+      collision: { path: path, ownerId: null, ownerTitle: "" },
+    };
+  }
+  return {
+    message:
       "cannot be renamed to " +
       path +
-      ": a file is already there. Nothing was overwritten"
-    );
-  }
-  return (
-    "cannot be renamed to " +
-    path +
-    ", which already belongs to " +
-    noun +
-    " " +
-    owner.id +
-    (owner.title ? ' "' + owner.title + '"' : "") +
-    ". They may be duplicates of each other. Nothing was overwritten"
-  );
+      ", which already belongs to " +
+      noun +
+      " " +
+      owner.id +
+      (owner.title ? ' "' + owner.title + '"' : "") +
+      ". They may be duplicates of each other. Nothing was overwritten",
+    collision: {
+      path: path,
+      ownerId: String(owner.id),
+      ownerTitle: owner.title || "",
+    },
+  };
 }
 
 function logRename(level, noun, entityId, file) {
@@ -90,9 +100,11 @@ export function renameEntity(rawEntity, config, entityType, stashBoxes) {
         });
       }
     } catch (e) {
+      const explained = explainMoveError(entityType, String(e));
       moveErrors.push({
         fileId: file.fileId,
-        error: explainMoveError(entityType, String(e)),
+        error: explained.message,
+        collision: explained.collision,
       });
     }
   });

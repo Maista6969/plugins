@@ -86,6 +86,14 @@ I recommend making frequent backups of your database and your config where the p
   log as `scene 157: /old/path.mp4 -> /new/path.mp4`. The **Logging** setting picks the level: Debug by default, Info to
   see it on Stash's Logs page without lowering its level, or None to leave it out.
 
+- **Name clashes are reported, never overwritten**: when a file would land on a path another file already has, Stash
+  refuses the move and both files stay where they are. The preview warns about any two rows planned to the same path,
+  and when a rename started from Librarian finishes it says how many were renamed, with a **Details** link listing any
+  that could not be and what is already at their path. Anything that could not be renamed, whether by a button here,
+  a "Rename all …" task on Stash's Tasks page or automatic renaming, is also counted below the Logging settings
+  for the tab you are on, with the list behind **Details**, until it renames, turns out to be in place already, or you clear it. All of this is kept under
+  `librarian-results` in Stash's `config.yml`, apart from your settings
+
 ## What can be renamed
 
 Scenes, galleries and images each get their own tab in the settings.

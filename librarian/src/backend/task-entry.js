@@ -8,6 +8,8 @@ import {
   gqlCountEntities,
   gqlFindDeadEntityIds,
 } from "./gql.js";
+import { runFromSummary } from "../core/run-results.js";
+import { displayName, outcomeError, recordOutcomes } from "./outcomes.js";
 import { normalizeConfig } from "../core/config-schema.js";
 import { configNeedsStashBoxes } from "../core/plan-scene.js";
 import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
@@ -16,7 +18,6 @@ import {
   pruneDeadEntitiesAll,
 } from "../core/prune-dead-entities.js";
 import { ruleToPreviewFilter } from "../core/rule-to-filter.js";
-import { describePatternPair } from "../core/path-template.js";
 import { renameEntity } from "./core-runner.js";
 import { adapterFor } from "../core/entity-adapter.js";
 
@@ -41,46 +42,42 @@ function processScene(scene, config, summary, entityType, stashBoxes) {
   try {
     outcome = renameEntity(scene, config, entityType, stashBoxes);
   } catch (e) {
-    summary.errors.push({ sceneId: scene.id, error: String(e) });
+    summary.errors.push({
+      sceneId: scene.id,
+      title: displayName(scene, entityType),
+      error: String(e),
+    });
     logError(noun, scene.id, String(e));
     return;
   }
+  const error = outcomeError(outcome, scene, entityType);
+  if (error) {
+    summary.errors.push(error);
+    logError(noun, outcome.sceneId, error.error);
+  } else {
+    summary.resolvedIds.push(String(outcome.sceneId));
+  }
   if (outcome.status === "skipped") {
     summary.skipped++;
-  } else if (outcome.status === "error") {
-    const messages = outcome.missingData
-      .map((m) => {
-        return m.message;
-      })
-      .join(", ");
-    const message =
-      'pattern "' +
-      describePatternPair(outcome.folderPattern, outcome.filenamePattern) +
-      '" cannot be satisfied: ' +
-      messages;
-    summary.errors.push({ sceneId: outcome.sceneId, error: message });
-    logError(noun, outcome.sceneId, message);
-  } else {
-    const moveErrors = outcome.moveErrors || [];
+  } else if (outcome.status === "ok") {
     const moved = outcome.moved || 0;
-    if (moveErrors.length > 0) {
-      const message = moveErrors
-        .map((e) => {
-          return "file " + e.fileId + ": " + e.error;
-        })
-        .join("; ");
-      summary.errors.push({
-        sceneId: outcome.sceneId,
-        error: "moveFiles failed: " + message,
-      });
-      logError(noun, outcome.sceneId, "moveFiles failed: " + message);
-    }
     if (moved > 0) {
       summary.changed++;
-    } else if (moveErrors.length === 0) {
+    } else if (!error) {
       summary.unchanged++;
     }
   }
+}
+
+// A run_id is only passed by runs started from Librarian's UI, which wait to
+// read their run back; every run updates what is still open
+function recordResult(args, entityType, summary) {
+  recordOutcomes(
+    entityType,
+    summary.errors,
+    summary.resolvedIds,
+    args.run_id ? runFromSummary(args.run_id, entityType, summary) : null,
+  );
 }
 
 function summaryText(intro, summary) {
@@ -170,6 +167,7 @@ function runSweep(args) {
     unchanged: 0,
     skipped: 0,
     errors: [],
+    resolvedIds: [],
   };
 
   if (Array.isArray(args.sceneIds) && args.sceneIds.length > 0) {
@@ -186,6 +184,7 @@ function runSweep(args) {
         summary.errors.push({
           sceneId: id,
           error: adapter.noun + " not found",
+          gone: true,
         });
         logError(adapter.noun, id, adapter.noun + " not found");
         return;
@@ -200,6 +199,7 @@ function runSweep(args) {
         "(s)",
       summary,
     );
+    recordResult(args, entityType, summary);
     return { Output: text };
   }
 
@@ -253,5 +253,6 @@ function runSweep(args) {
     "librarian: processed " + summary.processed,
     summary,
   );
+  recordResult(args, entityType, summary);
   return { Output: text };
 }

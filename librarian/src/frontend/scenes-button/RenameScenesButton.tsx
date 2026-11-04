@@ -3,7 +3,7 @@ import { useApolloClient, gql } from "@apollo/client";
 import { useIntl } from "react-intl";
 import { RenamableFilterButton } from "./RenamableFilterButton.js";
 import { usePreviewMode } from "./preview-context.js";
-import { isTerminalStatus } from "../shared/job-poll.js";
+import { RunResultStatus } from "../shared/RunResultStatus.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
 import { eligibleEntityNoun } from "../shared/eligible-entities.js";
 
@@ -91,6 +91,7 @@ export function RenameScenesButton() {
     config,
     jobId,
     job,
+    result,
     startPreview,
     cancelPreview,
     applyRenames,
@@ -127,25 +128,15 @@ export function RenameScenesButton() {
   }
 
   if (jobId) {
-    const status = job ? job.status : "RUNNING";
-    const progressPct =
-      job && job.progress != null
-        ? Math.round(job.progress * 100) + "%"
-        : "...";
-    const terminal = isTerminalStatus(job && job.status);
     return (
       <>
-        <span className="librarian-summary text-muted">
-          {terminal
-            ? intl.formatMessage(
-                { id: "librarian.renameButton.jobStatus.terminal" },
-                { status: status.toLowerCase() },
-              )
-            : intl.formatMessage(
-                { id: "librarian.renameButton.jobStatus.running" },
-                { progress: progressPct },
-              )}
-        </span>
+        <RunResultStatus
+          job={job}
+          result={result}
+          runningMessageId="librarian.renameButton.jobStatus.running"
+          className="librarian-summary text-muted"
+          entityType="scenes"
+        />
         {toggle}
       </>
     );

@@ -5,6 +5,7 @@ import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
 import { ApplyRuleButton } from "./ApplyRuleButton.js";
+import { useOpenFailures } from "../shared/OpenFailuresContext.js";
 import { countableNoun } from "../shared/eligible-entities.js";
 import {
   DEFAULT_PREVIEW_SORT,
@@ -29,6 +30,7 @@ export function RulePreviewPanel({
 }: RulePreviewPanelProps) {
   const intl = useIntl();
   const type = entityType || "scenes";
+  const { byId: openFailures } = useOpenFailures(type);
   const sceneFilter = ruleToPreviewFilter(rule, config[type]);
   const { rows, loading, run, replan, handleEntityOrganized } =
     useManualEntityPreview(config, type);
@@ -166,6 +168,7 @@ export function RulePreviewPanel({
           ) : (
             <PlanResultTable
               rows={rows}
+              failures={openFailures}
               onEntityOrganized={handleEntityOrganized}
               rules={(config[type] || {}).rules}
               entityType={type}

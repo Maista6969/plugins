@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 import { PLUGIN_ID, normalizeConfig } from "../../core/config-schema.js";
+import { RESULTS_PLUGIN_ID, findRun } from "../../core/run-results.js";
 
 const CONFIGURATION_QUERY = gql`
   query LibrarianGetConfiguration($include: [ID!]) {
@@ -188,17 +189,72 @@ export async function findDeadEntityIds(
   return dead;
 }
 
+export interface RenameRun {
+  jobId: string;
+  runId: string;
+}
+
+// crypto.randomUUID only exists on https or localhost, and Stash is often
+// served over plain http on a LAN
+function newRunId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
 export async function runRenameTask(
   client: any,
   argsMap: Record<string, unknown>,
-): Promise<string> {
+): Promise<RenameRun> {
+  const runId = newRunId();
   const { data } = await client.mutate({
     mutation: RUN_PLUGIN_TASK_MUTATION,
     variables: {
       plugin_id: PLUGIN_ID,
       task_name: "Rename (filtered)",
-      args_map: { mode: "task", ...argsMap },
+      args_map: { mode: "task", run_id: runId, ...argsMap },
     },
   });
-  return data && data.runPluginTask;
+  return { jobId: data && data.runPluginTask, runId };
+}
+
+export interface RunFailure {
+  id: string | null;
+  title: string;
+  message: string;
+  collision?: { path: string; ownerId: string | null; ownerTitle: string };
+  missingData?: any[];
+  // when it failed, on failures still open
+  at?: string;
+}
+
+export interface RunResult {
+  runId: string;
+  entity: string;
+  changed: number;
+  unchanged: number;
+  skipped: number;
+  failureCount: number;
+  failures: RunFailure[];
+}
+
+export async function fetchResultsStore(client: any): Promise<any> {
+  const { data } = await client.query({
+    query: CONFIGURATION_QUERY,
+    variables: { include: [RESULTS_PLUGIN_ID] },
+    fetchPolicy: "no-cache",
+  });
+  return data?.configuration?.plugins?.[RESULTS_PLUGIN_ID] || null;
+}
+
+export async function saveResultsStore(client: any, store: any) {
+  await client.mutate({
+    mutation: CONFIGURE_PLUGIN_MUTATION,
+    variables: { plugin_id: RESULTS_PLUGIN_ID, input: store },
+  });
+}
+
+export async function fetchRunResult(
+  client: any,
+  runId: string,
+): Promise<RunResult | null> {
+  return findRun(await fetchResultsStore(client), runId);
 }

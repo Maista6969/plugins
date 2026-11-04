@@ -69,6 +69,7 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
     sceneOverrides,
     applyOne,
     setSceneOverride,
+    sceneFailures,
   } = usePreviewMode();
   const client = useApolloClient();
   // must stay above the early returns below: hooks cannot be called conditionally
@@ -168,6 +169,7 @@ export function PreviewSceneList({ scenes }: PreviewSceneListProps) {
       </p>
       <PlanResultTable
         rows={rows}
+        failures={sceneFailures}
         onMoveOne={applyOne}
         pendingSceneIds={pendingSceneIds}
         onEntityOrganized={setSceneOverride}

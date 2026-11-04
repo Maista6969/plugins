@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { configGateFilter } from "../../core/rule-to-filter.js";
-import { useApolloClient } from "@apollo/client";
 import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
@@ -10,8 +9,9 @@ import {
   eligibleEntityNoun,
   countableNoun,
 } from "../shared/eligible-entities.js";
-import { runRenameTask } from "../shared/stash-api.js";
-import { pollJob, isTerminalStatus, JobInfo } from "../shared/job-poll.js";
+import { useRenameJob } from "../shared/rename-run.js";
+import { useOpenFailures } from "../shared/OpenFailuresContext.js";
+import { RunResultStatus } from "../shared/RunResultStatus.js";
 import {
   DEFAULT_PREVIEW_SORT,
   PREVIEW_REFRESH_DEBOUNCE_MS,
@@ -34,15 +34,13 @@ export function ConfigPreviewPanel({
 }: ConfigPreviewPanelProps) {
   const type = entityType || "scenes";
   const intl = useIntl();
-  const client = useApolloClient();
   const [sort, setSort] = useState(DEFAULT_PREVIEW_SORT);
   const [closed, setClosed] = useState(true);
   const { rows, loading, run, replan, handleEntityOrganized } =
     useManualEntityPreview(config, type);
   const [confirming, setConfirming] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [job, setJob] = useState<JobInfo | null>(null);
-  const running = !!jobId && (!job || !isTerminalStatus(job.status));
+  const { jobId, job, result, running, start } = useRenameJob();
+  const { byId: openFailures } = useOpenFailures(type);
 
   const section: any = config[type] || {};
   const plural = countableNoun(intl, type);
@@ -65,33 +63,9 @@ export function ConfigPreviewPanel({
     run(effectiveFilter, sort);
   }
 
-  async function handleConfirmedRenameAll() {
+  function handleConfirmedRenameAll() {
     setConfirming(false);
-    setJob(null);
-    const id = await runRenameTask(client, { entity: type });
-    setJobId(id);
-    pollJob(client, id, setJob);
-  }
-
-  function renameAllStatusText(): string | null {
-    if (!jobId) {
-      return null;
-    }
-    if (!job) {
-      return intl.formatMessage({ id: "librarian.common.starting" });
-    }
-    if (!isTerminalStatus(job.status)) {
-      const pct =
-        job.progress != null ? Math.round(job.progress * 100) + "%" : "...";
-      return intl.formatMessage(
-        { id: "librarian.renameButton.jobStatus.running" },
-        { progress: pct },
-      );
-    }
-    return intl.formatMessage(
-      { id: "librarian.renameButton.jobStatus.terminal" },
-      { status: job.status.toLowerCase() },
-    );
+    start({ entity: type });
   }
 
   // Re-query only when the matching set could have changed; otherwise re-plan
@@ -133,8 +107,6 @@ export function ConfigPreviewPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortKey]);
-
-  const renameAllStatus = renameAllStatusText();
 
   return (
     <div>
@@ -211,10 +183,14 @@ export function ConfigPreviewPanel({
           )}
         </div>
         <div className="librarian-config-preview-controls-right">
-          {renameAllStatus && (
-            <span className="librarian-token-hint text-muted">
-              {renameAllStatus}
-            </span>
+          {jobId && (
+            <RunResultStatus
+              job={job}
+              result={result}
+              runningMessageId="librarian.renameButton.jobStatus.running"
+              className="librarian-token-hint text-muted"
+              entityType={type}
+            />
           )}
           <Button
             variant="primary"
@@ -240,6 +216,7 @@ export function ConfigPreviewPanel({
           ) : (
             <PlanResultTable
               rows={rows}
+              failures={openFailures}
               onEntityOrganized={handleEntityOrganized}
               rules={section.rules}
               entityType={type}

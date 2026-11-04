@@ -10,6 +10,7 @@ import { configNeedsStashBoxes } from "../core/plan-scene.js";
 import { pruneDeadLibraryRootsAll } from "../core/prune-dead-library-roots.js";
 import { describePatternPair } from "../core/path-template.js";
 import { renameEntity } from "./core-runner.js";
+import { outcomeError, recordOutcomes } from "./outcomes.js";
 import { adapterFor } from "../core/entity-adapter.js";
 
 // Stash sends the trigger name, so one hook entry point serves all three types
@@ -80,6 +81,13 @@ export function run(args) {
     }
 
     const outcome = renameEntity(scene, config, entityType, stashBoxes);
+    const error = outcomeError(outcome, scene, entityType);
+    recordOutcomes(
+      entityType,
+      error ? [error] : [],
+      error ? [] : [String(outcome.sceneId)],
+      null,
+    );
     if (outcome.status === "error") {
       const messages = outcome.missingData
         .map((m) => {

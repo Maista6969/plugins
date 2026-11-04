@@ -311,9 +311,13 @@ export function gqlMoveFile(
 }
 
 export function gqlGetConfig() {
-  const result = doQuery(CONFIGURATION_QUERY, { include: [PLUGIN_ID] });
+  return gqlGetPluginConfig(PLUGIN_ID);
+}
+
+export function gqlGetPluginConfig(pluginId) {
+  const result = doQuery(CONFIGURATION_QUERY, { include: [pluginId] });
   const plugins = result.configuration && result.configuration.plugins;
-  return plugins ? plugins[PLUGIN_ID] : null;
+  return plugins ? plugins[pluginId] : null;
 }
 
 export function gqlGetLibraryPaths() {
@@ -344,7 +348,11 @@ export function gqlGetStashBoxes() {
 }
 
 export function gqlConfigurePlugin(config) {
-  doQuery(CONFIGURE_PLUGIN_MUTATION, { plugin_id: PLUGIN_ID, input: config });
+  gqlConfigurePluginAs(PLUGIN_ID, config);
+}
+
+export function gqlConfigurePluginAs(pluginId, input) {
+  doQuery(CONFIGURE_PLUGIN_MUTATION, { plugin_id: pluginId, input: input });
 }
 
 export function gqlCountScenes(sceneFilter) {

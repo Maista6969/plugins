@@ -21,10 +21,12 @@ import {
 import { pruneDeadLibraryRootsAll } from "../../core/prune-dead-library-roots.js";
 import { TextSettingModal } from "./TextSettingModal.js";
 import { EntitySettingsPanel } from "./EntitySettingsPanel.js";
+import { OpenFailuresCard } from "./OpenFailuresCard.js";
 import { ConfigPreviewPanel } from "./ConfigPreviewPanel.js";
 import { SettingsSection } from "./SettingsSection.js";
 import { LibraryPathsProvider } from "../shared/LibraryPathsContext.js";
 import { StashBoxesProvider } from "../shared/StashBoxesContext.js";
+import { OpenFailuresProvider } from "../shared/OpenFailuresContext.js";
 import { TokenizedText } from "../shared/TokenizedText.js";
 import { useLoadSettingsComponents } from "../shared/useLoadSettingsComponents.js";
 import { usePluginPageTitle } from "./usePluginPageTitle.js";
@@ -87,7 +89,9 @@ export function SettingsPage() {
   return (
     <LibraryPathsProvider>
       <StashBoxesProvider>
-        <SettingsPageContent />
+        <OpenFailuresProvider>
+          <SettingsPageContent />
+        </OpenFailuresProvider>
       </StashBoxesProvider>
     </LibraryPathsProvider>
   );
@@ -416,6 +420,8 @@ function SettingsPageContent() {
           </SelectSetting>
         </SettingsSection>
       </div>
+
+      <OpenFailuresCard key={activeType} entityType={activeType} />
 
       <div className="setting-section librarian-config-preview-section">
         <h1>

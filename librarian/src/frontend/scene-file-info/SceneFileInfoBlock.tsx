@@ -3,8 +3,15 @@ import { useApolloClient, gql } from "@apollo/client";
 import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { planScene } from "../../core/plan-scene.js";
-import { getConfiguration, runRenameTask } from "../shared/stash-api.js";
-import { pollJob, isTerminalStatus } from "../shared/job-poll.js";
+import {
+  getConfiguration,
+  fetchResultsStore,
+  RunFailure,
+} from "../shared/stash-api.js";
+import { openFailures, failureStillApplies } from "../../core/run-results.js";
+import { joinBasename } from "../../core/path-template.js";
+import { runRenameAndWait } from "../shared/rename-run.js";
+import { describeFailure } from "../shared/RunResultStatus.js";
 import { StatusBadge } from "../shared/StatusBadge.js";
 import { OrganizeButton } from "../shared/OrganizeButton.js";
 import { describeMissingData } from "../shared/describe-missing.js";
@@ -42,6 +49,7 @@ export function SceneFileInfoBlock({
   const [override, setOverride] = useState<any | null>(null);
   const [enrichedStudio, setEnrichedStudio] = useState<any | null>(null);
   const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<RunFailure | null>(null);
   const studioId = sceneProp.studio && sceneProp.studio.id;
 
   useEffect(() => {
@@ -57,6 +65,25 @@ export function SceneFileInfoBlock({
   useEffect(() => {
     setOverride(null);
   }, [sceneProp.id]);
+
+  async function loadFailure(sceneId: string) {
+    try {
+      const store = await fetchResultsStore(client);
+      setFailure(
+        openFailures(store, "scenes").find(
+          (f: RunFailure) => f.id === sceneId,
+        ) || null,
+      );
+    } catch (e) {
+      // leave whatever was shown
+    }
+  }
+
+  useEffect(() => {
+    setFailure(null);
+    loadFailure(sceneProp.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, sceneProp.id]);
 
   useEffect(() => {
     if (!studioId) {
@@ -98,14 +125,8 @@ export function SceneFileInfoBlock({
   async function handleMoveOne(sceneId: string) {
     setPending(true);
     try {
-      const jobId = await runRenameTask(client, { sceneIds: [sceneId] });
-      await new Promise<void>((resolve) => {
-        pollJob(client, jobId, (jobInfo) => {
-          if (isTerminalStatus(jobInfo.status)) {
-            resolve();
-          }
-        });
-      });
+      await runRenameAndWait(client, { sceneIds: [sceneId] });
+      await loadFailure(sceneId);
       const { data } = await client.query({
         query: FIND_SCENE_QUERY,
         variables: { id: sceneId },
@@ -205,6 +226,18 @@ export function SceneFileInfoBlock({
                   : undefined
               }
             />
+            {failure &&
+              aggregateStatus === "will-move" &&
+              failureStillApplies(
+                failure,
+                plan.files
+                  .filter((f: any) => !f.unchanged)
+                  .map((f: any) => joinBasename(f.folder, f.basename)),
+              ) && (
+                <p className="librarian-token-hint text-danger">
+                  {describeFailure(intl, failure, stashBoxes, "scenes")}
+                </p>
+              )}
           </>
         )}
       </div>
