@@ -559,6 +559,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
     patternUsesAnyToken(folderPattern + " " + filenamePattern, [
       "group",
       "group_idx",
+      "group_not_in_title",
     ])
   ) {
     warnings.push(

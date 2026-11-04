@@ -54,6 +54,7 @@ const TOKEN_CRITERIA = {
   group: { type: "groups", modifier: "NOT_NULL" },
   // Scene can be in a group without having an index in that group
   group_idx: { type: "groups", modifier: "NOT_NULL" },
+  group_not_in_title: { type: "groups", modifier: "NOT_NULL" },
   stash_id: { type: "stash_id_count", modifier: "GREATER_THAN", value: 0 },
 };
 

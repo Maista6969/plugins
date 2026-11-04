@@ -1711,6 +1711,47 @@ test("a single group plans with no warning at all", () => {
   assert.deepEqual(result.warnings, []);
 });
 
+test("{group_not_in_title} gives the same name whether or not the title already has the group in it", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "<{group_not_in_title} - >{title} [Sc. {group_idx}]",
+    },
+  });
+  const inGroup = (title) => {
+    return Object.assign({}, normalOrganizedScene, {
+      title: title,
+      groups: [{ scene_index: 1, group: { id: "7", name: "Teen Dreams" } }],
+    });
+  };
+  ["Teen Dreams - Anita Goes Hard", "Anita Goes Hard"].forEach((title) => {
+    const result = planScene(inGroup(title), config);
+    assert.equal(result.status, "ok", title);
+    assert.equal(
+      result.files[0].basename,
+      "Teen Dreams - Anita Goes Hard [Sc. 1].mp4",
+      title,
+    );
+  });
+  // the title naming it in other capitals still counts as naming it
+  assert.equal(
+    planScene(inGroup("TEEN DREAMS - Anita"), config).files[0].basename,
+    "TEEN DREAMS - Anita [Sc. 1].mp4",
+  );
+});
+
+test("{group_not_in_title} on a scene in no group is missing data, like {group}", () => {
+  const config = baseConfig({
+    defaultPattern: {
+      folderPattern: "",
+      filenamePattern: "{group_not_in_title} - {title}",
+    },
+  });
+  const result = planScene(normalOrganizedScene, config);
+  assert.equal(result.status, "error");
+  assert.match(result.missingData[0].message, /does not belong to any group/);
+});
+
 // Stash's unique key is name+disambiguation, so a pattern rendering the name
 // alone can send two different performers to one folder. The plan still runs:
 // it is ambiguous, not wrong

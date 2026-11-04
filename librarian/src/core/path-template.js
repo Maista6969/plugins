@@ -34,6 +34,7 @@ export const KNOWN_TOKENS = [
   // scenes only: galleries and images have no groups
   "group",
   "group_idx",
+  "group_not_in_title",
   // The path the file already has. Unlike every other token this one reads what
   // the pattern writes, so it is the only token that can fail to settle: see
   // currentUsage and the fixed-point check in plan-scene
@@ -367,6 +368,13 @@ export function buildTokens(sceneView, config, matchedIds) {
   // compared against the raw name, before sanitizing strips characters the
   // title still contains
   const titleLower = (sceneView.title || "").toLowerCase();
+  const chosenGroupName = chosenGroup.group ? chosenGroup.group.name : "";
+  // a one-item list rather than plain text, so a group the title already names
+  // collapses a <...> the same way {performers_not_in_title} does
+  const groupNotInTitle =
+    chosenGroupName && titleLower.indexOf(chosenGroupName.toLowerCase()) === -1
+      ? [{ id: chosenGroup.group.id, name: chosenGroupName }]
+      : [];
   const performersNotInTitle = sortedPerformers.filter((p) => {
     return titleLower.indexOf((p.name || "").toLowerCase()) === -1;
   });
@@ -435,6 +443,11 @@ export function buildTokens(sceneView, config, matchedIds) {
       sceneView.studioCustomFields,
     ),
     group: chosenGroup.group ? sanitizeTokenValue(chosenGroup.group.name) : "",
+    group_not_in_title: listValue(
+      groupNotInTitle,
+      "",
+      chosenGroup.group ? 1 : 0,
+    ),
     group_idx:
       chosenGroup.group && chosenGroup.group.sceneIndex != null
         ? String(chosenGroup.group.sceneIndex)
@@ -558,6 +571,10 @@ const TOKEN_REQUIREMENTS = {
     message: "{noun} has no rating",
   },
   group: {
+    isMissing: (view) => resolveSceneGroup(view).group === null,
+    message: "{noun} does not belong to any group",
+  },
+  group_not_in_title: {
     isMissing: (view) => resolveSceneGroup(view).group === null,
     message: "{noun} does not belong to any group",
   },
@@ -1084,6 +1101,7 @@ export const METADATA_TOKENS = KNOWN_TOKENS.filter((t) => {
     t !== "stash_id" &&
     t !== "group" &&
     t !== "group_idx" &&
+    t !== "group_not_in_title" &&
     t !== "director"
   );
 }).concat(["photographer"]);

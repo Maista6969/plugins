@@ -123,6 +123,8 @@ untitled items too. **Video codec** (scenes only) matches when any of a scene's 
 
 Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
 their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.
+Where some titles already name the group and some don't, `<{group_not_in_title} - >{title} [Sc. {group_idx}]` gives
+`Teen Dreams - Anita Goes Hard [Sc. 1]` for both `Teen Dreams - Anita Goes Hard` and plain `Anita Goes Hard`.
 
 <p align="center">
   <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-rule-editor.png">
@@ -403,6 +405,7 @@ _Scene metadata_
 | `{stash_id}`                | The scene's StashID. Add \|from=StashDB to name the source, or leave it off to use the “Default StashID source” picked below                                                                                          |
 | `{group}`                   | The group (Stash's replacement for Movies) this scene belongs to. If it is in several, the one created first is used                                                                                                  |
 | `{group_idx}`               | This scene's place in that group's running order, e.g. “1” for a movie's first scene. Always the same group {group} names                                                                                             |
+| `{group_not_in_title}`      | The group {group} names, unless the scene's title already contains it: empty for “Teen Dreams - Anita Goes Hard” in the group “Teen Dreams”                                                                           |
 | `{current}`                 | The path this file already has                                                                                                                                                                                        |
 | `{@Custom Field}`           | One of the scene's own custom fields, named inside the token: {@Series} is the field called Series. Add \|from=studio to read the scene's studio's custom field instead. Names are matched exactly, capitals included |
 
