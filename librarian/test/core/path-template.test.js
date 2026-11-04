@@ -19,6 +19,7 @@ import {
   PERFORMER_SORT_TOKENS,
 } from "../../src/core/path-template.js";
 import { normalizeConfig } from "../../src/core/config-schema.js";
+import { normalizeScene } from "../../src/core/normalize-scene.js";
 
 function sceneView(overrides) {
   const merged = Object.assign(
@@ -184,6 +185,22 @@ test("{tags} always sorts alphabetically regardless of config.sortBy", () => {
   assert.equal(
     render("{tags}", view, { sortBy: "rating" }),
     "Amy Tag, Zed Tag",
+  );
+});
+
+test("{tags}/{matched_tags} sort by a tag's sort name when it has one", () => {
+  const view = normalizeScene({
+    id: "1",
+    tags: [
+      { id: "t1", name: "Isekai" },
+      { id: "t2", name: "Mecha", sort_name: "1 Mecha" },
+    ],
+  });
+  const matchedIds = { performerIds: [], tagIds: ["t1", "t2"] };
+  assert.equal(render("{tags}", view), "Mecha, Isekai");
+  assert.equal(
+    render("{matched_tags|limit=1}", view, null, matchedIds),
+    "Mecha",
   );
 });
 

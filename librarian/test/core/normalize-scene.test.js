@@ -149,7 +149,7 @@ test("performers expose disambiguation, favorite, rating100, gender and custom f
       customFields: { Agency: "Talent Co" },
     },
   ]);
-  assert.deepEqual(view.tags, [{ id: "t1", name: "Rock" }]);
+  assert.deepEqual(view.tags, [{ id: "t1", name: "Rock", sort_name: "" }]);
 });
 
 test("performers default favorite to false, disambiguation to empty and rating100/gender to null when absent", () => {

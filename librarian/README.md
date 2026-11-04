@@ -487,7 +487,7 @@ references one of those tokens. Pick any combination of **Favourites first** and
 in the order you click them; whatever is left over is broken alphabetically, always. So choosing
 both, in that order, means "favourited performers first, best-rated first among those, then A→Z",
 which combined with `{performers|limit=1}` gives you a folder named after the favourite you rate highest.
-Unrated performers sort last. `{tags}`/`{matched_tags}` always sort alphabetically.
+Unrated performers sort last. `{tags}`/`{matched_tags}` always sort alphabetically, by each tag's sort name where it has one.
 
 **When a matched rule's pattern references a required token the scene doesn't have data for**, that
 scene is treated as an error which is shown both in the preview and Stash logs rather than silently

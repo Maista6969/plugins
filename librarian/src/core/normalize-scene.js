@@ -93,7 +93,7 @@ export function normalizeScene(rawScene, entityType) {
       };
     }),
     tags: tags.map((t) => {
-      return { id: String(t.id), name: t.name };
+      return { id: String(t.id), name: t.name, sort_name: t.sort_name || "" };
     }),
     groups: groups,
     performerNames: performers.map((p) => {
