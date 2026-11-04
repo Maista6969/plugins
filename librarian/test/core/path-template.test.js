@@ -1810,3 +1810,19 @@ test("regex= refuses a pattern that can match nothing", () => {
     [],
   );
 });
+
+test("regex= can be repeated, each one running on the result of the last", () => {
+  const pattern = "{resolution|regex=/^1080p$/Full HD/|regex=/^4K$/UHD/}";
+  assert.deepEqual(findPatternProblems(pattern), []);
+  const render = (resolution) => {
+    return renderTemplate(pattern, { resolution: resolution });
+  };
+  assert.equal(render("1080p"), "Full HD");
+  assert.equal(render("4K"), "UHD");
+  assert.equal(render("720p"), "720p");
+  // order matters: the second sees what the first wrote
+  assert.equal(
+    renderTemplate("{title|regex=/a/b/|regex=/b/c/}", { title: "a" }),
+    "c",
+  );
+});

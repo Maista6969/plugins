@@ -212,7 +212,7 @@ performer literally named `Alex (Blonde)` with no disambiguation still collides 
 | `lowercase`    | any token              | Lower-cases the value                                                                                                                                                                                                   | `{title\|lowercase}`                          |
 | `titlecase`    | any token              | Capitalises the first letter of each word and lower-cases the rest. Meant for scraped ALL-CAPS titles, not for names: it turns McDonald into Mcdonald                                                                   | `{title\|titlecase}`                          |
 | `compact`      | any token              | Removes the spaces from the value                                                                                                                                                                                       | `{title\|compact}`                            |
-| `regex=`       | any token              | Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \/ for a literal slash                                                                                                                | `{title\|regex=/(?:\D*(\d+).*)/Time for $1/}` |
+| `regex=`       | any token              | Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \/ for a literal slash. Repeat it for several replacements, applied left to right                                                     | `{title\|regex=/(?:\D*(\d+).*)/Time for $1/}` |
 | `from=`        | {stash_id} or {@Field} | Which source the value comes from. On {stash_id}, a stash-box by name or endpoint URL, defaulting to the rule's default source. On {@Field}, write studio to read the {noun}'s studio's custom field instead of its own | `{stash_id\|from=StashDB}`                    |
 
 <!-- END GENERATED: modifiers -->
@@ -270,6 +270,9 @@ Write `\/` for a literal forward slash, and `$$` for a literal `$`. On a list to
 on each value separately, so it can never damage the separator between them. A replacement cannot smuggle a
 path separator into a folder either: the result is re-cleaned afterwards, so a `/` becomes a space like any
 other illegal character
+
+Repeat `regex=` for several replacements. They run left to right, each on the result of the one before, so
+`{resolution|regex=/^1080p$/Full HD/|regex=/^4K$/UHD/}` renames both and leaves every other resolution as it was
 
 > **Why some valid regexes are refused.** The rename preview runs in your browser, but the rename itself runs
 > inside Stash's own JavaScript Virtual Machine Goja, and the two do not agree on every regex feature.

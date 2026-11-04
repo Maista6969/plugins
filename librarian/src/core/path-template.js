@@ -888,7 +888,8 @@ export function findPatternProblems(pattern, allowedTokens, options) {
     const seen = {};
     const seenGroups = {};
     token.modifiers.forEach((modifier) => {
-      if (seen[modifier.name]) {
+      const repeatable = (MODIFIERS[modifier.name] || {}).repeatable;
+      if (seen[modifier.name] && !repeatable) {
         add(token.raw, "sets " + modifier.name + " more than once", true);
         return;
       }

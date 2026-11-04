@@ -117,6 +117,8 @@ function valueModifier(applyValue, group, summary, example) {
 //   appliesTo  entity kinds the modifier is meaningful for ("*" for any), which
 //              is what makes {title|gender=female} an error and not a no-op
 //   takesValue "required" or "none"
+//   repeatable true when writing it twice means something. Each copy runs in
+//              its place in the chain, so two regexes are two replacements
 //   group      a MODIFIER_GROUPS key when the modifier excludes its siblings
 //   summary    one line of prose, and `example` a {pattern, before, after}
 //              triple. Both are documentation rather than behaviour, but they
@@ -300,8 +302,9 @@ export const MODIFIERS = {
     input: "value",
     appliesTo: ["*"],
     takesValue: "required",
+    repeatable: true,
     summary:
-      "Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \\/ for a literal slash",
+      "Find-and-replace, written /find/replace/. Reuses captured groups as $1, $2. Write \\/ for a literal slash. Repeat it for several replacements, applied left to right",
     example: {
       pattern: "{title|regex=/(?:\\D*(\\d+).*)/Time for $1/}",
       before: "Happy 420 day",
