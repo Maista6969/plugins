@@ -239,7 +239,6 @@ export function RuleEditModal({
               {intl.formatMessage(
                 { id: "librarian.ruleEditModal.upperBoundHint" },
                 {
-                  entityNoun: countableNoun(intl, type, false),
                   caveats: [
                     hasEarlierActiveRule &&
                       intl.formatMessage({
