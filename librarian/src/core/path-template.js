@@ -9,7 +9,7 @@ import {
   hasModifier,
   CUSTOM_FIELD_TOKEN,
   MODIFIERS,
-  MODIFIER_GROUPS,
+  grammarProblem,
   knownModifierNames,
 } from "./token-grammar.js";
 
@@ -912,8 +912,14 @@ export function findPatternProblems(pattern, allowedTokens, options) {
   const stashBoxes = (options && options.stashBoxes) || null;
   const patternKind = (options && options.patternKind) || null;
   const problems = [];
-  const add = (raw, message, blocking) => {
-    problems.push({ raw: raw, message: message, blocking: !!blocking });
+  const add = (raw, problem, blocking) => {
+    problems.push({
+      raw: raw,
+      message: problem.message,
+      code: problem.code,
+      values: problem.values,
+      blocking: !!blocking,
+    });
   };
 
   // {current} reads the path that the pattern is about to write, so anything
@@ -923,10 +929,13 @@ export function findPatternProblems(pattern, allowedTokens, options) {
   if (usage.uses && usage.blocking) {
     add(
       "{current}",
-      "{current} has to be the whole pattern, or alone in one side of a" +
-        " <...|...> fallback that is itself the whole pattern. Combined with" +
-        " anything else it grows every time the rename runs, because the next" +
-        " run reads back the name the last one wrote",
+      grammarProblem(
+        "current_not_alone",
+        { current: "{current}", fallback: "<...|...>" },
+        "{current} has to be the whole pattern, or alone on one side of a" +
+          " <...|...> fallback that is the whole pattern. Anything added" +
+          " around it is added again on every rename",
+      ),
       true,
     );
   }
@@ -938,22 +947,34 @@ export function findPatternProblems(pattern, allowedTokens, options) {
   ) {
     add(
       "{current}",
-      "a folder pattern can only use {current} on its own: rewriting the" +
-        " folder a file already sits in would move it somewhere new every run",
+      grammarProblem(
+        "current_modified_folder",
+        { current: "{current}" },
+        "a folder pattern can't use modifiers on {current}: the file would" +
+          " move somewhere new on every rename",
+      ),
       true,
     );
   }
 
   scanPattern(pattern).forEach((token) => {
-    token.errors.forEach((message) => {
-      add(token.raw, message, token.raw.indexOf("|") !== -1);
+    token.errors.forEach((error) => {
+      add(token.raw, error, token.raw.indexOf("|") !== -1);
     });
     if (token.errors.length > 0) {
       return;
     }
 
     if (allowed.indexOf(token.name) === -1) {
-      add(token.raw, "there is no {" + token.name + "} token", false);
+      add(
+        token.raw,
+        grammarProblem(
+          "unknown_token",
+          { token: "{" + token.name + "}" },
+          "there is no {" + token.name + "} token",
+        ),
+        false,
+      );
       return;
     }
 
@@ -962,19 +983,32 @@ export function findPatternProblems(pattern, allowedTokens, options) {
     token.modifiers.forEach((modifier) => {
       const repeatable = (MODIFIERS[modifier.name] || {}).repeatable;
       if (seen[modifier.name] && !repeatable) {
-        add(token.raw, "sets " + modifier.name + " more than once", true);
+        add(
+          token.raw,
+          grammarProblem(
+            "repeated_modifier",
+            { modifier: modifier.name },
+            "sets " + modifier.name + " more than once",
+          ),
+          true,
+        );
         return;
       }
       seen[modifier.name] = true;
 
       const spec = MODIFIERS[modifier.name];
       if (!spec) {
+        const available = knownModifierNames().join(", ");
         add(
           token.raw,
-          'there is no "' +
-            modifier.name +
-            '" modifier. Available: ' +
-            knownModifierNames().join(", "),
+          grammarProblem(
+            "unknown_modifier",
+            { modifier: modifier.name, available: available },
+            'there is no "' +
+              modifier.name +
+              '" modifier. Available: ' +
+              available,
+          ),
           true,
         );
         return;
@@ -983,20 +1017,30 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         spec.appliesTo.indexOf("*") === -1 &&
         spec.appliesTo.indexOf(modifierKindOf(token.name)) === -1
       ) {
+        const lists = LIST_TOKEN_NAMES.join(", ");
+        const kinds = spec.appliesTo.join("/");
         add(
           token.raw,
           spec.targetsAllLists
-            ? "a " +
+            ? grammarProblem(
+                "list_only_modifier",
+                { modifier: modifier.name, tokens: lists },
+                modifier.name + " only works on a list token: " + lists,
+              )
+            : grammarProblem(
+                "wrong_token_kind",
+                {
+                  modifier: modifier.name,
+                  kinds: kinds,
+                  token: tokenLabel(token),
+                },
                 modifier.name +
-                " only means something on a list token (" +
-                LIST_TOKEN_NAMES.join(", ") +
-                ")"
-            : modifier.name +
-                " only works on " +
-                spec.appliesTo.join("/") +
-                " tokens, and " +
-                tokenLabel(token) +
-                " is not one",
+                  " only works on " +
+                  kinds +
+                  " tokens, and " +
+                  tokenLabel(token) +
+                  " is not one",
+              ),
           spec.misuseBlocks !== false,
         );
         return;
@@ -1006,12 +1050,11 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         if (already) {
           add(
             token.raw,
-            "a token can only set its " +
-              MODIFIER_GROUPS[spec.group] +
-              " once, but this one uses both " +
-              already +
-              " and " +
-              modifier.name,
+            grammarProblem(
+              "conflicting_modifiers",
+              { first: already, second: modifier.name },
+              already + " and " + modifier.name + " can't be used together",
+            ),
             true,
           );
           return;
@@ -1019,21 +1062,33 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         seenGroups[spec.group] = modifier.name;
       }
       if (spec.takesValue === "required" && modifier.value == null) {
+        const example = tokenLabel(token).replace(
+          "}",
+          "|" + modifier.name + "=...}",
+        );
         add(
           token.raw,
-          modifier.name +
-            " needs a value, as in " +
-            tokenLabel(token).replace("}", "|" + modifier.name + "=...}"),
+          grammarProblem(
+            "modifier_needs_value",
+            { modifier: modifier.name, example: example },
+            modifier.name + " needs a value, as in " + example,
+          ),
           true,
         );
         return;
       }
       if (spec.takesValue === "none" && modifier.value != null) {
+        const example = tokenLabel(token).replace(
+          "}",
+          "|" + modifier.name + "}",
+        );
         add(
           token.raw,
-          modifier.name +
-            " takes no value, write " +
-            tokenLabel(token).replace("}", "|" + modifier.name + "}"),
+          grammarProblem(
+            "modifier_takes_no_value",
+            { modifier: modifier.name, example: example },
+            modifier.name + " takes no value: write " + example,
+          ),
           true,
         );
         return;
@@ -1042,7 +1097,7 @@ export function findPatternProblems(pattern, allowedTokens, options) {
         ? spec.parseValue(modifier.value)
         : { ok: true, value: modifier.value };
       if (!parsed.ok) {
-        add(token.raw, parsed.message, true);
+        add(token.raw, parsed, true);
         return;
       }
       if (modifier.name === "from" && token.name === "stash_id") {
@@ -1068,10 +1123,11 @@ function addCustomFieldSourceProblems(add, token, value) {
   }
   add(
     token.raw,
-    'from= on a custom field only accepts "studio" (or "scene", which is the' +
-      ' default and so never needs writing). "' +
-      value +
-      '" is neither',
+    grammarProblem(
+      "custom_field_source",
+      { value: value },
+      'from= on a custom field only accepts "studio", not "' + value + '"',
+    ),
     true,
   );
 }
@@ -1087,10 +1143,11 @@ function addStashBoxProblems(add, token, value, stashBoxes) {
     if (!known) {
       add(
         token.raw,
-        "no stash-box source configured in Stash uses that URL. It will still" +
-          " work if your " +
-          token.name.replace("_", " ") +
-          "s carry IDs from it",
+        grammarProblem(
+          "unknown_stash_box_url",
+          {},
+          "no stash-box in Stash uses that URL, but IDs from it still work",
+        ),
         false,
       );
     }
@@ -1111,22 +1168,28 @@ function addStashBoxProblems(add, token, value, stashBoxes) {
   if (stashBoxes.length === 0) {
     add(
       token.raw,
-      "there are no stash-box sources configured in Stash yet. Add one under" +
-        " Settings > Metadata Providers first",
+      grammarProblem(
+        "no_stash_boxes",
+        {},
+        "there are no stash-boxes in Stash yet. Add one under" +
+          " Settings > Metadata Providers",
+      ),
       true,
     );
     return;
   }
+  const configured = stashBoxes
+    .map((b) => {
+      return b.name;
+    })
+    .join(", ");
   add(
     token.raw,
-    'there is no stash-box source named "' +
-      value +
-      '". Configured: ' +
-      stashBoxes
-        .map((b) => {
-          return b.name;
-        })
-        .join(", "),
+    grammarProblem(
+      "unknown_stash_box",
+      { name: value, configured: configured },
+      'there is no stash-box named "' + value + '". Configured: ' + configured,
+    ),
     true,
   );
 }

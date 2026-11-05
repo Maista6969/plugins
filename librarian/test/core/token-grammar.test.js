@@ -90,8 +90,11 @@ test(":N on its own desugars to a leading limit modifier", () => {
 test(":N alongside another modifier is refused, naming the rewrite", () => {
   const token = only("{performers:1|gender=female}");
   assert.equal(token.errors.length, 1);
-  assert.match(token.errors[0], /only works on its own/);
-  assert.match(token.errors[0], /\{performers\|limit=1\|gender=female\}/);
+  assert.equal(token.errors[0].code, "shorthand_not_alone");
+  assert.equal(
+    token.errors[0].values.example,
+    "{performers|limit=1|gender=female}",
+  );
   // the limit itself is never desugared, so it cannot half-apply. The other
   // chunks still parse, but an errored token renders literally and is never
   // applied at all

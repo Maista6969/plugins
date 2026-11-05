@@ -78,12 +78,7 @@ export function ConditionsEditor({
             {splitTerms && (
               <p className="librarian-token-hint text-warning">
                 {intl.formatMessage(
-                  {
-                    id:
-                      condition.field === "title"
-                        ? "librarian.conditionRow.titleWordSplit"
-                        : "librarian.conditionRow.pathWordSplit",
-                  },
+                  { id: "librarian.conditionRow.wordSplit" },
                   {
                     count: splitTerms.length,
                     terms: splitTerms.map((t) => "“" + t + "”").join(", "),

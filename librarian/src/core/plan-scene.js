@@ -240,7 +240,12 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       folderPattern,
       filenamePattern,
       patternProblems.map((problem) => {
-        return { token: null, message: problem.raw + ": " + problem.message };
+        // the problem itself rides along so the UI can translate it
+        return {
+          token: null,
+          message: problem.raw + ": " + problem.message,
+          problem: problem,
+        };
       }),
     );
   }

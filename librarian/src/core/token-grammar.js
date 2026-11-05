@@ -27,12 +27,7 @@
 // would), which a monolithic pattern cannot disambiguate. The split on "|" is
 // not opaque-span aware yet, so that modifier needs this to be revisited first
 
-import {
-  parseGenderValue,
-  genderOf,
-  GENDER_VALUES,
-  UNKNOWN_GENDER,
-} from "./gender.js";
+import { parseGenderValue, genderOf, GENDER_VALUES } from "./gender.js";
 
 // Looser than the grammar on purpose, so that "{foo bar}" is seen and can be
 // reported as malformed instead of being silently invisible
@@ -46,6 +41,16 @@ const CUSTOM_TOKEN_START = /^\{@([^|?}]*)/;
 
 // Modifiers that answer the same question, so a token may only use one of each
 export const MODIFIER_GROUPS = { case: "capitalisation" };
+
+// code and values let the UI say a problem in the viewer's language; the
+// message stays for Stash's log
+export function grammarProblem(code, values, message) {
+  return { code: code, values: values, message: message };
+}
+
+function refusal(code, values, message) {
+  return Object.assign({ ok: false }, grammarProblem(code, values, message));
+}
 
 function titleCase(text) {
   return text.replace(/\S+/g, (word) => {
@@ -152,10 +157,11 @@ export const MODIFIERS = {
     parseValue: function (raw) {
       const text = String(raw == null ? "" : raw).trim();
       if (!/^\d+$/.test(text)) {
-        return {
-          ok: false,
-          message: "limit needs a whole number, as in {performers|limit=2}",
-        };
+        return refusal(
+          "limit_not_number",
+          { example: "{performers|limit=2}" },
+          "limit needs a whole number, as in {performers|limit=2}",
+        );
       }
       return { ok: true, value: parseInt(text, 10) };
     },
@@ -196,26 +202,25 @@ export const MODIFIERS = {
           }
         });
       if (invalid.length > 0) {
-        return {
-          ok: false,
-          message:
-            (invalid.length === 1
-              ? "there is no gender "
-              : "there are no genders ") +
-            invalid
-              .map((v) => {
-                return '"' + v + '"';
-              })
-              .join(", ") +
+        const genders = invalid
+          .map((v) => {
+            return '"' + v + '"';
+          })
+          .join(", ");
+        const valid = GENDER_VALUES.join(", ");
+        return refusal(
+          "unknown_gender",
+          { count: invalid.length, genders: genders, valid: valid },
+          (invalid.length === 1
+            ? "there is no gender "
+            : "there are no genders ") +
+            genders +
             ". Use one or more of: " +
-            GENDER_VALUES.join(", ") +
-            ' ("' +
-            UNKNOWN_GENDER +
-            '" being performers with no gender set)',
-        };
+            valid,
+        );
       }
       if (wanted.length === 0) {
-        return { ok: false, message: "gender= needs at least one gender" };
+        return refusal("no_gender", {}, "gender= needs at least one gender");
       }
       return { ok: true, value: wanted };
     },
@@ -313,76 +318,72 @@ export const MODIFIERS = {
     parseValue: function (raw) {
       const parsed = parseReplaceValue(raw);
       if (!parsed) {
-        return {
-          ok: false,
-          message:
-            "regex= is written as /find/replace/, as in" +
+        return refusal(
+          "regex_shape",
+          { example: "{title|regex=/ - Trailer//}" },
+          "regex= is written as /find/replace/, as in" +
             " {title|regex=/ - Trailer//}. Write \\/ for a literal slash",
-        };
+        );
       }
       if (parsed.find === "") {
-        return { ok: false, message: "regex= has nothing to search for" };
+        return refusal("regex_empty", {}, "regex= has nothing to search for");
       }
       // Safety: ensure that regex differences between browser and Goja
       // are refused, but offer alternatives so the user can make progress
       if (/\\[pP]\{/.test(parsed.find)) {
-        return {
-          ok: false,
-          message:
-            "\\p{...} matches in the preview but not in the rename engine." +
-            " Use a character class like [A-Za-z] instead",
-        };
+        return refusal(
+          "regex_unicode_class",
+          { construct: "\\p{...}" },
+          "\\p{...} matches in the preview but not when renaming." +
+            " Use a class like [A-Za-z] instead",
+        );
       }
       if (parsed.find.indexOf("[[:") !== -1) {
-        return {
-          ok: false,
-          message:
-            "POSIX classes like [[:digit:]] match in the rename engine but not" +
-            " in the preview. Use \\d, \\w or a class like [0-9] instead",
-        };
+        return refusal(
+          "regex_posix_class",
+          { construct: "[[:digit:]]" },
+          "POSIX classes like [[:digit:]] match when renaming but not in the" +
+            " preview. Use \\d, \\w or a class like [0-9] instead",
+        );
       }
       if (parsed.replace.indexOf("$<") !== -1) {
-        return {
-          ok: false,
-          message:
-            "the rename engine cannot use $<name> in a replacement. Refer to" +
-            " the group by number instead, as in $1",
-        };
+        return refusal(
+          "regex_named_group",
+          { construct: "$<name>" },
+          "renaming can't use $<name> in a replacement. Use the group's" +
+            " number instead, as in $1",
+        );
       }
       const backref = /\\(\d)/.exec(parsed.replace);
       if (backref) {
-        return {
-          ok: false,
-          message:
-            "write $" +
-            backref[1] +
-            " rather than \\" +
-            backref[1] +
-            " to reuse a captured group",
-        };
+        return refusal(
+          "regex_backslash_group",
+          { n: backref[1] },
+          "write $" + backref[1] + " rather than \\" + backref[1],
+        );
       }
       let compiled;
       try {
         compiled = new RegExp(parsed.find, "g");
       } catch (e) {
-        return {
-          ok: false,
-          message: '"' + parsed.find + '" is not a valid regular expression',
-        };
+        return refusal(
+          "regex_invalid",
+          { find: parsed.find },
+          '"' + parsed.find + '" is not a valid regular expression',
+        );
       }
       // Big difference between Goja and browser here, they disagree about
       // how zero-or-one '?' matches so running /\d?/X/ on "abc-123" becomes
       // "abc-XXX" in the browser but "aXbXcX-XXXX" in Goja
       if (compiled.test("")) {
-        return {
-          ok: false,
-          message:
-            '"' +
+        return refusal(
+          "regex_matches_empty",
+          { find: parsed.find },
+          '"' +
             parsed.find +
-            '" can match nothing at all, which would insert the replacement' +
-            " between every character. Make it match at least one character," +
-            " using + rather than *",
-        };
+            '" can match nothing at all, which puts the replacement between' +
+            " every character. Use + rather than *",
+        );
       }
       return { ok: true, value: parsed };
     },
@@ -415,10 +416,11 @@ export const MODIFIERS = {
     parseValue: function (raw) {
       const text = String(raw == null ? "" : raw).trim();
       if (!text) {
-        return {
-          ok: false,
-          message: "from= needs a stash-box name, like {stash_id|from=StashDB}",
-        };
+        return refusal(
+          "from_empty",
+          { example: "{stash_id|from=StashDB}" },
+          "from= needs a stash-box name, like {stash_id|from=StashDB}",
+        );
       }
       return { ok: true, value: text };
     },
@@ -525,7 +527,11 @@ export function parseToken(name, body, index, raw, arg) {
 
   if (token.arg === "") {
     token.errors.push(
-      "{@...} needs the name of a custom field, as in {@Series}",
+      grammarProblem(
+        "no_custom_field_name",
+        { token: "{@...}", example: "{@Series}" },
+        "{@...} needs a custom field name, as in {@Series}",
+      ),
     );
   }
 
@@ -547,15 +553,19 @@ export function parseToken(name, body, index, raw, arg) {
         // than let {performers:1|gender=female} quietly mean "the first
         // performer, if she is female", refuse it and name the spelling that
         // says what it does
+        const example =
+          "{" + name + "|limit=" + limitMatch[1] + "|" + chunks.join("|") + "}";
         token.errors.push(
-          "the :N shorthand only works on its own, because modifiers apply" +
-            " left to right and :N always runs first. Write {" +
-            name +
-            "|limit=" +
-            limitMatch[1] +
-            "|" +
-            chunks.join("|") +
-            "} instead",
+          grammarProblem(
+            "shorthand_not_alone",
+            { shorthand: ":" + limitMatch[1], example: example },
+            ":" +
+              limitMatch[1] +
+              " only works on its own, since it always runs before the other" +
+              " modifiers. Write " +
+              example +
+              " instead",
+          ),
         );
       } else {
         // desugared rather than kept as its own field: with nothing else on the
@@ -567,31 +577,48 @@ export function parseToken(name, body, index, raw, arg) {
         });
       }
     } else if (head.indexOf("?") !== -1) {
+      const example = "{" + name + "|...?}";
       token.errors.push(
-        "the ? has to be the last thing before the closing brace, as in {" +
-          name +
-          "|...?}",
+        grammarProblem(
+          "optional_not_last",
+          { example: example },
+          "the ? has to come last, as in " + example,
+        ),
       );
     } else {
+      const text = head.replace(/^:/, "");
+      const example = "{" + name + "|name=value}";
       token.errors.push(
-        "don't know what \"" +
-          head.replace(/^:/, "") +
-          '" means here: a modifier is written as {' +
-          name +
-          "|name=value}",
+        grammarProblem(
+          "unknown_head",
+          { text: text, example: example },
+          '"' + text + "\" isn't a modifier. Write modifiers as " + example,
+        ),
       );
     }
   }
 
   chunks.forEach((chunk) => {
     if (chunk === "") {
-      token.errors.push("there is an empty modifier between two | separators");
+      token.errors.push(
+        grammarProblem(
+          "empty_modifier",
+          {},
+          "there is an empty modifier between two | separators",
+        ),
+      );
       return;
     }
     const eq = chunk.indexOf("=");
     const key = eq === -1 ? chunk : chunk.slice(0, eq);
     if (!/^\w+$/.test(key)) {
-      token.errors.push('"' + chunk + '" is not a valid modifier');
+      token.errors.push(
+        grammarProblem(
+          "invalid_modifier",
+          { chunk: chunk },
+          '"' + chunk + '" is not a valid modifier',
+        ),
+      );
       return;
     }
     token.modifiers.push({

@@ -1152,12 +1152,12 @@ test("findPatternProblems explains every way a modifier can be wrong", () => {
     messageFor("{performers|gender=female|gender=male}"),
     /more than once/,
   );
-  assert.match(messageFor("{title:2}"), /only means something on a list token/);
+  assert.match(messageFor("{title:2}"), /only works on a list token/);
   assert.match(messageFor("{nonsense}"), /no \{nonsense\} token/);
   assert.match(messageFor("{title|uppercase=yes}"), /uppercase takes no value/);
   assert.match(
     messageFor("{title|uppercase|lowercase}"),
-    /only set its capitalisation once/,
+    /can't be used together/,
   );
   assert.deepEqual(
     findPatternProblems("{performers|limit=1|gender=female?}"),
@@ -1700,7 +1700,11 @@ test("findPatternProblems checks from= against the configured stash-boxes", () =
   const bogus = problems("{stash_id|from=Bogus}", BOXES);
   assert.equal(bogus.length, 1);
   assert.equal(bogus[0].blocking, true);
-  assert.match(bogus[0].message, /no stash-box source named "Bogus"/);
+  assert.equal(bogus[0].code, "unknown_stash_box");
+  assert.deepEqual(bogus[0].values, {
+    name: "Bogus",
+    configured: "StashDB, ThePornDB, FansDB",
+  });
   // the message is the only place the valid names appear
   assert.match(bogus[0].message, /StashDB, ThePornDB, FansDB/);
 
@@ -1709,7 +1713,7 @@ test("findPatternProblems checks from= against the configured stash-boxes", () =
   const none = problems("{stash_id|from=StashDB}", []);
   assert.equal(none.length, 1);
   assert.equal(none[0].blocking, true);
-  assert.match(none[0].message, /no stash-box sources configured/);
+  assert.match(none[0].message, /no stash-boxes in Stash/);
 
   // an unrecognised URL is a hint, not a refusal: the scene may still carry ids
   const urlHint = problems(

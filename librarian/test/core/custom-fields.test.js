@@ -448,7 +448,7 @@ test("{@} with no name is reported rather than rendered as nothing", () => {
   const [token] = scanPattern("{@}");
   assert.equal(token.arg, "");
   assert.equal(token.errors.length, 1);
-  assert.match(token.errors[0], /needs the name of a custom field/);
+  assert.equal(token.errors[0].code, "no_custom_field_name");
   // an errored token renders as the text that was written, like any other
   assert.equal(renderTemplate("{@}", tokensFor({})), "{@}");
 });

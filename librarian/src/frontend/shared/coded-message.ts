@@ -29,6 +29,27 @@ export function codedMessage(
   return intl.formatMessage({ id }, values);
 }
 
+export interface PatternProblem {
+  raw: string;
+  message: string;
+  code?: string;
+  values?: Record<string, any>;
+  blocking: boolean;
+}
+
+export function describePatternProblem(
+  intl: IntlShape,
+  problem: { code?: string; values?: Record<string, any>; message: string },
+): string {
+  return codedMessage(
+    intl,
+    "librarian.patternProblem",
+    problem.code,
+    problem.values,
+    problem.message,
+  );
+}
+
 // both casings, since a language like German capitalises nouns mid-sentence
 export function nounValues(intl: IntlShape, entityType?: string) {
   const type = entityType || "scenes";

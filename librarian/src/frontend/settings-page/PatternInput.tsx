@@ -1,6 +1,10 @@
 import React, { useRef, useState } from "react";
 import { useIntl, IntlShape } from "react-intl";
 import { findPatternProblems } from "../../core/path-template.js";
+import {
+  describePatternProblem,
+  PatternProblem,
+} from "../shared/coded-message.js";
 import { adapterFor } from "../../core/entity-adapter.js";
 import { countableNoun } from "../shared/eligible-entities.js";
 import { useStashBoxes } from "../shared/StashBoxesContext.js";
@@ -41,10 +45,13 @@ function PatternModalField({
   const pattern = value || "";
   // null while loading, so a from= value is never flagged against a list we
   // have not received yet: a blocking problem refuses the rename outright
-  const problems: { raw: string; message: string; blocking: boolean }[] =
-    findPatternProblems(pattern, adapter.tokens, {
+  const problems: PatternProblem[] = findPatternProblems(
+    pattern,
+    adapter.tokens,
+    {
       stashBoxes: boxesLoading ? null : stashBoxes,
-    });
+    },
+  );
   const blockingCount = problems.filter((p) => p.blocking).length;
   const unsafeBasename = !!validate && !validate(pattern);
 
@@ -99,7 +106,7 @@ function PatternModalField({
             (problem.blocking ? "text-danger" : "text-warning")
           }
         >
-          <code>{problem.raw}</code> {problem.message}
+          <code>{problem.raw}</code> {describePatternProblem(intl, problem)}
         </div>
       ))}
       {unsafeBasename && (
