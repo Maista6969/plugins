@@ -112,9 +112,6 @@ export function RuleEditModal({
             heading={intl.formatMessage({
               id: "librarian.ruleEditModal.ruleName.heading",
             })}
-            subHeading={intl.formatMessage({
-              id: "librarian.ruleEditModal.ruleName.subHeading",
-            })}
             value={rule.name}
             onChange={(name) => onChange({ ...rule, name })}
             placeholder={intl.formatMessage({
@@ -137,9 +134,6 @@ export function RuleEditModal({
             <LibraryRootPicker
               value={rule.libraryRoot || ""}
               entityType={entityType}
-              subHeading={intl.formatMessage({
-                id: "librarian.ruleEditModal.libraryRoot.subHeading",
-              })}
               onChange={(libraryRoot) => onChange({ ...rule, libraryRoot })}
             />
           )}

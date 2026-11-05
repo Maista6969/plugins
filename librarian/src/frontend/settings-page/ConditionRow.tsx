@@ -57,17 +57,14 @@ const ANY_ONLY_MODIFIERS = [
   {
     value: "any_of",
     label: "librarian.conditionRow.modifier.anyOf.label",
-    title: "librarian.conditionRow.modifier.anyOf.title",
   },
   {
     value: "is_null",
     label: "librarian.conditionRow.modifier.isNull.label",
-    title: "librarian.conditionRow.modifier.isNull.title",
   },
   {
     value: "not_null",
     label: "librarian.conditionRow.modifier.notNull.label",
-    title: "librarian.conditionRow.modifier.notNull.title",
   },
 ];
 
@@ -76,7 +73,6 @@ const ANY_OR_ALL_MODIFIERS = [
   {
     value: "all_of",
     label: "librarian.conditionRow.modifier.allOf.label",
-    title: "librarian.conditionRow.modifier.allOf.title",
   },
   ANY_ONLY_MODIFIERS[1],
   ANY_ONLY_MODIFIERS[2],
@@ -89,12 +85,10 @@ const PERFORMER_ONLY_MODIFIERS = [
   {
     value: "favorite",
     label: "librarian.conditionRow.modifier.favorite.label",
-    title: "librarian.conditionRow.modifier.favorite.title",
   },
   {
     value: "not_favorite",
     label: "librarian.conditionRow.modifier.notFavorite.label",
-    title: "librarian.conditionRow.modifier.notFavorite.title",
   },
   {
     value: "rating",
@@ -139,12 +133,10 @@ const STUDIO_ONLY_MODIFIERS = [
   {
     value: "favorite",
     label: "librarian.conditionRow.modifier.studioFavorite.label",
-    title: "librarian.conditionRow.modifier.studioFavorite.title",
   },
   {
     value: "not_favorite",
     label: "librarian.conditionRow.modifier.studioNotFavorite.label",
-    title: "librarian.conditionRow.modifier.studioNotFavorite.title",
   },
   {
     value: "rating",
@@ -183,12 +175,10 @@ const GROUP_MODIFIERS = [
   {
     value: "not_null",
     label: "librarian.conditionRow.modifier.groupNotNull.label",
-    title: "librarian.conditionRow.modifier.groupNotNull.title",
   },
   {
     value: "is_null",
     label: "librarian.conditionRow.modifier.groupIsNull.label",
-    title: "librarian.conditionRow.modifier.groupIsNull.title",
   },
 ];
 
@@ -198,7 +188,6 @@ const TAG_MODIFIERS = [
   {
     value: "none_of",
     label: "librarian.conditionRow.modifier.noneOf.label",
-    title: "librarian.conditionRow.modifier.noneOf.title",
   },
   ANY_OR_ALL_MODIFIERS[2],
   ANY_OR_ALL_MODIFIERS[3],
@@ -276,12 +265,10 @@ const TITLE_MODIFIERS = [
   {
     value: "NOT_NULL",
     label: "librarian.conditionRow.dateModifier.notNull.label",
-    title: "librarian.conditionRow.titleModifier.notNull.title",
   },
   {
     value: "IS_NULL",
     label: "librarian.conditionRow.dateModifier.isNull.label",
-    title: "librarian.conditionRow.titleModifier.isNull.title",
   },
 ];
 
@@ -375,12 +362,10 @@ const CUSTOM_FIELD_MODIFIERS = [
   {
     value: "NOT_NULL",
     label: "librarian.conditionRow.customFieldModifier.notNull.label",
-    title: "librarian.conditionRow.customFieldModifier.notNull.title",
   },
   {
     value: "IS_NULL",
     label: "librarian.conditionRow.customFieldModifier.isNull.label",
-    title: "librarian.conditionRow.customFieldModifier.isNull.title",
   },
 ];
 
@@ -394,12 +379,10 @@ const DATE_MODIFIERS = [
   {
     value: "not_null",
     label: "librarian.conditionRow.dateModifier.notNull.label",
-    title: "librarian.conditionRow.dateModifier.notNull.title",
   },
   {
     value: "is_null",
     label: "librarian.conditionRow.dateModifier.isNull.label",
-    title: "librarian.conditionRow.dateModifier.isNull.title",
   },
   {
     value: "range",
@@ -971,7 +954,8 @@ function ListModifierSelect({
   noun: string;
 }) {
   const intl = useIntl();
-  const options = LIST_MODIFIERS_BY_FIELD[field] || ANY_ONLY_MODIFIERS;
+  const options: { value: string; label: string; title?: string }[] =
+    LIST_MODIFIERS_BY_FIELD[field] || ANY_ONLY_MODIFIERS;
   const current = options.find((o) => o.value === op) || options[0];
   return (
     <Form.Control

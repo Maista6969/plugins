@@ -304,11 +304,6 @@ function SettingsPageContent() {
           })}
         >
           <div className="content">
-            <p className="librarian-token-hint text-muted">
-              {intl.formatMessage({
-                id: "librarian.settingsPage.formatting.hint",
-              })}
-            </p>
             <TextSettingModal
               heading={intl.formatMessage({
                 id: "librarian.settingsPage.formatting.spaceReplacement.heading",
@@ -379,11 +374,6 @@ function SettingsPageContent() {
                     id: "librarian.settingsPage.formatting.reset.heading",
                   })}
                 </h3>
-                <div className="sub-heading">
-                  {intl.formatMessage({
-                    id: "librarian.settingsPage.formatting.reset.hint",
-                  })}
-                </div>
               </div>
               <div>
                 <Button
@@ -430,12 +420,6 @@ function SettingsPageContent() {
             { entityNoun: countableNoun(intl, activeType) },
           )}
         </h1>
-        <p className="librarian-token-hint text-muted">
-          {intl.formatMessage(
-            { id: "librarian.settingsPage.preview.hint" },
-            { entityNoun: countableNoun(intl, activeType) },
-          )}
-        </p>
         {/* keyed like the settings panel so switching tabs cannot leave rows
             from another entity type on screen */}
         <ConfigPreviewPanel

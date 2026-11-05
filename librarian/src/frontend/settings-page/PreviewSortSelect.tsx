@@ -31,12 +31,7 @@ export function PreviewSortSelect({
 
   return (
     <Dropdown as={ButtonGroup} className="librarian-sort-by-select">
-      <Dropdown.Toggle
-        variant="secondary"
-        title={intl.formatMessage({
-          id: "librarian.previewSortSelect.title",
-        })}
-      >
+      <Dropdown.Toggle variant="secondary">
         {current ? intl.formatMessage({ id: current.label }) : ""}
       </Dropdown.Toggle>
       <Dropdown.Menu popperConfig={{ strategy: "fixed" }}>

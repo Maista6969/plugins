@@ -149,10 +149,6 @@ export function EntitySettingsPanel({
               organized: intl.formatMessage({ id: "organized" }).toLowerCase(),
             },
           )}
-          subHeading={intl.formatMessage(
-            { id: "librarian.entitySettingsPanel.onlyOrganized.subHeading" },
-            { entityNoun: plural },
-          )}
           checked={!!section.onlyOrganized}
           onChange={(v: boolean) => update({ onlyOrganized: v })}
         />
@@ -189,9 +185,6 @@ export function EntitySettingsPanel({
               id="librarian-only-with-stash-id"
               heading={intl.formatMessage({
                 id: "librarian.entitySettingsPanel.onlyWithStashId.heading",
-              })}
-              subHeading={intl.formatMessage({
-                id: "librarian.entitySettingsPanel.onlyWithStashId.subHeading",
               })}
               checked={!!section.onlyWithStashId}
               onChange={(v: boolean) => update({ onlyWithStashId: v })}
@@ -231,11 +224,6 @@ export function EntitySettingsPanel({
                 { entityNoun: plural },
               )}
             </h3>
-            <div className="sub-heading">
-              {intl.formatMessage({
-                id: "librarian.entitySettingsPanel.resetSection.subHeading",
-              })}
-            </div>
           </div>
           <div>
             <Button variant="danger" onClick={() => setConfirmingReset(true)}>
@@ -289,11 +277,6 @@ export function EntitySettingsPanel({
                   { count: section.rules.length },
                 )
               : null}
-          </p>
-          <p>
-            {intl.formatMessage({
-              id: "librarian.entitySettingsPanel.confirmReset.otherTabs",
-            })}
           </p>
         </ConfirmModal>
       )}
@@ -349,12 +332,6 @@ export function EntitySettingsPanel({
         })}
       >
         <div className="content">
-          <p className="librarian-token-hint text-muted">
-            {intl.formatMessage(
-              { id: "librarian.entitySettingsPanel.defaultPattern.hint" },
-              { entityNoun: noun },
-            )}
-          </p>
           {keepsInPlace ? (
             <p className="librarian-token-hint text-muted">
               {intl.formatMessage({
@@ -370,10 +347,6 @@ export function EntitySettingsPanel({
             <LibraryRootPicker
               value={defaultPattern.libraryRoot}
               entityType={entityType}
-              subHeading={intl.formatMessage(
-                { id: "librarian.entitySettingsPanel.libraryRoot.subHeading" },
-                { entityNoun: plural },
-              )}
               onChange={(libraryRoot: string) =>
                 updateDefaultPattern({ libraryRoot })
               }
