@@ -263,6 +263,11 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       [
         {
           token: null,
+          code:
+            folderMode === "blank"
+              ? "blank_folder_pattern"
+              : "blank_filename_pattern",
+          values: {},
           message:
             "a blank " +
             (folderMode === "blank" ? "folder" : "filename") +
@@ -307,6 +312,10 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       [
         {
           token: null,
+          code: matchedRule
+            ? "rule_no_library_root"
+            : "default_no_library_root",
+          values: {},
           message: matchedRule
             ? "the matched rule has no library root configured"
             : "the default pattern has no library root configured",
@@ -370,6 +379,8 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
         [
           {
             token: null,
+            code: "empty_filename",
+            values: {},
             message:
               "the pattern produced no real filename for this scene (every token is either optional or has no data). Refusing to rename to a generic placeholder, since other scenes/files could collide on the same name",
           },
@@ -387,6 +398,8 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
         [
           {
             token: null,
+            code: "no_identifying_metadata",
+            values: {},
             message:
               "the filename would be based entirely on file properties (resolution/dimensions/codec/bitrate/fps) with no actual Stash metadata (title, studio, performers, tags, date, or rating). Refusing to rename to a name that can't be told apart from other uncatalogued files with the same technical specs; add metadata to this scene, or use a pattern whose filename includes at least one metadata field",
           },
@@ -426,6 +439,8 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
           [
             {
               token: null,
+              code: "unstable_pattern",
+              values: { first: basenameNoExt, second: again.basenameNoExt },
               message:
                 "this pattern does not settle: renaming to " +
                 basenameNoExt +
@@ -450,8 +465,10 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
         [
           {
             token: null,
+            code: "empty_folder",
+            values: {},
             message:
-              "the folder pattern produced no folder for this scene (every token is either optional or has no data). Refusing to guess: leave the folder pattern blank to keep files in their current folder, or set it to / to move them to the library root",
+              "the folder pattern produced no folder for this scene (every token is either optional or has no data). Refusing to guess: use {current} to keep files in their current folder, or / to move them to the library root",
           },
         ],
       );
@@ -562,8 +579,18 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       "group_not_in_title",
     ])
   ) {
-    warnings.push(
-      "in " +
+    warnings.push({
+      code: "several_groups",
+      values: {
+        count: groupChoice.all.length,
+        chosen: groupChoice.group.name,
+        others: groupChoice.all
+          .slice(1)
+          .map((g) => g.name)
+          .join(", "),
+      },
+      message:
+        "in " +
         groupChoice.all.length +
         ' groups; {group} used "' +
         groupChoice.group.name +
@@ -572,7 +599,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
           .slice(1)
           .map((g) => g.name)
           .join(", "),
-    );
+    });
   }
 
   const disambiguationRisks = findDisambiguationRisks(
@@ -582,16 +609,20 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
     matchedIds,
   );
   if (disambiguationRisks.length > 0) {
-    warnings.push(
-      disambiguationRisks
-        .map((risk) => {
-          return risk.name + " (" + risk.disambiguation + ")";
-        })
-        .join(", ") +
+    const names = disambiguationRisks
+      .map((risk) => {
+        return risk.name + " (" + risk.disambiguation + ")";
+      })
+      .join(", ");
+    warnings.push({
+      code: "needs_disambiguate",
+      values: { names, count: disambiguationRisks.length },
+      message:
+        names +
         " may need |disambiguate: this pattern renders the " +
         (disambiguationRisks.length === 1 ? "name" : "names") +
         " alone",
-    );
+    });
   }
 
   return {

@@ -104,7 +104,7 @@ const IMAGES = {
     return {
       reason: "in_folder_gallery",
       message:
-        "this image belongs to a folder-based gallery, which Stash defines by its folder. Moving it elsewhere would leave that gallery behind on the old folder and add the image to a second one created at the destination. Leave the folder pattern blank to rename these in place",
+        "this image belongs to a folder-based gallery, which Stash defines by its folder. Moving it elsewhere would leave that gallery behind on the old folder and add the image to a second one created at the destination. Use {current} as the folder pattern to rename these in place",
     };
   },
 };

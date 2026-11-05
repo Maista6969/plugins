@@ -7,6 +7,7 @@ import { useStashBoxes } from "./StashBoxesContext.js";
 import { describePatternPair, joinBasename } from "../../core/path-template.js";
 import { countableNoun } from "./eligible-entities.js";
 import { entityUI } from "./entity-ui.js";
+import { codedMessage, nounValues } from "./coded-message.js";
 import { findPathClashes, clashKey } from "../../core/path-clashes.js";
 import { failureStillApplies } from "../../core/run-results.js";
 import { RunFailure } from "./stash-api.js";
@@ -105,11 +106,20 @@ export function skippedText(
   message?: string,
 ): string {
   const noun = countableNoun(intl, entityType || "scenes", false);
-  // folder_gallery and in_zip_gallery carry their own explanation from the adapter
+  // the skips that explain themselves, like folder_gallery: their reason is
+  // the code, and their message the English fallback
   if (message) {
     return intl.formatMessage(
       { id: "librarian.planResultTable.skipped.withMessage" },
-      { message },
+      {
+        message: codedMessage(
+          intl,
+          "librarian.skipReason",
+          reason,
+          nounValues(intl, entityType),
+          message,
+        ),
+      },
     );
   }
   if (reason === "not_organized") {
@@ -117,6 +127,7 @@ export function skippedText(
       { id: "librarian.planResultTable.skipped.notOrganized" },
       {
         entityNoun: noun,
+        EntityNoun: nounValues(intl, entityType).Noun,
         organized: intl.formatMessage({ id: "organized" }).toLowerCase(),
       },
     );
@@ -124,7 +135,7 @@ export function skippedText(
   if (reason === "no_stash_id") {
     return intl.formatMessage(
       { id: "librarian.planResultTable.skipped.noStashId" },
-      { entityNoun: noun },
+      { entityNoun: noun, EntityNoun: nounValues(intl, entityType).Noun },
     );
   }
   if (reason === "no_files") {
@@ -132,6 +143,7 @@ export function skippedText(
       { id: "librarian.planResultTable.skipped.noFiles" },
       {
         entityNoun: noun,
+        EntityNoun: nounValues(intl, entityType).Noun,
         fileNoun: intl.formatMessage({ id: entityUI(entityType).fileNoun }),
       },
     );
@@ -283,8 +295,10 @@ export function PlanResultTable({
                           { id: "librarian.planResultTable.errorPrefix" },
                           {
                             message: describeMissingData(
+                              intl,
                               plan.missingData,
                               stashBoxes,
+                              entityType,
                             ),
                           },
                         )
@@ -334,8 +348,16 @@ export function PlanResultTable({
                           {entityLink(scene, entityType)}
                           {(plan.warnings || []).length > 0 && (
                             <ul className="librarian-plan-warnings text-warning">
-                              {plan.warnings.map((w: string, i: number) => (
-                                <li key={i}>{w}</li>
+                              {plan.warnings.map((w: any, i: number) => (
+                                <li key={i}>
+                                  {codedMessage(
+                                    intl,
+                                    "librarian.planWarning",
+                                    w.code,
+                                    w.values,
+                                    w.message,
+                                  )}
+                                </li>
                               ))}
                             </ul>
                           )}

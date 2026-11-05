@@ -172,7 +172,7 @@ export function SceneFileInfoBlock({
         )}
         {plan.status === "error" && (
           <p className="librarian-token-hint text-danger">
-            {describeMissingData(plan.missingData, stashBoxes)}
+            {describeMissingData(intl, plan.missingData, stashBoxes, "scenes")}
           </p>
         )}
         {plan.status === "skipped" && (

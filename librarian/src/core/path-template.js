@@ -461,127 +461,163 @@ export function buildTokens(sceneView, config, matchedIds) {
 const TOKEN_REQUIREMENTS = {
   studio: {
     isMissing: (view) => view.studioNames.length === 0,
+    code: "no_studio",
     message: "{noun} has no studio assigned",
   },
   studio_root: {
     isMissing: (view) => view.studioNames.length === 0,
+    code: "no_studio",
     message: "{noun} has no studio assigned",
   },
   studio_hierarchy: {
     isMissing: (view) => view.studioNames.length === 0,
+    code: "no_studio",
     message: "{noun} has no studio assigned",
   },
   performers: {
     isMissing: (view) => view.performerNames.length === 0,
+    code: "no_performers",
     message: "{noun} has no performers assigned",
   },
   performers_not_in_title: {
     isMissing: (view) => view.performerNames.length === 0,
+    code: "no_performers",
     message: "{noun} has no performers assigned",
   },
   matched_performers: {
     isMissing: (view, matchedIds) =>
       !matchedIds || matchedIds.performerIds.length === 0,
+    code: "no_matched_performers",
     message:
       "no performer from a matching rule condition was found on this scene",
   },
   tags: {
     isMissing: (view) => view.tagNames.length === 0,
+    code: "no_tags",
     message: "{noun} has no tags assigned",
   },
   matched_tags: {
     isMissing: (view, matchedIds) =>
       !matchedIds || matchedIds.tagIds.length === 0,
+    code: "no_matched_tags",
     message: "no tag from a matching rule condition was found on this scene",
   },
   title: {
     isMissing: (view) => !view.title,
+    code: "no_title",
     message: "{noun} has no title",
   },
   code: {
     isMissing: (view) => !view.code,
+    code: "no_code",
     message: "{noun} has no code assigned",
   },
   director: {
     isMissing: (view) => !view.director,
+    code: "no_director",
     message: "{noun} has no director assigned",
   },
   photographer: {
     isMissing: (view) => !view.photographer,
+    code: "no_photographer",
     message: "{noun} has no photographer assigned",
   },
   date: {
     isMissing: (view) => !view.date,
+    code: "no_date",
     message: "{noun} has no date",
   },
   date_year: {
     isMissing: (view) => !YEAR_RE.test(view.date || ""),
+    code: "no_date",
     message: "{noun} has no date",
   },
   date_month: {
     isMissing: (view) => !MONTH_RE.test(view.date || ""),
+    code: "date_no_month",
     message: "{noun}'s date is year-only, with no month",
   },
   date_day: {
     isMissing: (view) => !DAY_RE.test(view.date || ""),
+    code: "date_not_full",
     message: "{noun}'s date isn't a full year-month-day date",
   },
   resolution: {
     isMissing: (view) => !view.resolution,
+    code: "no_resolution",
     message: "{noun}'s primary file has no resolution info",
   },
   width: {
     isMissing: (view) => !view.width,
+    code: "no_width",
     message: "{noun}'s primary file has no width info",
   },
   height: {
     isMissing: (view) => !view.height,
+    code: "no_height",
     message: "{noun}'s primary file has no height info",
   },
   orientation: {
     isMissing: (view) => !view.orientation,
+    code: "no_dimensions",
     message: "{noun}'s primary file has no width/height info",
   },
   video_codec: {
     isMissing: (view) => !view.videoCodec,
+    code: "no_video_codec",
     message: "{noun}'s primary file has no video codec info",
   },
   audio_codec: {
     isMissing: (view) => !view.audioCodec,
+    code: "no_audio_codec",
     message: "{noun}'s primary file has no audio codec info",
   },
   bitrate: {
     isMissing: (view) => view.bitrateMbps == null,
+    code: "no_bitrate",
     message: "{noun}'s primary file has no bitrate info",
   },
   fps: {
     isMissing: (view) => view.fps == null,
+    code: "no_framerate",
     message: "{noun}'s primary file has no framerate info",
   },
   phash: {
     isMissing: (view) => !view.phash,
+    code: "no_phash",
     message: "{noun}'s primary file has no phash fingerprint",
   },
   oshash: {
     isMissing: (view) => !view.oshash,
+    code: "no_oshash",
     message: "{noun}'s primary file has no oshash fingerprint",
   },
   rating: {
     isMissing: (view) => view.rating100 == null,
+    code: "no_rating",
     message: "{noun} has no rating",
   },
   group: {
     isMissing: (view) => resolveSceneGroup(view).group === null,
+    code: "no_group",
     message: "{noun} does not belong to any group",
   },
   group_not_in_title: {
     isMissing: (view) => resolveSceneGroup(view).group === null,
+    code: "no_group",
     message: "{noun} does not belong to any group",
   },
   group_idx: {
     isMissing: (view) => {
       const chosen = resolveSceneGroup(view).group;
       return !chosen || chosen.sceneIndex == null;
+    },
+    code: (view) => {
+      return resolveSceneGroup(view).group ? "no_group_index" : "no_group";
+    },
+    values: (view) => {
+      const chosen = resolveSceneGroup(view).group;
+      return chosen ? { group: chosen.name } : {};
     },
     message: (view) => {
       const chosen = resolveSceneGroup(view).group;
@@ -599,6 +635,14 @@ const TOKEN_REQUIREMENTS = {
           ? view.studioCustomFields
           : view.customFields;
       return customFieldText((fields || {})[parsed.arg]).trim() === "";
+    },
+    code: (view, matchedIds, parsed) => {
+      return customFieldSource(parsed) === "studio"
+        ? "no_studio_custom_field"
+        : "no_custom_field";
+    },
+    values: (view, matchedIds, parsed) => {
+      return { field: parsed.arg };
     },
     message: (view, matchedIds, parsed) => {
       const subject =
@@ -619,6 +663,17 @@ const TOKEN_REQUIREMENTS = {
       return !(view.stashIds || []).some((s) => {
         return s.endpoint === source.endpoint;
       });
+    },
+    code: (view, matchedIds, parsed) => {
+      const source = resolveStashIdSource(parsed, matchedIds);
+      if (source.endpoint) {
+        return "no_stash_id_from";
+      }
+      return source.requested ? "unknown_stash_box" : "no_stash_box_set";
+    },
+    values: (view, matchedIds, parsed) => {
+      const source = resolveStashIdSource(parsed, matchedIds);
+      return { source: source.endpoint || source.requested || "" };
     },
     message: (view, matchedIds, parsed) => {
       const source = resolveStashIdSource(parsed, matchedIds);
@@ -1157,13 +1212,24 @@ export function findMissingRequiredData(patterns, sceneView, matchedIds, noun) {
         requirement.isMissing(sceneView, effectiveMatchedIds, token)
       ) {
         seen[signature] = true;
-        const message = (
-          typeof requirement.message === "function"
-            ? requirement.message(sceneView, effectiveMatchedIds, token)
-            : requirement.message
-        ).replace(/\{noun\}/g, subject);
+        const resolve = (field) => {
+          return typeof field === "function"
+            ? field(sceneView, effectiveMatchedIds, token)
+            : field;
+        };
+        const message = resolve(requirement.message).replace(
+          /\{noun\}/g,
+          subject,
+        );
         if (!seenMessages[message]) {
-          const entry = { token: token.name, message: message };
+          // code and values let the UI say it in the viewer's language; the
+          // message stays for Stash's log
+          const entry = {
+            token: token.name,
+            message: message,
+            code: resolve(requirement.code),
+            values: requirement.values ? resolve(requirement.values) : {},
+          };
           // carried structurally so the UI can resolve a display name for it
           if (typeof requirement.endpoint === "function") {
             const endpoint = requirement.endpoint(

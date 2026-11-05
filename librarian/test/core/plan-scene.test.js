@@ -1691,8 +1691,9 @@ test("a scene in several groups is planned with a warning naming the pick", () =
   const result = planScene(scene, config);
   assert.equal(result.status, "ok");
   assert.equal(result.warnings.length, 1);
-  assert.match(result.warnings[0], /Teen Dreams/);
-  assert.match(result.warnings[0], /Later Compilation/);
+  assert.equal(result.warnings[0].code, "several_groups");
+  assert.match(result.warnings[0].message, /Teen Dreams/);
+  assert.match(result.warnings[0].message, /Later Compilation/);
   assert.equal(result.files[0].folder, "/data/Teen Dreams");
 });
 
@@ -1774,10 +1775,11 @@ test("a disambiguated performer warns when the pattern renders the name alone", 
   const result = planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config);
   assert.equal(result.status, "ok");
   assert.equal(result.warnings.length, 1);
-  assert.match(result.warnings[0], /Alex Rivera \(Blonde\)/);
-  assert.match(result.warnings[0], /\|disambiguate/);
+  assert.match(result.warnings[0].message, /Alex Rivera \(Blonde\)/);
+  assert.match(result.warnings[0].message, /\|disambiguate/);
+  assert.equal(result.warnings[0].code, "needs_disambiguate");
   // the performer with no disambiguation is nobody's problem
-  assert.equal(result.warnings[0].includes("Marcus Chen"), false);
+  assert.equal(result.warnings[0].message.includes("Marcus Chen"), false);
   // and it stays a warning: the rename still happens
   assert.equal(result.files[0].folder, "/data/Alex Rivera, Marcus Chen");
 });
@@ -1833,7 +1835,7 @@ test("a performer filtered out of the token raises no warning", () => {
   });
   // sorted by name, so Alex is the one that survives limit=1 and does warn
   assert.match(
-    planScene(disambiguationScene(performers), limited).warnings[0],
+    planScene(disambiguationScene(performers), limited).warnings[0].message,
     /Alex Rivera \(Blonde\)/,
   );
 });
@@ -1853,8 +1855,8 @@ test("one warning names every performer at risk, listing each once", () => {
     config,
   );
   assert.equal(result.warnings.length, 1);
-  assert.match(result.warnings[0], /Alex Rivera \(Blonde\), Jo \(II\)/);
-  assert.match(result.warnings[0], /renders the names alone/);
+  assert.match(result.warnings[0].message, /Alex Rivera \(Blonde\), Jo \(II\)/);
+  assert.match(result.warnings[0].message, /renders the names alone/);
 });
 
 // Repeating a performer's bare name below a folder that already told them
@@ -1902,7 +1904,7 @@ test("disambiguating only in the filename still warns about the folder", () => {
   });
   const result = planScene(disambiguationScene(AMBIGUOUS_PERFORMERS), config);
   assert.equal(result.warnings.length, 1);
-  assert.match(result.warnings[0], /Alex Rivera \(Blonde\)/);
+  assert.match(result.warnings[0].message, /Alex Rivera \(Blonde\)/);
 });
 
 test("a bare name in the filename is settled by the filename itself", () => {
@@ -1935,8 +1937,8 @@ test("only the performers the disambiguated token renders are settled", () => {
     config,
   );
   assert.equal(result.warnings.length, 1);
-  assert.match(result.warnings[0], /Jo \(II\)/);
-  assert.equal(result.warnings[0].includes("Alex Rivera"), false);
+  assert.match(result.warnings[0].message, /Jo \(II\)/);
+  assert.equal(result.warnings[0].message.includes("Alex Rivera"), false);
 });
 
 // no group token in the pattern means the ambiguity cannot affect the name, so

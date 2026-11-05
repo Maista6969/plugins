@@ -54,7 +54,14 @@ export function describeFailure(
   if (failure.missingData && failure.missingData.length > 0) {
     return intl.formatMessage(
       { id: "librarian.planResultTable.errorPrefix" },
-      { message: describeMissingData(failure.missingData, stashBoxes) },
+      {
+        message: describeMissingData(
+          intl,
+          failure.missingData,
+          stashBoxes,
+          entityType,
+        ),
+      },
     );
   }
   // raised by Stash or the runtime, so only the frame can be translated

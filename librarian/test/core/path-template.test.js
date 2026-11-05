@@ -118,6 +118,29 @@ test("Stash's partial dates (YYYY or YYYY-MM) still yield whatever precision the
   assert.equal(render("{date_day}", full), "15");
 });
 
+test("each missing-data entry carries a code and values the UI can translate", () => {
+  const codes = (patterns, view) =>
+    findMissingRequiredData(patterns, view).map((m) => [m.code, m.values]);
+  assert.deepEqual(codes(["{title}"], sceneView({ title: "" })), [
+    ["no_title", {}],
+  ]);
+  assert.deepEqual(codes(["{date_month}"], sceneView({ date: "2017" })), [
+    ["date_no_month", {}],
+  ]);
+  assert.deepEqual(
+    codes(["{@Series}", "{@Series|from=studio}"], sceneView({})),
+    [
+      ["no_custom_field", { field: "Series" }],
+      ["no_studio_custom_field", { field: "Series" }],
+    ],
+  );
+  // the English message is kept for Stash's log
+  assert.equal(
+    findMissingRequiredData(["{title}"], sceneView({ title: "" }))[0].message,
+    "scene has no title",
+  );
+});
+
 test("findMissingRequiredData judges date_year/date_month/date_day independently against a partial date", () => {
   const yearOnly = sceneView({ date: "2017" });
   assert.deepEqual(findMissingRequiredData(["{date_year}"], yearOnly), []);
