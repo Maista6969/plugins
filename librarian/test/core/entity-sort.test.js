@@ -1,14 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createIntl, createIntlCache } from "react-intl";
 import {
   sortEntities,
   normalizeSortCriteria,
-  describeSortCriteria,
 } from "../../src/core/entity-sort.js";
-import messages from "../../src/frontend/i18n/messages/en.json" with { type: "json" };
-
-const intl = createIntl({ locale: "en", messages }, createIntlCache());
 
 function names(entities) {
   return entities.map((e) => e.name);
@@ -203,7 +198,7 @@ test("unknown or empty criteria degrade to plain alphabetical", () => {
   ]);
 });
 
-test("normalizeSortCriteria always ends with name, and describeSortCriteria says so", () => {
+test("normalizeSortCriteria always ends with name", () => {
   assert.deepEqual(normalizeSortCriteria(["favorite", "rating"]), [
     "favorite",
     "rating",
@@ -214,9 +209,4 @@ test("normalizeSortCriteria always ends with name, and describeSortCriteria says
     "name",
   ]);
   assert.deepEqual(normalizeSortCriteria(undefined), ["name"]);
-  assert.equal(
-    describeSortCriteria(intl, ["favorite", "rating"]),
-    "Sorted favourites first, highest-rated first, then alphabetically.",
-  );
-  assert.equal(describeSortCriteria(intl, []), "Sorted alphabetically.");
 });

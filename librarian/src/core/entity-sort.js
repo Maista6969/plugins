@@ -69,37 +69,6 @@ const COMPARATORS = {
   name: compareName,
 };
 
-// intl is passed in rather than imported: this module has no UI framework of
-// its own, so translation is the caller's (SortCriteriaSelect's) concern
-export function describeSortCriteria(intl, value) {
-  const criteria = normalizeSortCriteria(value);
-  const parts = criteria.map((name) => {
-    if (name === "favorite") {
-      return intl.formatMessage({
-        id: "librarian.sortCriteriaSelect.favoritesFirst",
-      });
-    }
-    if (name === "rating") {
-      return intl.formatMessage({
-        id: "librarian.sortCriteriaSelect.highestRatedFirst",
-      });
-    }
-    return intl.formatMessage({
-      id: "librarian.sortCriteriaSelect.alphabetically",
-    });
-  });
-  if (parts.length === 1) {
-    return intl.formatMessage(
-      { id: "librarian.sortCriteriaSelect.sortedOne" },
-      { part: parts[0] },
-    );
-  }
-  return intl.formatMessage(
-    { id: "librarian.sortCriteriaSelect.sortedMany" },
-    { parts: parts.slice(0, -1).join(", "), last: parts[parts.length - 1] },
-  );
-}
-
 export function sortEntities(entities, sortBy, getName) {
   const nameOf =
     getName ||

@@ -269,12 +269,8 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
               : "blank_filename_pattern",
           values: {},
           message:
-            "a blank " +
-            (folderMode === "blank" ? "folder" : "filename") +
-            " pattern no longer means anything. Write {current} to keep the " +
-            (folderMode === "blank"
-              ? "folder this file is already in"
-              : "name this file already has"),
+            "a blank pattern does nothing. Use {current} to keep the " +
+            (folderMode === "blank" ? "folder" : "name"),
         },
       ],
     );
@@ -287,10 +283,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
     return {
       status: "skipped",
       reason: "nothing_to_change",
-      message:
-        "both the folder and filename patterns are {current}, so this " +
-        adapter.noun +
-        " keeps the path it already has",
+      message: "both patterns are {current}",
       sceneId: sceneView.id,
       matchedRule: matchedRule ? matchedRule.id || null : null,
       files: [],
@@ -382,7 +375,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
             code: "empty_filename",
             values: {},
             message:
-              "the pattern produced no real filename for this scene (every token is either optional or has no data). Refusing to rename to a generic placeholder, since other scenes/files could collide on the same name",
+              "the filename came out empty: every token is optional or has no data",
           },
         ],
       );
@@ -401,7 +394,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
             code: "no_identifying_metadata",
             values: {},
             message:
-              "the filename would be based entirely on file properties (resolution/dimensions/codec/bitrate/fps) with no actual Stash metadata (title, studio, performers, tags, date, or rating). Refusing to rename to a name that can't be told apart from other uncatalogued files with the same technical specs; add metadata to this scene, or use a pattern whose filename includes at least one metadata field",
+              "the filename only has file properties like resolution or codec, which other files can share. Add a metadata token such as {title}",
           },
         ],
       );
@@ -442,13 +435,12 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
               code: "unstable_pattern",
               values: { first: basenameNoExt, second: again.basenameNoExt },
               message:
-                "this pattern does not settle: renaming to " +
+                "renaming to " +
                 basenameNoExt +
                 " would rename again to " +
                 again.basenameNoExt +
-                " on the next run, and so on. {current} reads the name the" +
-                " pattern writes, so its modifiers have to leave an already" +
-                " renamed file alone",
+                " next time: modifiers on {current} must leave a renamed" +
+                " file alone",
             },
           ],
         );
@@ -468,7 +460,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
             code: "empty_folder",
             values: {},
             message:
-              "the folder pattern produced no folder for this scene (every token is either optional or has no data). Refusing to guess: use {current} to keep files in their current folder, or / to move them to the library root",
+              "the folder came out empty. Use {current} to keep the folder, or / for the library root",
           },
         ],
       );
@@ -592,9 +584,9 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
       message:
         "in " +
         groupChoice.all.length +
-        ' groups; {group} used "' +
+        ' groups; using "' +
         groupChoice.group.name +
-        '" (earliest created). Others: ' +
+        '", the oldest. Others: ' +
         groupChoice.all
           .slice(1)
           .map((g) => g.name)

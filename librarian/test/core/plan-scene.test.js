@@ -1634,7 +1634,8 @@ test("a pattern using {current} that never settles is refused", () => {
   const result = planScene(normalOrganizedScene, grows);
   assert.equal(result.status, "error");
   assert.equal(result.reason, "unstable_pattern");
-  assert.match(result.missingData[0].message, /does not settle/);
+  assert.equal(result.missingData[0].code, "unstable_pattern");
+  assert.match(result.missingData[0].message, /would rename again/);
 });
 
 test("{current} with a modifier that does settle is planned normally", () => {

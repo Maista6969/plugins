@@ -51,8 +51,7 @@ const GALLERIES = {
     if (raw.folder) {
       return {
         reason: "folder_gallery",
-        message:
-          "this gallery is a folder of loose images, convert it to a zip if you want Librarian to rename it",
+        message: "folder-based galleries can't be renamed; convert it to a zip",
       };
     }
     return null;
@@ -88,7 +87,7 @@ const IMAGES = {
     return {
       reason: "in_zip_gallery",
       message:
-        "this image lives inside a zip gallery, and Stash cannot move or rename files contained in a zip. Rename the gallery itself instead",
+        "images inside a zip can't be renamed; rename the gallery instead",
     };
   },
   // A folder gallery is defined by its folder, so an image that leaves it ends
@@ -104,7 +103,7 @@ const IMAGES = {
     return {
       reason: "in_folder_gallery",
       message:
-        "this image belongs to a folder-based gallery, which Stash defines by its folder. Moving it elsewhere would leave that gallery behind on the old folder and add the image to a second one created at the destination. Use {current} as the folder pattern to rename these in place",
+        "this image is in a folder-based gallery, so it can only be renamed in place. Use {current} as the folder pattern",
     };
   },
 };

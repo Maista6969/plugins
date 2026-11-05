@@ -290,7 +290,7 @@ export function EntitySettingsPanel({
           <p className="librarian-token-hint text-muted">
             {intl.formatMessage(
               { id: "librarian.entitySettingsPanel.exclusions.hint" },
-              { entityNoun: capitalize(plural) },
+              { entityNoun: plural, EntityNoun: capitalize(plural) },
             )}
           </p>
           <ConditionsEditor

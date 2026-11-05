@@ -1,9 +1,6 @@
 import React from "react";
 import { useIntl } from "react-intl";
-import {
-  normalizeSortCriteria,
-  describeSortCriteria,
-} from "../../core/entity-sort.js";
+import { normalizeSortCriteria } from "../../core/entity-sort.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button, ButtonGroup } = PluginApi.libraries.Bootstrap;
@@ -70,9 +67,6 @@ export function SortCriteriaSelect({
       <span className="librarian-sort-tiebreak text-muted">
         {intl.formatMessage({ id: "librarian.sortCriteriaSelect.tiebreak" })}
       </span>
-      <div className="librarian-token-hint text-muted">
-        {describeSortCriteria(intl, value)}
-      </div>
     </>
   );
 }
