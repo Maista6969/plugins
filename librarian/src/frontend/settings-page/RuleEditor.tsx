@@ -8,7 +8,7 @@ import { describePatternPair } from "../../core/path-template.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form, Button, ListGroup } = PluginApi.libraries.Bootstrap;
-const { faGripVertical, faCog, faMinus, faTrash } =
+const { faGripVertical, faCog, faCopy, faMinus, faTrash } =
   PluginApi.libraries.FontAwesomeSolid;
 const Icon = PluginApi.components.Icon;
 
@@ -29,6 +29,7 @@ interface RuleEditorProps {
   rule: Rule;
   onChange: (next: Rule) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
   draggable: boolean;
   onDragStart: (e: React.DragEvent<HTMLElement>) => void;
   onDragEnter: (e: React.DragEvent<HTMLElement>) => void;
@@ -46,6 +47,7 @@ export function RuleEditor({
   rule,
   onChange,
   onRemove,
+  onDuplicate,
   draggable,
   onDragStart,
   onDragEnter,
@@ -116,6 +118,15 @@ export function RuleEditor({
           title={intl.formatMessage({ id: "librarian.ruleEditor.editRule" })}
         >
           <Icon icon={faCog} />
+        </Button>
+        <Button
+          className="minimal"
+          onClick={onDuplicate}
+          title={intl.formatMessage({
+            id: "librarian.ruleEditor.duplicateRule",
+          })}
+        >
+          <Icon icon={faCopy} />
         </Button>
         <Button
           className="minimal text-danger"

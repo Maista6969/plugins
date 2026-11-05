@@ -10,13 +10,18 @@ function newRuleId(): string {
   return "rule-" + Date.now() + "-" + nextRuleSeq++;
 }
 
+// Stored in config and pattern-matched to tell default names from chosen
+// ones, so this stays a fixed English string regardless of the active locale
+export const UNNAMED_RULE_RE = /^Unnamed rule( \d+)?$/;
+
+function unnamedRuleName(existingRules: Rule[]): string {
+  return "Unnamed rule " + (existingRules.length + 1);
+}
+
 function newRule(existingRules: Rule[]): Rule {
   return {
     id: newRuleId(),
-    // Stored in config and pattern-matched by PluginSettingsSummary's
-    // UNNAMED_RULE_RE, so this must stay a fixed English string, not a
-    // translated one, regardless of the active locale.
-    name: "Unnamed rule " + (existingRules.length + 1),
+    name: unnamedRuleName(existingRules),
     enabled: true,
     conditionLogic: "AND",
     conditions: [{ field: "tag", op: "any_of", value: [] }],
@@ -62,6 +67,23 @@ export function RuleList({
     const copy = rules.slice();
     copy.splice(index, 1);
     onChange(copy);
+  }
+
+  function duplicateAt(index: number) {
+    const original = rules[index];
+    const copy: Rule = { ...structuredClone(original), id: newRuleId() };
+    if (original.name && !UNNAMED_RULE_RE.test(original.name)) {
+      copy.name = intl.formatMessage(
+        { id: "librarian.ruleList.copyName" },
+        { name: original.name },
+      );
+    } else if (original.name) {
+      copy.name = unnamedRuleName(rules);
+    }
+    const next = rules.slice();
+    next.splice(index + 1, 0, copy);
+    onChange(next);
+    setJustAddedId(copy.id);
   }
 
   function onItemDragStart(event: React.DragEvent<HTMLElement>, index: number) {
@@ -114,6 +136,7 @@ export function RuleList({
             rule={rule}
             onChange={(next) => updateAt(index, next)}
             onRemove={() => removeAt(index)}
+            onDuplicate={() => duplicateAt(index)}
             draggable={mouseOverIndex === index}
             onDragStart={(e) => onItemDragStart(e, index)}
             onDragEnter={(e) => onItemDragEnter(e, index)}

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { getConfiguration } from "../shared/stash-api.js";
 import { SETTINGS_ROUTE } from "../shared/SettingsLink.js";
 import { folderPatternMode } from "../../core/path-template.js";
+import { UNNAMED_RULE_RE } from "./RuleList.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Button } = PluginApi.libraries.Bootstrap;
@@ -35,9 +36,6 @@ export function PluginSettingsSummary() {
   const scenes: any = config.scenes || {};
   const rules: any[] = scenes.rules || [];
   const enabledRules = rules.filter((r) => r.enabled !== false);
-  // Matches the literal English default RuleList.tsx stores in rule.name, not
-  // display text, so this stays untranslated regardless of the active locale.
-  const UNNAMED_RULE_RE = /^Unnamed rule( \d+)?$/;
   const namedEnabledRules = enabledRules.filter(
     (r) => r.name && !UNNAMED_RULE_RE.test(r.name),
   );
