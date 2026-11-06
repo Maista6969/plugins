@@ -204,6 +204,9 @@ function renderTokenValue(value, parsed) {
       .map((pair) => {
         return resanitize(pair.name, parsed);
       })
+      .filter((name) => {
+        return name !== "";
+      })
       .join(value.delimiter);
     return { text: text, filteredEmpty: text === "" && value.sourceCount > 0 };
   }

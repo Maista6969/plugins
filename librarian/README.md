@@ -279,7 +279,8 @@ group is reused in the replacement as `$1`, `$2` and so on:
 ```
 
 Write `\/` for a literal forward slash, and `$$` for a literal `$`. On a list token the find-and-replace runs
-on each value separately, so it can never damage the separator between them. A replacement cannot smuggle a
+on each value separately, so it can never damage the separator between them, and a value it empties is dropped:
+`{tags|regex=/^JAV$//}` lists every tag but `JAV`. A replacement cannot smuggle a
 path separator into a folder either: the result is re-cleaned afterwards, so a `/` becomes a space like any
 other illegal character
 

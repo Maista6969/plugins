@@ -721,12 +721,18 @@ export function applyListModifiers(pairs, parsed) {
     if (spec.input === "list") {
       result = spec.applyList(result, modifier.value);
     } else if (spec.input === "value") {
-      result = result.map((pair) => {
-        return {
-          entity: pair.entity,
-          name: spec.applyValue(pair.name, modifier.value),
-        };
-      });
+      // An item a rewrite empties is dropped, so it neither leaves a stray
+      // delimiter behind nor takes a place a later limit= would count
+      result = result
+        .map((pair) => {
+          return {
+            entity: pair.entity,
+            name: spec.applyValue(pair.name, modifier.value),
+          };
+        })
+        .filter((pair) => {
+          return pair.name.trim() !== "";
+        });
     }
   });
   return result;

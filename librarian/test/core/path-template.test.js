@@ -1870,3 +1870,20 @@ test("regex= can be repeated, each one running on the result of the last", () =>
     "c",
   );
 });
+
+test("a list item a regex empties is dropped along with its delimiter", () => {
+  const view = sceneView({ tagNames: ["JAV", "Outdoor", "Beach"] });
+  assert.equal(render("{tags|regex=/^JAV$//}", view), "Beach, Outdoor");
+  // left holding only a character sanitizing strips
+  assert.equal(render("{tags|regex=/^Beach$/?/}", view), "JAV, Outdoor");
+});
+
+test("limit= after a regex counts only the items the regex left", () => {
+  const view = sceneView({ tagNames: ["JAV", "Outdoor", "Beach"] });
+  assert.equal(render("{tags|regex=/^Beach$//|limit=2}", view), "JAV, Outdoor");
+});
+
+test("a regex that empties every item renders the list empty, which <...> collapses", () => {
+  const view = sceneView({ tagNames: ["JAV"] });
+  assert.equal(render("{title}< [{tags|regex=/^JAV$//}]>", view), "My Title");
+});
