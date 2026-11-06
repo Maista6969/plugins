@@ -50,6 +50,14 @@ function splitPath(path) {
     : { folder: p.slice(0, idx), basename: p.slice(idx + 1) };
 }
 
+// A rule's Stash filter can over-select, and rules are tried in order with the
+// default pattern taking the rest, so some entities it selects are another
+// rule's or the default's. A plan decided before any rule was tried, like an
+// unorganized skip, carries no matchedRule and belongs to none of them
+export function isOtherRulesWork(plan, ruleId) {
+  return plan.matchedRule !== undefined && plan.matchedRule !== ruleId;
+}
+
 // An empty endpoint list means any source will do
 function dataError(
   reason,
@@ -489,6 +497,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
           status: "skipped",
           reason: blocked.reason,
           message: blocked.message,
+          matchedRule: matchedRule ? matchedRule.id || null : null,
           sceneId: sceneView.id,
           files: [],
         };
@@ -625,6 +634,7 @@ export function planEntity(rawScene, config, entityType, stashBoxes) {
   return {
     status: "ok",
     warnings: warnings,
+    matchedRule: matchedRule ? matchedRule.id || null : null,
     reason: matchedRule
       ? "rule:" +
         (matchedRule.id ||

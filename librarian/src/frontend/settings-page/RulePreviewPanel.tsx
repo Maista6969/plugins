@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { ruleToPreviewFilter } from "../../core/rule-to-filter.js";
+import { isOtherRulesWork } from "../../core/plan-scene.js";
 import { useManualEntityPreview } from "./useManualEntityPreview.js";
 import { PlanResultTable } from "../shared/PlanResultTable.js";
 import { PreviewSortSelect } from "./PreviewSortSelect.js";
@@ -40,18 +41,13 @@ export function RulePreviewPanel({
   const notReady = sceneFilter === null;
   const visible = rows !== null && !closed;
 
-  // An "every performer" condition cannot be expressed as a filter
-  // so the query over-selects and some rows are claimed by no rule at all
+  // A disabled rule claims nothing, so its preview shows what the default
+  // pattern would do with the entities it selects
   function isNotThisRulesWork(plan: any): boolean {
-    if (plan.status !== "ok") {
+    if (rule.enabled === false && plan.matchedRule === null) {
       return false;
     }
-    if (rule.enabled === false) {
-      return (
-        plan.reason.indexOf("rule:") === 0 && plan.reason !== "rule:" + rule.id
-      );
-    }
-    return plan.reason !== "rule:" + rule.id;
+    return isOtherRulesWork(plan, rule.id);
   }
 
   function handlePreviewClick() {

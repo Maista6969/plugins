@@ -1,4 +1,4 @@
-import { planEntity } from "../core/plan-scene.js";
+import { planEntity, isOtherRulesWork } from "../core/plan-scene.js";
 import { adapterFor } from "../core/entity-adapter.js";
 import { gqlMoveFile, gqlFindOwnerOfPath } from "./gql.js";
 import { filesNeedingMove } from "./hook-guard.js";
@@ -69,8 +69,19 @@ function logRename(level, noun, entityId, file) {
   }
 }
 
-export function renameEntity(rawEntity, config, entityType, stashBoxes) {
+// With a ruleId only that rule's work is done, and null comes back for an
+// entity that belongs to another rule or the default pattern
+export function renameEntity(
+  rawEntity,
+  config,
+  entityType,
+  stashBoxes,
+  ruleId,
+) {
   const plan = planEntity(rawEntity, config, entityType, stashBoxes);
+  if (ruleId && isOtherRulesWork(plan, ruleId)) {
+    return null;
+  }
 
   if (plan.status !== "ok") {
     return plan;

@@ -287,6 +287,7 @@
   "librarian.conditionRow.stashIdModifier.isNull.title": "没有来自所选来源的 StashID（未选择来源时为没有任何 StashID）",
   "librarian.conditionRow.path.placeholder": "/data/old-files",
   "librarian.conditionRow.wordSplit": "按 {count} 个单独的词匹配（{terms}），含有任意一个即算符合。请用英文双引号包住该值以按整句匹配",
+  "librarian.conditionRow.unreadableRegex": "Librarian 无法读取此正则表达式，因此该条件永远不成立，匹配项会落入后面的规则或默认模式",
   "librarian.conditionRow.titleModifier.includes.title": "包含此内容。除非加引号，否则各个词分别匹配；“%” 匹配任意文本，“_” 匹配单个字符",
   "librarian.conditionRow.titleModifier.excludes.title": "不包含其中任何内容。除非加引号，否则各个词分别匹配。没有标题的'{noun}'永远不匹配",
   "librarian.conditionRow.titleModifier.equals.title": "整个标题恰好是此内容（不区分大小写）。不拆分单词，引号无特殊含义",

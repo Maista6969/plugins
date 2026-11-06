@@ -1,4 +1,5 @@
 import { likeContains } from "./string-criterion.js";
+import { goRegExp } from "./go-regexp.js";
 
 export const CUSTOM_FIELD_OPS = [
   "EQUALS",
@@ -85,7 +86,7 @@ function equalsStored(raw, text, number) {
 
 function regexMatches(pattern, text) {
   try {
-    return new RegExp(pattern).test(text);
+    return goRegExp(pattern).test(text);
   } catch (e) {
     return false;
   }

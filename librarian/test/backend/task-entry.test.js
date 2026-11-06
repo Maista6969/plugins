@@ -32,6 +32,7 @@ function stashGlobals(storedResults) {
     pluginConfig[RESULTS_PLUGIN_ID] = storedResults;
   }
   const writes = [];
+  const moves = [];
   globalThis.gql = {
     Do: (query, variables) => {
       if (query.indexOf("GetPluginConfig") !== -1) {
@@ -54,7 +55,11 @@ function stashGlobals(storedResults) {
       if (query.indexOf("FindScene(") !== -1) {
         return { findScene: SCENES[variables.id] || null };
       }
+      if (query.indexOf("FindScenes(") !== -1) {
+        return { findScenes: { count: 2, scenes: [SCENES[1], SCENES[2]] } };
+      }
       if (query.indexOf("MoveFiles") !== -1) {
+        moves.push(variables.input.ids[0]);
         if (variables.input.ids[0] === "12") {
           throw new Error("file /data/Sorted/clip.mp4 already exists");
         }
@@ -73,7 +78,7 @@ function stashGlobals(storedResults) {
     Error: () => {},
     Progress: () => {},
   };
-  return { pluginConfig, writes };
+  return { pluginConfig, writes, moves };
 }
 
 test("a run started with a run_id leaves its counts and failures under the results id", () => {
@@ -177,4 +182,30 @@ test("automatic renaming leaves a failure open and closes it once the item renam
     openFailures(stash.pluginConfig[RESULTS_PLUGIN_ID], "scenes"),
     [],
   );
+});
+
+test("applying one rule leaves the entities its filter over-selected to their own rule or the default", () => {
+  const stash = stashGlobals(null);
+  stash.pluginConfig.librarian = {
+    scenes: Object.assign({}, CONFIG.scenes, {
+      rules: [
+        {
+          id: "alpha",
+          name: "Alpha",
+          enabled: true,
+          conditionLogic: "AND",
+          conditions: [{ field: "title", op: "EQUALS", value: "Alpha" }],
+          folderPattern: "Ruled",
+          filenamePattern: "{current}",
+          libraryRoot: "/data",
+          sortBy: ["name"],
+        },
+      ],
+    }),
+  };
+  run({ mode: "task", entity_filter: {}, rule_id: "alpha", run_id: "r1" });
+  assert.deepEqual(stash.moves, ["11"]);
+  const result = findRun(stash.pluginConfig[RESULTS_PLUGIN_ID], "r1");
+  assert.equal(result.changed, 1);
+  assert.equal(result.failureCount, 0);
 });

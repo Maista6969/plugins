@@ -128,6 +128,8 @@ all. Matched scenes can then go one way and unmatched ones another, or _has none
 title to compare, so it never matches _doesn't contain_ or _is not_: add an _is not set_ alongside in an ANY rule if you want
 untitled items too. **Video codec** (scenes only) matches when any of a scene's files has that codec, as Stash names it:
 `h264`, `hevc`, `av1`, `vp9` and so on.
+_matches regex_ and _doesn't match regex_ use the same regex syntax as Stash's own filters, flags like `(?i)` included,
+except Unicode classes such as `\pL`. The editor warns about a regex Librarian can't read.
 
 Scenes can also be matched on whether they belong to a group at all, which is how you give the scenes of your movies a pattern of
 their own without writing a rule per movie: set the **Group** condition to _is set_ and use `{group}` and `{group_idx}` in the pattern.

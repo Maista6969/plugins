@@ -2,7 +2,11 @@ import React from "react";
 import { useIntl } from "react-intl";
 import { ConditionRow, Condition, fieldLabel } from "./ConditionRow.js";
 import { countableNoun } from "../shared/eligible-entities.js";
-import { findConditionProblems, textWordSplit } from "../../core/rule-lint.js";
+import {
+  findConditionProblems,
+  textWordSplit,
+  unreadableRegex,
+} from "../../core/rule-lint.js";
 
 const PluginApi = (window as any).PluginApi;
 const { Form, Button } = PluginApi.libraries.Bootstrap;
@@ -84,6 +88,13 @@ export function ConditionsEditor({
                     terms: splitTerms.map((t) => "“" + t + "”").join(", "),
                   },
                 )}
+              </p>
+            )}
+            {unreadableRegex(condition) && (
+              <p className="librarian-token-hint text-warning">
+                {intl.formatMessage({
+                  id: "librarian.conditionRow.unreadableRegex",
+                })}
               </p>
             )}
           </React.Fragment>

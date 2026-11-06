@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   findConditionProblems,
   textWordSplit,
+  unreadableRegex,
 } from "../../src/core/rule-lint.js";
 
 const anyTag = { field: "tag", op: "not_null", value: [] };
@@ -118,5 +119,22 @@ test("a quoted phrase, a single word, and a whole-path comparison do not split",
   assert.equal(
     textWordSplit({ field: "tag", op: "any_of", value: ["To Sort"] }),
     null,
+  );
+});
+
+test("a regex condition Librarian can't read is reported, one it can is not", () => {
+  const path = (op, value) => ({ field: "path", op, value });
+  assert.equal(unreadableRegex(path("MATCHES_REGEX", "(?i)hevc")), false);
+  assert.equal(unreadableRegex(path("NOT_MATCHES_REGEX", "[a-")), true);
+  assert.equal(unreadableRegex(path("INCLUDES", "[a-")), false);
+  assert.equal(
+    unreadableRegex({
+      field: "studio",
+      op: "custom_field",
+      key: "k",
+      valueOp: "MATCHES_REGEX",
+      value: "(",
+    }),
+    true,
   );
 });

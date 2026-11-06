@@ -35,7 +35,7 @@ export function ApplyRuleButton({
 
   function handleConfirmedApply() {
     setConfirming(false);
-    start({ entity: type, entity_filter: sceneFilter });
+    start({ entity: type, entity_filter: sceneFilter, rule_id: rule.id });
   }
 
   const hint = disabledRule

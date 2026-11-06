@@ -287,6 +287,7 @@
   "librarian.conditionRow.stashIdModifier.isNull.title": "No tiene StashID de las fuentes seleccionadas, o ninguno si no hay ninguna seleccionada",
   "librarian.conditionRow.path.placeholder": "/datos/archivos-antiguos",
   "librarian.conditionRow.wordSplit": "Coincide con cualquiera de {count} palabras separadas ({terms}). Pon el valor entre comillas dobles para compararlo como una sola frase",
+  "librarian.conditionRow.unreadableRegex": "Librarian no puede leer esta expresión regular, así que la condición nunca se cumple y las coincidencias pasan a una regla posterior o al patrón predeterminado",
   "librarian.conditionRow.titleModifier.includes.title": "Contiene esto. Las palabras coinciden por separado salvo entre comillas; «%» coincide con cualquier texto, «_» con un carácter",
   "librarian.conditionRow.titleModifier.excludes.title": "No contiene nada de esto. Las palabras coinciden por separado salvo entre comillas. Una '{noun}' sin título nunca coincide",
   "librarian.conditionRow.titleModifier.equals.title": "El título completo es exactamente esto, sin distinguir mayúsculas. Sin separar palabras; las comillas no cuentan",

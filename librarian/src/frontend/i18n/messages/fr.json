@@ -287,6 +287,7 @@
   "librarian.conditionRow.stashIdModifier.isNull.title": "N'a aucun StashID des sources sélectionnées, ou aucun du tout si aucune n'est sélectionnée",
   "librarian.conditionRow.path.placeholder": "/data/anciens-fichiers",
   "librarian.conditionRow.wordSplit": "Correspond à n'importe lequel de {count} mots séparés ({terms}). Placez la valeur entre guillemets doubles pour la comparer comme une seule expression",
+  "librarian.conditionRow.unreadableRegex": "Librarian ne peut pas lire cette expression régulière : la condition n'est donc jamais remplie et les correspondances passent à une règle suivante ou au modèle par défaut",
   "librarian.conditionRow.titleModifier.includes.title": "Contient ceci. Les mots sont comparés séparément sauf entre guillemets ; « % » correspond à n'importe quel texte, « _ » à un caractère",
   "librarian.conditionRow.titleModifier.excludes.title": "Ne contient rien de ceci. Les mots sont comparés séparément sauf entre guillemets. Une '{noun}' sans titre ne correspond jamais",
   "librarian.conditionRow.titleModifier.equals.title": "Le titre entier est exactement ceci, sans tenir compte de la casse. Mots non séparés, guillemets sans effet",

@@ -287,6 +287,7 @@
   "librarian.conditionRow.stashIdModifier.isNull.title": "Has no StashID from the selected sources, or none at all if none are selected",
   "librarian.conditionRow.path.placeholder": "/data/old-files",
   "librarian.conditionRow.wordSplit": "Matches any of {count} separate words ({terms}). Put the value in double quotes to match it as one phrase",
+  "librarian.conditionRow.unreadableRegex": "Librarian can't read this regex, so this condition is never true and matches fall through to a later rule or the default pattern",
   "librarian.conditionRow.titleModifier.includes.title": "Contains this. Words match separately unless quoted; “%” matches any text, “_” one character",
   "librarian.conditionRow.titleModifier.excludes.title": "Contains none of this. Words match separately unless quoted. An untitled '{noun}' never matches",
   "librarian.conditionRow.titleModifier.equals.title": "The whole title is exactly this, ignoring case. No word splitting or quoting",

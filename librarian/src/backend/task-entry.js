@@ -35,13 +35,13 @@ function logError(noun, sceneId, message) {
   }
 }
 
-function processScene(scene, config, summary, entityType, stashBoxes) {
+function processScene(scene, config, summary, entityType, stashBoxes, ruleId) {
   const noun = adapterFor(entityType).noun;
-  summary.processed++;
   let outcome;
   try {
-    outcome = renameEntity(scene, config, entityType, stashBoxes);
+    outcome = renameEntity(scene, config, entityType, stashBoxes, ruleId);
   } catch (e) {
+    summary.processed++;
     summary.errors.push({
       sceneId: scene.id,
       title: displayName(scene, entityType),
@@ -50,6 +50,10 @@ function processScene(scene, config, summary, entityType, stashBoxes) {
     logError(noun, scene.id, String(e));
     return;
   }
+  if (!outcome) {
+    return;
+  }
+  summary.processed++;
   const error = outcomeError(outcome, scene, entityType);
   if (error) {
     summary.errors.push(error);
@@ -242,10 +246,18 @@ function runSweep(args) {
     }
 
     scenes.forEach((scene) => {
-      processScene(scene, config, summary, entityType, stashBoxes);
+      processScene(
+        scene,
+        config,
+        summary,
+        entityType,
+        stashBoxes,
+        args.rule_id || null,
+      );
     });
 
-    logProgress(total > 0 ? Math.min(1, summary.processed / total) : 1);
+    const seen = (page - 1) * PAGE_SIZE + scenes.length;
+    logProgress(total > 0 ? Math.min(1, seen / total) : 1);
     page++;
   }
 

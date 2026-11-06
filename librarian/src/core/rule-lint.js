@@ -1,4 +1,5 @@
 import { pathSearchTerms } from "./string-criterion.js";
+import { goRegExp } from "./go-regexp.js";
 
 // "is set" and "is not set" on the same thing split every entity between them.
 // Under ANY that pair is always true, so the rule claims everything; under ALL
@@ -66,4 +67,25 @@ export function textWordSplit(condition) {
   }
   const terms = pathSearchTerms(condition.value);
   return terms.length > 1 ? terms : null;
+}
+
+// Stash's filter accepts whatever RE2 does, so a regex Librarian can't read
+// still finds entities, but the condition then never holds and every one of
+// them falls through to a later rule or the default pattern
+export function unreadableRegex(condition) {
+  if (!condition || !condition.value) {
+    return false;
+  }
+  const op = /MATCHES_REGEX$/.test(condition.op || "")
+    ? condition.op
+    : condition.valueOp;
+  if (op !== "MATCHES_REGEX" && op !== "NOT_MATCHES_REGEX") {
+    return false;
+  }
+  try {
+    goRegExp(String(condition.value));
+    return false;
+  } catch (e) {
+    return true;
+  }
 }

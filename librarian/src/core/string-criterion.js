@@ -1,3 +1,5 @@
+import { goRegExp } from "./go-regexp.js";
+
 // SQLite's LIKE folds A-Z only, so "BJÖRK" is not matched by "björk"
 function asciiLower(text) {
   return String(text).replace(/[A-Z]/g, (c) => {
@@ -82,13 +84,13 @@ export function evaluateStringCriterion(value, criterion) {
       return !matchesAnyTerm(haystack, needle);
     case "MATCHES_REGEX":
       try {
-        return new RegExp(needle).test(haystack);
+        return goRegExp(needle).test(haystack);
       } catch (e) {
         return false;
       }
     case "NOT_MATCHES_REGEX":
       try {
-        return !new RegExp(needle).test(haystack);
+        return !goRegExp(needle).test(haystack);
       } catch (e) {
         return false;
       }
