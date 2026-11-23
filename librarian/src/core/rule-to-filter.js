@@ -5,6 +5,7 @@ import { ratingRangeCriterion } from "./rating-range.js";
 import { countRangeCriterion } from "./count-range.js";
 import { dateRangeCriterion } from "./date-range.js";
 import { stashIdEndpoints } from "./stash-id-condition.js";
+import { isConditionGroup, leafConditions } from "./condition-tree.js";
 
 function asList(value) {
   return Array.isArray(value) ? value : [value];
@@ -211,6 +212,12 @@ function stashIdFilter(condition) {
 }
 
 function conditionToFilter(condition) {
+  return isConditionGroup(condition)
+    ? conditionsToFilter(condition.conditions, condition.conditionLogic)
+    : leafToFilter(condition);
+}
+
+function leafToFilter(condition) {
   switch (condition.field) {
     case "custom_field":
       return customFieldFilter(condition);
@@ -251,9 +258,11 @@ function conditionToFilter(condition) {
   }
 }
 
-function foldFragments(fragments, logic) {
-  if (fragments.length === 0) return null;
-  const key = logic === "OR" ? "OR" : "AND";
+function hasSubFilter(fragment) {
+  return "AND" in fragment || "OR" in fragment || "NOT" in fragment;
+}
+
+function chainFragments(fragments, key) {
   let acc = fragments[fragments.length - 1];
   for (let i = fragments.length - 2; i >= 0; i--) {
     const wrapper = Object.assign({}, fragments[i]);
@@ -263,21 +272,41 @@ function foldFragments(fragments, logic) {
   return acc;
 }
 
-export function ruleToSceneFilter(rule) {
-  const conditions = (rule && rule.conditions) || [];
-  if (conditions.length === 0) {
+// A level of a Stash filter holds its own criteria plus one sub-filter, so a
+// chain carries one fragment that already nests, innermost. The editor allows
+// one group per rule for the same reason; anything else is simply no filter
+function foldFragments(fragments, logic) {
+  const nested = fragments.filter(hasSubFilter);
+  if (nested.length > 1) return null;
+  const ordered = fragments
+    .filter((f) => {
+      return !hasSubFilter(f);
+    })
+    .concat(nested);
+  return chainFragments(ordered, logic === "OR" ? "OR" : "AND");
+}
+
+function conditionsToFilter(conditions, conditionLogic) {
+  const list = conditions || [];
+  if (list.length === 0) {
     return null;
   }
   const fragments = [];
-  for (let i = 0; i < conditions.length; i++) {
-    const fragment = conditionToFilter(conditions[i]);
+  for (let i = 0; i < list.length; i++) {
+    const fragment = conditionToFilter(list[i]);
     if (!fragment) {
       return null;
     }
     fragments.push(fragment);
   }
-  const logic = rule.conditionLogic === "OR" ? "OR" : "AND";
-  return foldFragments(fragments, logic);
+  return foldFragments(fragments, conditionLogic);
+}
+
+export function ruleToSceneFilter(rule) {
+  return conditionsToFilter(
+    rule && rule.conditions,
+    rule && rule.conditionLogic,
+  );
 }
 
 // We can't do an OR-query for multiple endpoints so we fall back to
@@ -295,7 +324,7 @@ export function stashIdGate(endpoints) {
 }
 
 export function ruleFilterIsApproximate(rule) {
-  return ((rule && rule.conditions) || []).some((condition) => {
+  return leafConditions(rule && rule.conditions).some((condition) => {
     return (
       condition &&
       condition.field === "performer" &&
@@ -306,7 +335,7 @@ export function ruleFilterIsApproximate(rule) {
 }
 
 export function stashIdConditionIsApproximate(rule) {
-  return ((rule && rule.conditions) || []).some((condition) => {
+  return leafConditions(rule && rule.conditions).some((condition) => {
     return (
       condition &&
       condition.field === "stash_id" &&
@@ -337,7 +366,7 @@ export function configGates(config) {
 // The gates alone, for previewing what the config does without any rule
 export function configGateFilter(config) {
   const gates = configGates(config);
-  return gates.length === 0 ? null : foldFragments(gates, "AND");
+  return gates.length === 0 ? null : chainFragments(gates, "AND");
 }
 
 export function ruleToPreviewFilter(rule, config) {
@@ -345,5 +374,5 @@ export function ruleToPreviewFilter(rule, config) {
   if (!ruleFilter) {
     return null;
   }
-  return foldFragments(configGates(config).concat([ruleFilter]), "AND");
+  return chainFragments(configGates(config).concat([ruleFilter]), "AND");
 }

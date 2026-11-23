@@ -236,3 +236,46 @@ test("a rule with an untouched condition alongside a fully-pruned one loses only
     { field: "tag", op: "any_of", value: ["t1"] },
   ]);
 });
+
+test("dead ids are pruned inside groups and an emptied group is dropped", () => {
+  const dead = noDeadIds();
+  dead.tag.add("t-dead");
+  const pruned = pruneDeadEntities(
+    config({
+      rules: [
+        rule({
+          conditions: [
+            { field: "tag", op: "any_of", value: ["t-live"] },
+            {
+              conditionLogic: "OR",
+              conditions: [{ field: "tag", op: "any_of", value: ["t-dead"] }],
+            },
+          ],
+        }),
+      ],
+    }),
+    dead,
+  );
+  assert.deepEqual(pruned.config.rules[0].conditions, [
+    { field: "tag", op: "any_of", value: ["t-live"] },
+  ]);
+  assert.equal(pruned.removedReferences, 1);
+});
+
+test("collectEntityIds sees ids inside groups", () => {
+  const ids = collectEntityIds(
+    config({
+      rules: [
+        rule({
+          conditions: [
+            {
+              conditionLogic: "OR",
+              conditions: [{ field: "performer", op: "any_of", value: ["p1"] }],
+            },
+          ],
+        }),
+      ],
+    }),
+  );
+  assert.deepEqual([...ids.performer], ["p1"]);
+});

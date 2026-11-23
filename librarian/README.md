@@ -136,6 +136,12 @@ their own without writing a rule per movie: set the **Group** condition to _is s
 Where some titles already name the group and some don't, `<{group_not_in_title} - >{title} [Sc. {group_idx}]` gives
 `Teen Dreams - Anita Goes Hard [Sc. 1]` for both `Teen Dreams - Anita Goes Hard` and plain `Anita Goes Hard`.
 
+Conditions are joined by one _and_ or _or_ per list, picked on the second row, and **+ Add group** nests a list one
+level deep, so one rule can say `Tag` is any of `4K` and (`Performer` is any of `Amy` or `Studio` is none of `Brazzers`).
+A rule holds one group, because that is the shape Stash's own filter can hold, and the preview, the count and the Apply
+button all go through that filter. There is no NOT: every condition has its negative form, _is none of_, _is not set_,
+_doesn't contain_, _has none from_, and a range inverts as a group of two open-ended ranges joined by _or_.
+
 <p align="center">
   <a href="https://github.com/Maista6969/plugins/blob/main/librarian/images/stash-librarian-rule-editor.png">
     <img src="images/stash-librarian-rule-editor.png" width="800" alt="Rule editor modal: conditions, folder/filename patterns, and a live preview of matching scenes">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useIntl } from "react-intl";
 import { countableNoun } from "../shared/eligible-entities.js";
-import { Condition } from "./ConditionRow.js";
+import { ConditionItem } from "./ConditionsEditor.js";
 import { RuleEditModal } from "./RuleEditModal.js";
 import { ConfirmModal } from "../shared/ConfirmModal.js";
 import { describePatternPair } from "../../core/path-template.js";
@@ -17,7 +17,7 @@ export interface Rule {
   name?: string;
   enabled: boolean;
   conditionLogic: "AND" | "OR";
-  conditions: Condition[];
+  conditions: ConditionItem[];
   folderPattern: string;
   filenamePattern: string;
   sortBy?: string[] | string;

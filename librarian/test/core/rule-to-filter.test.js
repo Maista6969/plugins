@@ -424,3 +424,65 @@ test("no gates at all means no filter, rather than an empty object that matches 
   assert.equal(configGateFilter({}), null);
   assert.equal(configGateFilter(undefined), null);
 });
+
+test("a group nests as the level's one sub-filter: COND1 AND (COND2 OR COND3)", () => {
+  const filter = ruleToSceneFilter({
+    conditionLogic: "AND",
+    conditions: [
+      { field: "tag", op: "any_of", value: ["1"] },
+      {
+        conditionLogic: "OR",
+        conditions: [
+          { field: "tag", op: "any_of", value: ["2"] },
+          { field: "tag", op: "none_of", value: ["3"] },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(filter, {
+    tags: { value: ["1"], modifier: "INCLUDES", depth: 0 },
+    AND: {
+      tags: { value: ["2"], modifier: "INCLUDES", depth: 0 },
+      OR: { tags: { value: ["3"], modifier: "EXCLUDES", depth: 0 } },
+    },
+  });
+});
+
+test("a second group has no Stash filter, which the editor prevents by allowing one group per rule", () => {
+  const group = (ids) => ({
+    conditionLogic: "OR",
+    conditions: ids.map((id) => ({ field: "tag", op: "any_of", value: [id] })),
+  });
+  ["AND", "OR"].forEach((conditionLogic) => {
+    assert.equal(
+      ruleToSceneFilter({
+        conditionLogic,
+        conditions: [group(["1", "2"]), group(["3", "4"])],
+      }),
+      null,
+    );
+  });
+  // an 'and' group under 'or' nests the same way an 'or' group under 'and' does
+  assert.deepEqual(
+    ruleToSceneFilter({
+      conditionLogic: "OR",
+      conditions: [
+        { field: "title", op: "INCLUDES", value: "Bravo" },
+        {
+          conditionLogic: "AND",
+          conditions: [
+            { field: "tag", op: "any_of", value: ["6"] },
+            { field: "path", op: "INCLUDES", value: "LibraryB" },
+          ],
+        },
+      ],
+    }),
+    {
+      title: { value: "Bravo", modifier: "INCLUDES" },
+      OR: {
+        tags: { value: ["6"], modifier: "INCLUDES", depth: 0 },
+        AND: { path: { value: "LibraryB", modifier: "INCLUDES" } },
+      },
+    },
+  );
+});

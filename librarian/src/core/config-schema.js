@@ -1,3 +1,4 @@
+import { isConditionGroup } from "./condition-tree.js";
 import { normalizeSortCriteria, DEFAULT_SORT_CRITERIA } from "./entity-sort.js";
 
 export const PLUGIN_ID = "librarian";
@@ -193,11 +194,20 @@ function keepableConditions(conditions) {
   if (!Array.isArray(conditions)) {
     return conditions;
   }
-  return conditions.filter((c) => {
-    return (
-      !isPlainObject(c) || SCENE_ONLY_CONDITION_FIELDS.indexOf(c.field) === -1
-    );
-  });
+  return conditions
+    .map((c) => {
+      return isConditionGroup(c)
+        ? Object.assign({}, c, { conditions: keepableConditions(c.conditions) })
+        : c;
+    })
+    .filter((c) => {
+      if (isConditionGroup(c)) {
+        return c.conditions.length > 0;
+      }
+      return (
+        !isPlainObject(c) || SCENE_ONLY_CONDITION_FIELDS.indexOf(c.field) === -1
+      );
+    });
 }
 
 function dropSceneOnlyConditions(config) {

@@ -1,3 +1,4 @@
+import { leafConditions } from "./condition-tree.js";
 import { normalizeScene } from "./normalize-scene.js";
 import {
   matchRule,
@@ -113,9 +114,9 @@ export function configNeedsStashBoxes(config, entityType) {
 
   // only to name the sources when an exclusion is reported, endpoints match
   // without them
-  const exclusions = (settings.excludeConditions || {}).conditions || [];
+  const exclusions = (settings.excludeConditions || {}).conditions;
   if (
-    exclusions.some((c) => {
+    leafConditions(exclusions).some((c) => {
       return (
         c && c.field === "stash_id" && stashIdEndpoints(c.value).length > 0
       );

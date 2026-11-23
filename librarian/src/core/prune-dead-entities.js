@@ -1,4 +1,5 @@
 import { ENTITY_TYPES } from "./config-schema.js";
+import { isConditionGroup, leafConditions } from "./condition-tree.js";
 
 function fieldEntityType(field) {
   if (field === "studio") return "studio";
@@ -58,7 +59,7 @@ export function collectEntityIds(config) {
   const ids = { performer: new Set(), tag: new Set(), studio: new Set() };
 
   function visit(conditions) {
-    (conditions || []).forEach((c) => {
+    leafConditions(conditions).forEach((c) => {
       const type = fieldEntityType(c.field);
       if (type && Array.isArray(c.value)) {
         c.value.forEach((id) => {
@@ -81,6 +82,19 @@ export function collectEntityIds(config) {
 function pruneConditionList(conditions, deadIds, counters) {
   const next = [];
   (conditions || []).forEach((c) => {
+    if (isConditionGroup(c)) {
+      const inner = pruneConditionList(c.conditions, deadIds, counters);
+      // an emptied group is dropped like an emptied rule, not kept as a
+      // member that can never hold
+      if (inner.length > 0) {
+        next.push(
+          inner.length === c.conditions.length
+            ? c
+            : Object.assign({}, c, { conditions: inner }),
+        );
+      }
+      return;
+    }
     const type = fieldEntityType(c.field);
     if (!type || !Array.isArray(c.value)) {
       next.push(c);

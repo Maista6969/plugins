@@ -537,3 +537,47 @@ test("tag is none of matches an item with no tags, and nothing when left blank",
     "tag is none of the selected",
   );
 });
+
+test("a group is evaluated with its own logic: COND1 AND (COND2 OR COND3), where COND3 is the negative operator", () => {
+  const rule = {
+    conditionLogic: "AND",
+    conditions: [
+      { field: "tag", op: "any_of", value: ["tag-rock"] },
+      {
+        conditionLogic: "OR",
+        conditions: [
+          { field: "performer", op: "any_of", value: ["perf-nobody"] },
+          { field: "studio", op: "none_of", value: ["studio-leaf"] },
+        ],
+      },
+    ],
+  };
+  assert.equal(matchRule(sceneView(), [rule]), null);
+  assert.equal(matchRule(sceneView({ studioIds: ["other"] }), [rule]), rule);
+  assert.equal(matchRule(sceneView({ tagIds: [] }), [rule]), null);
+});
+
+test("describeCondition names the members of a group that held, the way excludedBy reports them", () => {
+  assert.equal(
+    describeCondition(sceneView(), {
+      conditionLogic: "OR",
+      conditions: [
+        { field: "tag", op: "any_of", value: ["tag-rock"] },
+        { field: "tag", op: "any_of", value: ["tag-none"] },
+      ],
+    }),
+    "tag is 'Rock'",
+  );
+});
+
+test("{matched_tags} reaches into groups", () => {
+  const rule = {
+    conditions: [
+      {
+        conditionLogic: "AND",
+        conditions: [{ field: "tag", op: "any_of", value: ["tag-rock"] }],
+      },
+    ],
+  };
+  assert.deepEqual(getMatchedEntityIds(sceneView(), rule, "tag"), ["tag-rock"]);
+});

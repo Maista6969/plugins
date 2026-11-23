@@ -13,6 +13,7 @@ import { ratingInRange, describeRatingRange } from "./rating-range.js";
 import { countInRange, describeCountRange } from "./count-range.js";
 import { dateInRange, describeDateRange } from "./date-range.js";
 import { isStudioTraitOp } from "./studio-condition.js";
+import { isConditionGroup, leafConditions } from "./condition-tree.js";
 import {
   evaluateStashIdCondition,
   describeStashIdCondition,
@@ -90,7 +91,7 @@ function evaluateGroup(sceneView, condition) {
   return applyListOp(ids, condition.op, condition.value);
 }
 
-export function evaluateCondition(sceneView, condition) {
+function evaluateLeaf(sceneView, condition) {
   switch (condition.field) {
     case "custom_field":
       return evaluateCustomField(
@@ -165,6 +166,16 @@ export function evaluateCondition(sceneView, condition) {
   }
 }
 
+export function evaluateCondition(sceneView, condition) {
+  return isConditionGroup(condition)
+    ? evaluateConditions(
+        sceneView,
+        condition.conditionLogic,
+        condition.conditions,
+      )
+    : evaluateLeaf(sceneView, condition);
+}
+
 export function getMatchedEntityIds(sceneView, rule, field) {
   if (!rule) {
     return [];
@@ -177,7 +188,7 @@ export function getMatchedEntityIds(sceneView, rule, field) {
       matched.push(id);
     }
   };
-  (rule.conditions || []).forEach((condition) => {
+  leafConditions(rule.conditions).forEach((condition) => {
     if (condition.field !== field) {
       return;
     }
@@ -382,6 +393,21 @@ function describePerformerCondition(sceneView, condition) {
 }
 
 export function describeCondition(sceneView, condition, stashBoxes) {
+  return isConditionGroup(condition)
+    ? describeGroup(sceneView, condition, stashBoxes)
+    : describeLeaf(sceneView, condition, stashBoxes);
+}
+
+// Names the members that held, the way excludedBy names conditions
+function describeGroup(sceneView, group, stashBoxes) {
+  return matchingConditions(sceneView, group.conditionLogic, group.conditions)
+    .map((c) => {
+      return describeCondition(sceneView, c, stashBoxes);
+    })
+    .join(group.conditionLogic === "OR" ? " or " : " and ");
+}
+
+function describeLeaf(sceneView, condition, stashBoxes) {
   switch (condition.field) {
     case "custom_field":
       return describeCustomField("custom field", condition);
